@@ -1,0 +1,309 @@
+\documentclass[12pt]{article} \usepackage{amsmath,amsfonts}
+%\usepackage{showlabels}
+\usepackage[pdftex]{graphicx,color}
+
+\newcommand{\htop}{{h_{\text{top}}}}
+\newcommand{\T}{{\cal P}}
+\newcommand{\logprob}{{\cal L}}
+
+\title{Transistion Probabilities that Maximize the Entropy of a Markov
+  Process}
+
+\author{Andrew M.\ Fraser}
+\begin{document}
+\maketitle
+\begin{abstract}
+  I describe an algorithm that calculates, for any \emph{strongly
+    connected} directed graph, the set of branching probabilities for
+  the edges that yields a Markov process with the maximum possible
+  entropy rate.  I developed the algorithm as a tool for quantifying
+  uncertainty about an equation of state.  I will introduce the
+  entropy maximization problem in terms of Information Theory as I
+  first encountered it in the homework problems for chapter 4 of Cover
+  and Thomas' text (problems 4.7 and 4.16 in the second edition).
+  Although I will present the set of polynomial equations from Graph
+  Theory that the solution must satisfy, the operationally useful
+  algorithm relies on the power method for calculating eigenvalues.
+\end{abstract}
+
+\section{A simple example}
+\label{sec:example}
+
+Consider the adjacency matrix
+\begin{equation}
+  \label{eq:A}
+  A = \begin{bmatrix} 1 & 1 \\ 1 & 0 \end{bmatrix},
+\end{equation}
+the schematic of the corresponding finite state Markov process in
+Figure~\ref{fig:mt2}, and its probability matrix
+\begin{equation}
+  \label{eq:T}
+  \T = \begin{bmatrix} a & b \\ c & 0 \end{bmatrix}.
+\end{equation}
+
+\begin{figure*}
+  \centering
+  \resizebox{0.4\textwidth}{!}{\input{mt2.pdf_t} }
+  \caption{A schematic of the finite state Markov process specified by
+  Equation~\eqref{eq:T}.}
+  \label{fig:mt2}
+\end{figure*}
+
+Given values for $a$, $b$, and $c$, one can solve
+\begin{equation}
+  \label{eq:stationary}
+  \mu = \mu \T
+\end{equation}
+for the stationary distribution $\mu$ and from there find the entropy
+rate $h$ by
+\begin{equation}
+  \label{eq:rate}
+  h = \sum_i \mu_i H(J|i)
+\end{equation}
+where
+\begin{equation*}
+  H(J|i) \equiv -\sum_j \T_{i,j} \log (\T_{i,j})
+\end{equation*}
+is the familiar $P\log(P)$ formula.
+
+\subsection{Parameters of $\T$ that maximize $h$}
+\label{sec:max}
+
+For the maximum entropy values, given a trajectory length $N$, all
+trajectories must have almost the same probability.  Since all
+trajectories are composed of loops in a cycle basis, the following
+equation must hold
+\begin{equation}
+  \label{eq:excycle}
+  a^2 = b\cdot c.
+\end{equation}
+That combined with the normalization constraints for the two nodes
+\begin{align*}
+  a + b &= 1 \\
+  c &= 1
+\end{align*}
+is sufficient to specify the solution
+\begin{align*}
+  a &= \frac{2}{1+\sqrt{5}} \approx          0.61803\\
+  b &= \frac{\sqrt{5}-1}{1+\sqrt{5}} \approx 0.38197\\
+  c &= 1.
+\end{align*}
+Solving \eqref{eq:stationary} for that specification of $\T$ yields
+\begin{align*}
+  \mu &=  \begin{bmatrix} \frac{1+\sqrt{5}}{2\sqrt{5}}, &
+    \frac{\sqrt{5}-1}{2\sqrt{5}} \end{bmatrix} \\
+  h &= \log\left(\frac{1+\sqrt{5}}{2}\right).
+\end{align*}
+
+
+\subsection{Topological entropy $\htop$}
+\label{sec:htop}
+
+The topological entropy of a directed graph specified by an adjacency
+matrix $A$ is the rate at which the number of trajectories grows with
+length.  If $n(t)\equiv\begin{bmatrix} n_1(t),&n_2(t)\end{bmatrix}$
+denotes the number of trajectories of length $t$ that end in the two
+states of Figure \ref{fig:mt2}, then
+\begin{align*}
+  n(1) &= \begin{bmatrix} 1,&1\end{bmatrix} \text{ and} \\
+  n(t+1) &= n(t) A.
+\end{align*}
+Thus
+\begin{align*}
+  n(t) &= \begin{bmatrix} 1,&1\end{bmatrix} A^t \\
+  \text{and }\lim_{t\rightarrow \infty} \frac{1}{t} \log n_1(t) &=
+  \lambda
+\end{align*}
+where $\lambda$ is the largest eigenvalue of $A$.
+
+Solving the eigenvalue problem yields
+\begin{equation*}
+  \htop = \log\left(\frac{1+\sqrt{5}}{2}\right).
+\end{equation*}
+
+The topological entropy provides one more equation of constraint on
+the equations that the values in $\T$ must satisfy for maximizing $h$.
+Rather than the single equation \eqref{eq:excycle}, the pair
+\begin{equation*}
+  - \htop = 2\log(a) = \log(b) + \log(c)
+\end{equation*}
+must hold.
+
+\section{A $4\times 4$ example}
+\label{sec:fourbyfour}
+
+For the adjacency matrix
+\begin{equation*}
+  A =
+  \begin{bmatrix}
+        1 & 1 & 0 & 1 \\
+        0 & 1 & 1 & 1 \\
+        1 & 0 & 1 & 1 \\
+        0 & 1 & 1 & 0 \\
+  \end{bmatrix}
+\end{equation*}
+I seek the transition matrix
+\begin{equation*}
+  \T =
+  \begin{bmatrix}
+        a & b & 0 & c \\
+        0 & d & e & f \\
+        g & 0 & h & i \\
+        0 & j & k & 0 \\
+  \end{bmatrix}
+\end{equation*}
+that maximizes the entropy rate.  Building on \emph{networkx}, I find
+the following cycle basis where elements are characterized by a list
+of edges and a list of signs that indicate the direction that each
+edge is traversed.
+\begin{align*}
+  C_1 &=
+  \begin{bmatrix}
+    (3,2) & (2,1) & (1,0) & (0,3) \\
+    1 & -1 & -1 & 1
+  \end{bmatrix} \\
+  C_2 &=  \begin{bmatrix} (0,0) \\ 1 \end{bmatrix} \\
+  C_3 &=  \begin{bmatrix} (1,1) \\ 1 \end{bmatrix} \\
+  C_4 &=  \begin{bmatrix} (2,2) \\ 1 \end{bmatrix} \\
+  C_5 &= \begin{bmatrix}
+    (3,1) & (1,0) & (0,3) \\
+    1 & -1 & 1  \end{bmatrix} \\
+  C_6 &= \begin{bmatrix}
+    (2,3) & (3,0) & (0,1) & (1,2) \\
+    1 & -1 & 1 & 1
+  \end{bmatrix} \\
+  C_7 &= \begin{bmatrix}
+    (1,3) & (3,0) & (0,1) \\
+    1 & -1 & 1  \end{bmatrix} \\
+  C_8 &= \begin{bmatrix}
+    (2,0) & (0,1) & (1,2) \\
+    1 & 1 & 1  \end{bmatrix} \\
+\end{align*}
+
+Using the abbreviation $\logprob_{i,j} = -\log(\T_{i,j})$, I write the eight
+loop equations as
+\begin{align*}
+  0 &= \logprob_{3,2} - \logprob_{2,1} - \logprob_{1,0} + \logprob_{0,3} \\
+  H &= \logprob_{0,0} \\
+  H &= \logprob_{1,1} \\
+  H &= \logprob_{2,2} \\
+  H &= \logprob_{3,1} - \logprob_{1,0} + \logprob_{0,3} \\
+  2H &= \logprob_{2,3} - \logprob_{3,0} + \logprob_{0,1} + \logprob_{1,2} \\
+  H &= \logprob_{1,3} - \logprob_{3,0} + \logprob_{0,1} \\
+  3H &= \logprob_{2,0} + \logprob_{0,1} + \logprob_{1,2},
+\end{align*}
+where $H$ is the unknown entropy.  With the four node equations
+each of which has the form
+\begin{equation*}
+  \sum_j \T_{i,j} = 1,
+\end{equation*}
+I have 12 equations for 12 unknowns.  I have not found a method to
+solve such systems in general.
+
+\section{A Power Iteration Approach}
+\label{sec:algorithm}
+
+I will use the solution to this problem to characterize the
+distribution of long trajectories in a system defined by an adjacency
+matrix $A$.  I want the distribution to be uniform over all allowed
+trajectories.
+
+Given a list of allowed trajectories of length $2T$, I could
+approximate the value of $\T_{i,j}$ by
+\begin{equation*}
+  \hat \T_{i,j} = \frac{_{2T}n_{T,T+1}(i,j)}{_{2T}n_{T}(i)},
+\end{equation*}
+where $_{2T}n_{T}(i)$ denotes the number of trajectories of length
+$2T$ for which $i$ is the value at position $T$ and similarly
+$_{2T}n_{T,T+1}(i,j)$ denotes the number of trajectories that have
+values $i$ and $j$ at positions $T$ and $T+1$ respectively.  While the
+exponential growth of the number of trajectories suggests that
+implementing the estimate for large $T$ is not feasible, power
+iterations for left and right eigenvectors of $A$ make it easy.
+
+The number of allowed sequences of length say six that exactly matches
+a given sequence is either zero or one and can be written as
+\begin{equation*}
+  _6n_{1,2,3,4,5,6}(a,b,c,d,e,f) = A_{a,b}A_{b,c}A_{c,d}A_{d,e}A_{e,f}.
+\end{equation*}
+The number of sequences that are only required to match at positions
+three and four is
+\begin{equation*}
+ _6n_{3,4}(c,d) =  \sum_{a,b,e,f} {_6n}_{1,2,3,4,5,6}(a,b,c,d,e,f) =
+ \sum_{a,f} \left(A^2\right)_{a,c} A_{c,d} \left(A^2\right)_{d,f}.
+\end{equation*}
+Similarly
+\begin{equation*}
+ _{202}n_{101,102}(c,d) = \sum_{a,f} \left(A^{100}\right)_{a,c} A_{c,d} \left(A^{100}\right)_{d,f}.
+\end{equation*}
+
+I define (and calculate) $R(t)$ and $L(t)$ recursively with the
+following power iteration scheme
+\begin{align*}
+  L(1) &= \begin{bmatrix} 1,&1,&\cdots,&1,&1\end{bmatrix} \\
+  N_L(t) &= \left| L(t) \right| \\
+  L(t+1) &= \frac{L(t) A}{N_L(t)} \\
+  R(1) &= L^{\text{T}}(1) \\
+  N_R(t) &= \left| R(t) \right| \\
+  R(t+1) &= \frac{A R(t)}{N_R(t)}.
+\end{align*}
+Note that as $t$ increases, $R(t)$ and $L(t)$ converge quickly to the
+right and left eigenvectors respectively of $A$ that correspond to the
+largest eigenvalue and I can calculate
+\begin{equation}
+  \label{eq:N}
+   _{2(T+1)}n_{T+1,T+2}(c,d) \propto \left(L(T)\right)_c  A_{c,d}
+   \left(R(T)\right)_d
+\end{equation}
+pretty easily.  With results from \eqref{eq:N} for a large enough $T$
+to ensure convergence, one can calculate estimates $\hat \mu$ and
+$\hat \T$ of the stationary distribution and transition probabilities
+respectively as follows.
+\begin{align*}
+  \tilde L &= L(T) \\
+  \tilde R &= R(T) \\
+  \tilde P_{i,j} &= \tilde L_i A_{i,j} \tilde R_j \\
+  \tilde m_i &= \sum_j \tilde P_{i,j} \\
+  \hat \mu &= \frac{\tilde m}{\sum_i \tilde m_i} \\
+  \hat \T_{i,j} &= \frac{\tilde P_{i,j}}{\tilde m_i}
+\end{align*}
+
+Applying the algorithm to the example of Section \ref{sec:fourbyfour}
+yields
+\newcommand{\first}{\frac{\sqrt{3}-1}{2}}
+\newcommand{\second}{2-\sqrt{3}}
+\begin{align*}
+  \hat \mu &=
+  \begin{bmatrix}
+     0.18795109  & 0.27517816 & 0.32554595 & 0.21132481
+  \end{bmatrix} \\ \\
+  \hat \T &=
+  \begin{bmatrix}
+ 0.36602534 & 0.36602534 & 0. &         0.26794932  \\
+  0. &         0.36602534 & 0.36602534 & 0.26794932 \\
+  0.36602534 & 0. &         0.36602534 & 0.26794932 \\
+  0. &         0.5 &        0.5 &        0.         
+  \end{bmatrix} \\ \\
+  &=
+  \begin{bmatrix}
+    \first & \first & 0      & \second \medskip \\
+    0      & \first & \first & \second \medskip \\
+    \first & 0      & \first & \second \medskip \\
+    0      & \frac{1}{2} & \frac{1}{2} & 0
+  \end{bmatrix} \\
+  h &= 1.005053
+\end{align*}
+
+Maxentropic Markov chains appears in:
+IEEE Transactions on Information Theory, 
+Date of Publication: Jul 1984
+Author(s): Justesen, J.
+Hoholdt, T.
+Volume: 30 , Issue: 4
+Page(s): 665 - 667 
+\end{document}
+
+%%%---------------
+%%% Local Variables:
+%%% eval: (TeX-PDF-mode)
+%%% End:

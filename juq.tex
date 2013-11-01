@@ -1,0 +1,1125 @@
+%\documentclass[twocolumn]{article}
+\documentclass[]{article}
+\usepackage{amsmath,amsfonts}
+%\usepackage{showlabels}
+\usepackage[pdftex]{graphicx,color}
+\newcommand{\fixme}[1]{{\color{red}{#1}}}
+\newcommand{\normal}[2]{{\cal N}(#1,#2)} \newcommand{\La}{{\cal L}}
+\newcommand{\nomf}{\tilde f} \newcommand{\COST}{\cal C}
+\newcommand{\LL}{{\cal L}} \newcommand{\Prob}{\text{Prob}}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand\REAL{\field{R}}
+\newcommand\Z{\field{Z}}
+\newcommand\Polytope[1]{\field{P}_{#1}}
+\newcommand\PolytopeN{\Polytope{N,\mathbf{x}}}
+\newcommand\PolytopeInf{\Polytope{\infty}}
+\newcommand\fN{f_{N,\mathbf{x}}}
+\newcommand{\EV}[2]{\field{E}_{#1}\left[#2\right]}
+\newcommand{\partialfixed}[3]{\left. \frac{\partial #1}{\partial
+      #2}\right|_#3} \newcommand{\argmin}{\operatorname*{argmin}}
+\newcommand{\argmax}{\operatorname*{argmax}}
+\newcommand{\set}[1]{{\cal #1}}
+\newcommand\inner[2]{\left<#1,#2\right>}
+\newcommand\norm[1]{\left|#1\right|}
+\newcommand\bv{\mathbf{v}}
+\newcommand\bw{\mathbf{w}}
+\newcommand\dum{\xi}
+\newcommand\Ddum{d\dum}
+\newcommand\logx{y}
+\newcommand\logf{g}
+\newcommand\Logf{G}
+\newcommand\lognomf{\tilde g}
+\newcommand\fracerror{0.025}
+\newcommand\mulerroru{1.025}
+\newcommand\mulerrord{0.975}
+\newcommand{\htop}{{h_{\text{top}}}}
+\newcommand{\T}{{\cal P}}
+\newcommand{\Td}{\hat \T} %
+\newcommand{\logprob}{{\cal L}}
+\newtheorem{conjecture}{Conjecture}
+\DeclareMathOperator{\spaceop}{~~~~~~~~}
+
+\title{Constraining Uncertainty with Laws of
+  Physics\footnote{Available from Los Alamos National Laboratoy as
+    LA-UR-13-21824}}
+
+\author{Andrew M.\ Fraser}
+\begin{document}
+\maketitle
+\begin{abstract}
+  I use the conditional distribution that maximizes the entropy rate
+  of a process constrained by thermodynamic consistency to
+  characterize uncertainty about quantities of interest due to
+  uncertainty about an equation of state.  Although I focus on an
+  example concerning an ideal gun, the methods demonstrate that one
+  can find distributions for quantities of interest independently of
+  the parametric form used for the uncertain functions on which they
+  depend.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+
+In many applications, quantities of interest depend on uncertain
+\emph{functions}.  Such functions include equations of state for
+gases, stress strain relations, electromagnetic susceptibilities, and
+supply and demand functions in economics.  Quantifying the uncertainty
+about such a function enables one to both characterize the consequent
+uncertainty about quantities of interest and to calculate the benefits
+of various experimental measurement options.  While it may seem that
+the infinite number of degrees of freedom in function space would make
+the task impossible, the finite dimensional nature of the quantities
+of interest and domain specific \emph{laws} that constrain uncertain
+functions can enable solutions.
+
+In this paper, I explore the use of such laws in an analysis of the
+performance of an ideal gun whose performance depends on an
+\emph{equation of state} (EOS).  I define the \emph{quantities of
+  interest} to be the energy $E$ of the projectile as it leaves the
+gun's muzzle and the time $T$ that it takes to travel from the breech
+to the muzzle.  I find that constraints on EOS yield a simple set of
+possibilities in the $E\times T$ space (see Fig.~\ref{fig:allowedET}),
+and I calculate parameters of a stochastic process that maximizes an
+entropy rate to obtain probability distributions in EOS space and in
+$E\times T$.
+
+In contrast to approaches that use finite dimensional parametric
+models or use ad hoc bases in function space, the distributions I find
+reflect constraints on the EOS and an appropriate metric chosen for
+function space.  A spectral decomposition of the resulting covariance
+provides a natural basis in function space.  While I have based the
+exploration loosely on characteristics of the EOS of the gas produced
+by a real explosive and the laws I use \emph{are} required by
+thermodynamic consistency, I have chosen the remainder of the model to
+be more simple and illustrative than realistic.  In the concluding
+section of the paper, I consider the relevance of the methods I've
+used to more realistic models.
+
+\section{An Ideal Gun}
+\label{sec:an-ideal-gun}
+
+\subsection{Nominal Gun Parameters and Performance}
+\label{sec:Parameters}
+
+I have chosen parameters to imitate\footnote{See Higdon et
+  al.\cite{higdon2008computer} for work on quantitatively calibrating
+  model parameters to experimental data for the EOS of PBX-9501
+  gases.  The work in present paper, exploring an idealized imitation
+  of the same model, is directed at identifying natural coordinates
+  in function space and directions in function space that the ad hoc
+  parametric form of the earlier work may have missed.}  the
+description of PBX-9501 in the 2000 JAP paper by Hixson et
+al\cite{Hixson2000}.  From that paper the pressure along an isentropic
+expansion from an initial density $\rho_i = 2.5 \frac{\text{g}}{\text{
+    cm}^3}$ to a final density $\rho_f = 0.25 \frac{\text{g}}{\text{
+    cm}^3}$ roughly obeys
+\begin{equation}
+  \label{eq:2}
+  P(\rho) = C_\rho \rho^3,\text{ where } C_\rho = 2.56\times 10^9
+  \frac{\text{Pa}\cdot\text{ cm}^9}{\text{g}^3}
+\end{equation}
+with $P(\rho_i) = 4\times 10^{10}$Pa and $P(\rho_f) = 4\times 10^7$Pa.
+I disregard the turbulent dynamics of the detonation and expansion of
+the explosive and suppose that a simple isentropic expansion of the
+gases produced by instantaneous detonation accelerates the projectile.
+My model gun barrel has a cross sectional area of 1 cm$^2$ and a
+length of 4 cm.  The projectile has a mass of 100 grams and no length.
+Its position ranges from $x_i=0.4$ cm to $x_f=4.0$ cm.  With the
+assumption that there is 1.0 gram of gas, the map from position to
+density is
+\begin{equation*}
+  \rho(x) = \frac{1.0}{x} \frac{\text{g}}{\text{ cm}^2},
+\end{equation*}
+and from \eqref{eq:2}, the force as function of position is
+\begin{equation*}
+  P(\rho(x)) \cdot 1.0 \text{ cm}^2 = C x^{-3},\text{ where } C
+  = 2.56 \times 10^{10}\text{ cm}^3 \text{ dyn}.
+\end{equation*}
+Using $E(x)$ to denote the kinetic energy, I write
+\begin{equation}
+  \label{eq:nom}
+  \frac{d}{dx} E(x) \equiv \nomf(x) = \frac{C}{x^3}
+\end{equation}
+where I've defined the function $\nomf$ which I call the \emph{nominal
+  equation of state}.  The function $\nomf$ appears in the top plot of
+Fig.~\ref{fig:nominal}.
+\begin{figure*}
+  \centering
+    \resizebox{0.75\textwidth}{!}{\includegraphics{nominal.pdf}}
+    \caption{Here are characteristics of the gun using the nominal
+      EOS.  Top plot: The nominal EOS (along the relevant isentrope).
+      Second plot: Energy (of the projectile) as a function of
+      position.  Third plot: Velocity as a function of position.
+      Fourth plot: Time as a function of position.}
+  \label{fig:nominal}
+\end{figure*}
+
+In Fig.~\ref{fig:nominal}, I have plotted \eqref{eq:nom} and the
+consequent energy, velocity and time as a function of position.
+Equations for those functions, ie,
+\begin{align}
+  \label{eq:enom}
+  E(x) &= \frac{C}{2} \left(\frac{1}{x_i^2} - \frac{1}{x^2} \right) \\
+  \dot x &= \sqrt{\frac{2E(x)}{m}} \\
+  \label{eq:tnom}
+  T(x) &= \sqrt{\frac{m}{C}} x_i x \sqrt{ \frac{x^2 -x_i^2}{x^2}},
+\end{align}
+follow from the definition of kinetic energy\footnote{
+  Here are the calculations:
+  \begin{align*}
+    E(x) &\equiv \frac{m\dot x^2}{2} = \int_{x_i}^x \nomf(\dum) \Ddum=
+    \int_{x_i}^x \frac{C}{\dum^3} \Ddum  = \frac{C}{2} \left(
+      \frac{1}{x_i^2} - \frac{1}{x^2} \right) \\
+    T(x) &= \int_{x_i}^x \frac{\Ddum}{\dot x(\dum)} =
+    \sqrt{\frac{m}{2}} \int_{x_i}^x \left( E(\dum)
+    \right)^{-\frac{1}{2}} \Ddum = \sqrt{\frac{m}{C}} x_i x \sqrt{
+      \frac{x^2 -x_i^2}{x^2}}
+  \end{align*}
+}.
+
+\subsection{Functional derivatives}
+\label{sec:frechet}
+
+Derivatives of the analytic expressions for the quantities of interest
+with respect to the EOS define a two dimensional subspace of
+function space.  To first order, only the components of EOS
+perturbations that lie in that subspace affect the quantities of
+interest.  Here, I define and calculate those derivatives.  I suppose
+that the \emph{true} equation of state is
+\begin{equation}
+  \label{eq:pertEOS}
+  f(x,\alpha,\delta) = \nomf(x) + \alpha\delta(x),
+\end{equation}
+where $\alpha$ is a scalar and $\alpha\delta$ is a small perturbing
+function.  I define $E(x_f,\alpha,\delta)$ and $T(x_f,\alpha,\delta)$
+to be what the results of the calculations in \eqref{eq:enom} and
+\eqref{eq:tnom} would be if \eqref{eq:pertEOS} were used as the
+equation of state.  I seek functions $q_0$ and $q_1$ that determine
+to first order how perturbations of the equation of state change the
+quantities of interest.  The functions are defined by the equations
+\begin{align}
+  \label{eq:DeDalpha}
+  \left. \frac{\partial E(x_f,\alpha,\delta)}{\partial
+      \alpha}\right|_{\alpha=0}  &= \inner{q_0}{\delta} \\
+  \label{eq:DtDalpha}
+  \left. \frac{\partial T(x_f,\alpha,\delta)}{\partial \alpha}
+  \right|_{\alpha=0} &= \inner{q_1}{\delta},
+\end{align}
+using the notation
+\begin{equation}
+  \label{def:inner}
+  \inner{g}{h} \equiv \int_{x_i}^{x_f} g(\dum) h(\dum) \Ddum.
+\end{equation}
+
+I calculate the modified energy (see \eqref{eq:enom}) and the function
+$q_0$ as follows\footnote{I have some freedom in choosing dimensions
+  and coordinates.  Equation~\ref{eq:pertEOS} constrains $\alpha
+  \delta$ to be a force.  I choose to have $\alpha$ be a dimensionless
+  scalar and have $\delta$ be a force.  Then, equations
+  \eqref{eq:DeDalpha} and \eqref{def:inner} allow me to make $q_0$
+  dimensionless (or $\frac{\text{erg}}{\text{dyn cm}}$) and let
+  $q_1$ have dimensions $\frac{\text{time}}{\text{energy}}$.}:
+\begin{align}
+  E(x,\alpha,\delta) &= \int_{x_i}^x \left( \nomf(\dum) + \alpha\delta(\dum)
+    \right) \Ddum= \int_{x_i}^x \frac{C}{\dum^3}\Ddum + \int_{x_i}^x
+    \alpha\delta(\dum) \Ddum \nonumber \\
+  &= E(x) + \alpha \int_{x_i}^x \delta(\dum) \Ddum \nonumber \\
+  \frac{\partial E(x,\alpha,\delta)}{\partial \alpha} &= \int_{x_i}^x
+  \delta(\dum) \Ddum \nonumber \\
+  \label{eq:q_0}
+  q_0(x) &= 1,~\forall x: x_i \leq x \leq x_f.
+\end{align}
+
+A similar calculation of the modified time (see \eqref{eq:tnom}) and
+its derivative\footnote{ The following calculations and the result are
+  more complicated than the derivation of \eqref{eq:q_0}, but are no
+  more enlightening:
+  \begin{align*}
+    T(x,\alpha,\delta) &= \sqrt{\frac{m}{2}} \int_{x_i}^x
+    \left( E(\dum,\alpha,\delta) \right)^{-\frac{1}{2}} \Ddum \\
+    -\sqrt{\frac{8}{m}}\frac{\partial T(x,\alpha,\delta)}{\partial
+      \alpha} &=
+    \int_{x_i}^x \left( E(\dum,\alpha,\delta) \right)^{-\frac{3}{2}}
+    \frac{\partial E(\dum,\alpha,\delta)}{\partial \alpha} \Ddum \\
+    -\sqrt{\frac{8}{m}} \left. \frac{\partial
+        T(x,\alpha,\delta)}{\partial \alpha} 
+    \right|_{\alpha = 0} &=  \left(\frac{2}{C} \right)^{\frac{3}{2}}
+    \int_{x_i}^x \left( \frac{1}{x_i^2} - \frac{1}{\dum^2} 
+    \right)^{-\frac{3}{2}} \left(\int_{x_i}^\dum \delta(s) ds \right) \Ddum \\
+    \int v\,du &= uv - \int u\, dv \text{ with}
+    \begin{cases}
+      v = \int_{x_i}^\dum \delta(s) ds \\
+      du = \left( \frac{1}{x_i^2} - \frac{1}{\dum^2}
+      \right)^{-\frac{3}{2}} \Ddum \\
+      u = \frac{x_i^2\dum^2 - 2 x_i^4}{t\sqrt{\frac{1}{x_i^2} -
+          \frac{1}{\dum^2}}} \\
+      dv = \delta(\dum) \Ddum
+    \end{cases} \\
+    -\sqrt{\frac{C^3}{m}} \left. \frac{\partial
+        T(x,\alpha,\delta)}{\partial \alpha} \right|_{\alpha = 0} &=
+    \left[ u(x) \int_{x_i}^\dum \delta(s) ds \right]_{x_i}^x - \int_{x_i}^x
+    u(\dum) \delta(\dum) \Ddum \\
+    &= \int_{x_i}^x \left( u(x) - u(\dum) \right) \delta(\dum) \Ddum.
+  \end{align*}
+}
+yields:
+\begin{align}
+  T(x,\alpha,\delta) &= \sqrt{\frac{m}{2}} \int_{x_i}^x
+  \left( E(\dum,\alpha,\delta) \right)^{-\frac{1}{2}} \Ddum \nonumber \\
+  \left. \frac{\partial T(x,\alpha,\delta)}{\partial \alpha}
+  \right|_{\alpha = 0} &= \sqrt{ \frac{m}{C^3}} \int_{x_i}^x \left(
+  \frac{\dum^2-2x_i^2}{\sqrt{\dum^2 - x_i^2}} -
+  \frac{x_f^2-2x_i^2}{\sqrt{x_f^2 - x_i^2}}
+  \right) \delta(\dum) \Ddum \nonumber \\
+  \label{eq:q_1}
+  q_1(\dum) &= \sqrt{\frac{m}{C^3}} x_i^3 \left(
+    \frac{\dum^2-2x_i^2}{\sqrt{\dum^2 - x_i^2}} -
+    \frac{x_f^2-2x_i^2}{\sqrt{x_f^2 - x_i^2}} \right).
+\end{align}
+Note that $\lim_{x\rightarrow x_i}q_1(x)=-\infty$ and that with the
+definition
+\begin{equation}
+  \label{def:norm}
+  \norm{g} \equiv \sqrt{\inner{g}{g}}.
+\end{equation}
+for the norm, $\norm{q_1}$ is also undefined.  However, if
+$\norm{\delta}$ and $\delta(x_i)$ are defined, I can use
+\eqref{eq:DtDalpha} to estimate the effects perturbations of the EOS
+will have on the muzzle time $T$.
+
+A study of the linear approximation to $T(x,\alpha,\delta)$ appears in
+Fig.~\ref{fig:T_study}.
+\begin{figure*}
+  \centering
+    \resizebox{0.75\textwidth}{!}{\includegraphics{T_study.pdf}}
+    \caption{A study of a linear approximation of the dependence of
+      $T(x_f,\delta)$ on perturbations.  The perturbing function
+      $\delta_1$ appears in the upper plot. In the middle plot $q_1$
+      appears.  Changes in $T(x_f)$ appear in the lower plot.
+      Equation~\eqref{eq:EOS_ab} describes how the perturbations
+      depend on parameters $a$ and $b$.  For the bottom plot, $a$
+      takes one of the three values $\{-15,0,15\}\times10^8$ and $b$
+      sweeps over the range $[-15,15]\times10^8$ in 21 steps.  The red
+      traces are direct calculations $T(a,b) - T(x_f)$ and the green
+      traces are the linear approximation $\hat T(a,b) - T(x_f) \equiv
+      a \inner{q_1}{\delta_0} + b \inner{q_1}{\delta_1}$.}
+  \label{fig:T_study}
+\end{figure*}
+The study considers perturbed EOS functions with the form
+\begin{equation}
+  \label{eq:EOS_ab}
+  f_{a,b}(x) = \nomf + a \delta_0(x) + b \delta_1(x)
+\end{equation}
+where\footnote{Beacuse using $\delta_1 = q_1$ leads to
+  $\inner{q_1}{q_1}$ which is undefined, I chose a different
+  perturbation for $\delta_1$.}
+\begin{align}
+  \label{eq:delta0}
+  \delta_0(x) &= 1.0 \text{ dyn}\\
+  \label{eq:delta1}
+  \delta_1(x) &= \frac{k}{x},
+\end{align}
+and $k=-1\text{ dyn cm}$.
+
+\section{Uncertainty}
+\label{sec:uncertainty}
+
+The investigations that I report in this paper illuminate general
+challenges and methods of problems involving uncertainty about
+functions.  Experimental measurements and domain specific laws often
+constrain such uncertainty.  For the contrived example of the ideal
+gun, I've chosen the following constraints:
+\begin{description}
+\item[A bound on deviations:] As a proxy for constraints imposed by
+  experimental measurements, I assume that at each $x$ the nominal EOS
+  is correct to within $\epsilon(x) = \fracerror \cdot \nomf(x)$.
+  Explicitly:
+\begin{equation}
+  \label{eq:bound}
+  \frac{\norm{f(x)-\nomf(x)}}{\nomf(x)} \leq \epsilon = 0.025~\forall x : x_i
+  \leq x \leq x_f.
+\end{equation}
+I selected that bound on fractional error because it leads to nice
+plots.  Sam Shaw believes that a value of $\epsilon=0.005$
+characterizes the state of our uncertainty based on his analysis of
+the data reported in \cite{Hixson2000}.
+\item[Monotonicity:] A simple example of a constraint imposed by a
+  domain specific law.
+\item[Convexity:] Like monotonicity, a constraint imposed by a domain
+  specific law.
+\end{description}
+Thermodynamic consistency requires that the free energy be monotonic
+and convex.
+
+Here I find the implications of these constraints for $f$ restricted
+to countable domains.  The sequence $\mathbf{x}\equiv (x_1,x_2,\ldots,x_N)$
+with $x_i < x_{i+1}$ is such a domain, and I let $\fN$ denote the
+corresponding values of the function $f$.  I use the notation
+\begin{equation*}
+  \Delta_i \equiv {x_{i+1} - x_i}, ~ \nomf_i \equiv \nomf(x_i) \text{
+    and } \epsilon_i \equiv
+  \epsilon \nomf_i,
+\end{equation*}
+to write the constraints implied by the assumptions for each $i$ as
+follows\footnote{Each constraint applies only if all indices involved
+  are valid, eg, the convexity condition \eqref{eq:constraint1} does
+  not apply at $i=0$ or $i=N-1$.}:
+\begin{subequations}
+  \label{eq:constraint}
+  \begin{align}
+  \label{eq:constraint1}
+  f_i & \leq \frac{\Delta_{i}f_{i-1} + \Delta_{i-1} f_{i+1} } {
+    \Delta_{i-1} + \Delta_i } \\
+  \label{eq:constraint2}
+  f_i & \geq \frac{(\Delta_{i-1} + \Delta_{i-2})f_{i-1} - \Delta_{i-1}
+    f_{i-2}}{\Delta_{i-2}} \\
+  \label{eq:constraint3}
+  f_i & \geq \frac{(\Delta_{i+1} + \Delta_{i})f_{i+1} -
+    \Delta_{i}f_{i+2}}{\Delta_{i+1}} \\
+  \label{eq:constraint4}
+  f_{i+1} & \geq f_i \geq f_{i-1}\\
+  \label{eq:constraint5}
+  \nomf_i + \epsilon_i &\geq f_i  \geq \nomf_i - \epsilon_i.
+\end{align}
+\end{subequations}
+Although some of these constraints are duplicated at other values of
+$i$, the total number of unique constraints is $4N-3$.  A set of $N+1$
+independent linear constraints defines a polytope in $\REAL^N$ called
+a \emph{simplex}.  The set of functions allowed by the above
+constraints is a polytope with many more facets than a simplex.
+
+I use $\PolytopeN \subset \REAL^N$ to denote the polytope of allowed
+functions restricted to a sequence of $N$ points $\mathbf{x} = (x_1,x_2,
+\ldots, x_N)$, and generalizing that notion to the set of allowed
+functions over the entire interval $[0.4, 4.0]$ I define
+\begin{equation*}
+  \PolytopeInf = \left\{ f: \fN \in \PolytopeN \forall \mathbf{x}
+    \text{ such that } x_i \in [0.4,4.0] \forall i \right\}.
+\end{equation*}
+In the next section, I describe extremes of muzzle time and energy
+over $\PolytopeInf$, and in the section after that I define a
+probabilistic characterization of $\PolytopeN$ and $\PolytopeInf$.
+
+\subsection{Uncertainty About Time and Energy}
+\label{sec:uncertainTE}
+
+For each allowed function $f \in \PolytopeInf$, I write
+\begin{align*}
+  \delta &= f - \nomf \\
+  E_\delta &= E(f) - E(\nomf) \\
+  T_\delta &= T(f) - T(\nomf)
+\end{align*}
+for the perturbation of the EOS\footnote{In \eqref{eq:pertEOS} I used
+  $\alpha$ to denote the magnitiude of a perturbation and $\delta$ to
+  denote its direction.  Here I simply use $\delta$ to denote the
+  entire perturbation.}, the perturbation of the muzzle energy, and
+the perturbation of the muzzle time respectively.  The same
+perturbation $\delta_- \equiv -\fracerror \nomf$ yields both the
+smallest energy and longest time, and another single perturbation
+$\delta_+ \equiv \fracerror \nomf$ yields the shortest time and
+largest energy.  If two perturbations of the EOS, $\delta_1$ and
+$\delta_2$, increase the energy by the same amount and $\delta_1$
+contributes the energy at lower volumes (also earlier times) then
+$\delta_1$ will decrease the exit time more than $\delta_2$.  That
+reasoning implies that the pairs, $(E,T)$, that lie on the boundary of
+allowed values in the $E\times T$ plane correspond to perturbations
+$\delta$ that switch as quickly as allowed between $\delta_-$ and
+$\delta_+$.  Figure~\ref{fig:allowedET} illustrates both the set of
+perturbations in $E\times T$ that are consistent with the constraints
+on the EOS and the set of EOS perturbations that yield points on the
+boundary of that set.  Each perturbation in that set corresponds to an
+EOS $f$ that starts with $f(x_i)$ at the lower or upper limit of the
+constraints.  For each switching point $x_s: x_i < x_s < x_f$ there is
+a function in the set such that $f(x): x_i \leq x < x_s$ is as large
+as possible subject to the constraints and $f(x): x_s < x \leq x_f$ is
+as small as possible subject to the constraints and conditioned on its
+value on $[x_i,x_s]$.  Similarly, there are functions in the set that
+abruptly switch from being as small as possible to being as large as
+possible.
+
+\begin{figure*}
+  \centering
+    \resizebox{1.0\textwidth}{!}{\includegraphics{pert.pdf}}
+    \resizebox{1.0\textwidth}{!}{\includegraphics{allowedET.pdf}}
+    \caption{The limits of pairs of values of muzzle energy $E$ and
+      muzzle time $T$ for equations of state that differ from $\nomf$
+      by allowed perturbations.  The upper plot uses exaggerated ($\pm
+      20\%$) upper and lower bounds to illustrate the fastest switches
+      between the bounds that are allowed by the convexity constraint.
+      Elements of the set of EOS perturbations $\delta$ (constrained
+      by $\nomf+ \delta \in \PolytopeN$) that map to the boundary as
+      defined in the text appear in the plot on the left.  Pairs
+      $(E_\delta, T_\delta)$ appear on the right.  I derived traces on
+      the right from functions like those on the left as follows:
+      \emph{Linear} follows from calculations of $\inner{q_0}{\delta}$
+      and $\inner{q_1}{\delta}$ for a set of perturbations $\delta$ on
+      the boundary.  \emph{Direct} represents numerical integration of
+      a few perturbed equations.  The $6\sigma$\emph{Marginal} trace
+      is the level set $\left[ E_\delta, T_\delta\right] \Sigma^{-1}
+      \left[ E_\delta, T_\delta \right]^T = 64$ where $\Sigma$ is the
+      covariance of $E$ and $T$ (Calculated using Eqn.~\eqref{eq:corr}
+      from Section~\ref{sec:discrete}).}
+  \label{fig:allowedET}
+\end{figure*}
+
+\section{Probability}
+\label{sec:probability}
+
+So far, I have described the set of allowed functions, $\PolytopeInf$,
+without considering probability.  If some region $\Phi_{F} \in E\times
+T$ corresponded to gun failure, one might hope to use probability to
+measure the fraction of the set of EOSs that map to that region.
+However, the EOS of a particular gas is a minor law of nature, and for
+any set of functions $\Phi$, the EOS is either in the set or it is
+not.  Such uncertainties are called \emph{epistemic}, and the
+numerical value I would assign to $\Prob(\Phi)$ depends (at least) on
+the data available.  At best, it describes the fraction of cases for
+which the true functions would fall inside the sets $\Phi$ if one
+applied the same procedures to many similar but independent problems.
+
+\subsection{Properties}
+\label{sec:properties}
+
+Rather than continuing to list weaknesses in the notion of the
+probability for an EOS, I seek enough desirable or plausible
+properties of a probability measure to define one uniquely.  In
+Section~\ref{sec:MaxEnt} I describe an algorithm for approximating the
+probabilities implied by the properties.  I define some of the
+properties in terms of new coordinates,
+\begin{subequations}
+  \label{eq:loglog}
+  \begin{align}
+    \logx &= \log(x) \\
+    \logf &= \log\left( \frac{f}{\nomf} \right),
+  \end{align}
+\end{subequations}
+and in Section \ref{sec:loglog} I motivate these log-log coordinates
+with a figure.
+
+Here are the properties I have chosen to define the probability measure:
+\newcommand{\measure}{\mu}
+\begin{description}
+\item[Markov:] Given the value and derivative of the EOS at $x_a$,
+    the values of the function on either side of $x_a$ are
+    conditionally independent, ie, for $x_a \in (0.4,4.0)$ given
+    \begin{align*}
+      s(x_a) &\equiv (f(x_a),f'(x_a)) && \text{A \emph{state}}\\
+      \mathbf{U} &\equiv [0.4,x_a) && \text{The domain before } x_a\\
+      \mathbf{V} &\equiv (x_a,4.0] && \text{The domain after } x_a\\
+      \Phi_1 &\subset \PolytopeInf && \text{Defined by restrictions
+        over } \mathbf{U},\\
+      &&& \text{eg, } f(x) \geq \frac{\nomf(x)f(x_a)}{\nomf(x_a)}
+      \forall x \in [0.4, x_a)\\
+      \Phi_2 &\subset \PolytopeInf && \text{Defined by restrictions
+        over } \mathbf{V}\\
+      &&& \text{eg, } f(x) \leq \frac{\nomf(x)f(x_a)}{\nomf(x_a)}
+      \forall x \in (x_a, 4.0]\\
+      \Phi_3 &\subset \PolytopeInf && \text{Defined by same restrictions
+        over both } \mathbf{U}\text{ and }\mathbf{V},
+    \end{align*}
+    the Markov property requires
+    \begin{equation}
+      \label{eq:markov}
+      \measure_{\mathbf{U}\times\mathbf{V}|s(x_a)}\left(\Phi_3 \right) =
+      \measure_{\mathbf{U}|s(x_a)}\left(\Phi_1 \right)
+      \measure_{\mathbf{V}|s(x_a)}\left(\Phi_2 \right).
+    \end{equation}
+  \item[Measure from Metric:] Given a metric
+    $d:\PolytopeInf\times\PolytopeInf \mapsto \REAL^+$ and a small
+    positive number $\epsilon$, the \emph{covering
+      number}\footnote{The notions of covering number and sphere
+      packing have a long history.  See \cite{Bartlett97} for some
+      results on function classes.} for set $A
+    \subset \PolytopeInf$ is the minimum number of centers one must
+    place in $A$ to ensure that every point in $A$ is within
+    $\epsilon$ of a center, ie,
+    \begin{equation*}
+      N_\epsilon(A) \equiv \min_{F\subset \PolytopeInf}
+      \left| F \right|_{\rm{counting}} :
+      \max_{f_2 \in \PolytopeInf}
+      \min_{f_1\in F}
+      d(f_1,f_2) \leq \epsilon.
+    \end{equation*}
+    For a metric $d$, I define the probability of a set $A$ to be
+    \begin{equation}
+      \label{eq:MeasMetric}
+      \mu_d(A) \equiv \lim_{\epsilon \rightarrow 0}
+      \frac{N_\epsilon(A)}{N_\epsilon(\PolytopeInf)}.
+    \end{equation}
+    Essentially I require that equal volumes in function space have
+    equal probabilities.  The key challenge is finding a metric that
+    gives volumes that are appropriate.  The subsequent properties
+    restrict the  metric sufficiently.
+  \item[Translation Invariance in Log-Log Coordinates:] If the
+    differences between two pairs of functions $(f_1, f_2)$ and $(f_3,
+    f_4)$ are the same after a shift in log-log coordinates, then I
+    require that the distances be the same.  For example, given $a \in
+    \REAL^+ \text{ and } \left\{ x_1, x_2, ax_1, ax_2 \right\} \subset
+    [0.4,4.0]$, if
+    \begin{align*}
+      \frac{f_1(x)}{f_2(x)} &= 1 ~\forall x\in[x_i,x_f] - [x_0,x_1],  \\
+      \frac{f_3(x)}{f_4(x)} &= 1 ~\forall x\in[x_i,x_f] - [a x_0,a
+      x_1] \text{ and} \\
+      \frac{f_1(x)}{f_2(x)} &= \frac{f_3(ax)}{f_4(ax)}~ \forall
+      x\in[x_1,x_2],
+      \text{ then the invariance requires that}\\
+      d(f_1, f_2) &= d(f_3, f_4).
+    \end{align*}
+    In other words, multiplicative perturbations have the same
+    probability no matter where they occur.  That seems consistent
+    with using multiplicative bounds as a proxy for experimental
+    measurements.
+  \item[Metric from Norm:] The metric
+    \begin{equation}
+      \label{eq:norm}
+      d(f_1,f_2) \equiv \int_{\log(x_i)}^{\log(x_f)} \left| \log
+        \left( \frac{f_1(e^y)}{f_2(e^y)} \right) \right| dy
+    \end{equation}
+    satisfies the above properties.  After changing the independent
+    variable from $x$ to $y(x) \equiv \log(x)$ the distance between
+    $f_1$ and $f_2$ is the $L_1$ norm of the difference of their logs.
+    Defining
+    \begin{equation*}
+     g_1(y(x)) \equiv \log \left( f_1(x) \right) \text{ and }
+     g_2(y(x)) \equiv \left( \log f_2(x) \right),
+    \end{equation*}
+    I can write \eqref{eq:norm} as\footnote{
+    All \emph{equivalent} norms lead to the same measure.  Norms
+    $\alpha$ and $\beta$ are equivalent if $\exists a \& b \in \REAL^+$
+    such that for all differences $g$
+       \begin{equation*}
+         a \leq \frac{\left|g\right|_\alpha}{\left|g\right|_\beta} \leq
+         b .
+       \end{equation*}
+     }
+    \begin{equation*}
+      d(f_1,f_2) = |g_1 - g_2| \equiv \int_{y_i}^{y_f} \left|
+        g_1(y)-g_2(y) \right| dy.
+    \end{equation*}
+\end{description}
+
+\subsection{Log-Log Coordinates}
+\label{sec:loglog}
+
+I chose the change of coordinates using logarithms in the properties
+of the previous section to exploit invariance properties of the
+constraints \eqref{eq:constraint} illustrated in
+Figure~\ref{fig:invariant}.  There, in the upper plot, I've graphed
+$f(x)$ and constraints \eqref{eq:constraint5} against $x$ and selected
+sample points that are uniformly spaced on a log scale.  Thus, the
+ratios $\frac{x_{i+1}}{x_i} = R,~\forall i$ are independent of $i$.
+In the middle plot the same data appears on a log-log scale, and in
+the lower plot, I've replaced $f$ with $f/\tilde f$.  Note that the
+appearance of the lower plot seems unchanged if the $x$ values are
+shifted to the right or left any integer number of steps.  The
+calculations in this section express the constraints
+\eqref{eq:constraint} in the new coordinates and prove the invariance.
+
+\begin{figure*}
+  \centering
+    \resizebox{1.0\textwidth}{!}{\includegraphics{invariant.pdf}}
+    \caption{Upper plot: Segment of nominal isentrope $\pm 20\%$ (an
+      exaggerated error range for illustration) on linear scale.
+    Middle plot: Same curves on log-log scale.  Lower plot: Same
+    curves divided by the nominal on log-log scale.  Note the
+    invariance wrt to translation of $x$ for lower plot.}
+  \label{fig:invariant}
+\end{figure*}
+
+I choose a constant ratio for the positions of sequential sample points
+\begin{equation*}
+  R = \frac{x_{i+1}}{x_i},  
+\end{equation*}
+and introduce the notation
+\begin{align*}
+  \logx &= \log(x)  \\
+  \logf(\logx) &= \log\left(\frac{f(e^\logx)}{\nomf(e^\logx)}\right)  \\
+  f(x) &= \nomf(x)e^{\logf(\log(x))}  \\
+  \Delta_y  &= \logx_{i+1} - \logx_i =\log(R).
+\end{align*}
+Note that in the new coordinates, the following functions are constants:
+\begin{align*}
+  \lognomf (\logx) &= 0 && \text{the nominal function}  \\
+  \logf_U(\logx) &= \log(\mulerroru) \equiv \logf_U && \text{the upper bound}\\
+  \logf_L(\logx) &= \log(\mulerrord) \equiv \logf_L && \text{the lower bound}  
+\end{align*}
+Thus
+\begin{subequations}
+  \label{eq:logcon}
+\begin{equation}
+  \label{eq:logconA}
+  \logf_L \leq \logf(\logx_{i}) \leq \logf_U \iff \text{constraints
+    \eqref{eq:constraint5}}.
+\end{equation}
+And one can use $\frac{\nomf(x_{i})}{\nomf(x_{i+1})} = e^{3\Delta_y }$ to find
+\begin{align}
+  f(x_{i+1}) &\leq f(x_{i}) \nonumber \\
+  e^{\logf(y_{i+1})} \nomf(x_{i+1}) &\leq  e^{\logf(y_i)} \nomf(x_{i})
+  \nonumber \\
+  \label{eq:logconB}
+  \logf(\logx_{i+1}) &\leq \logf(\logx_{i}) + 3\Delta_y  \iff
+  \text{monotonicity: \eqref{eq:constraint4}}.
+\end{align}
+To get the convexity constraint in log-log coordinates, I start by
+using $\frac{x_i}{x_j} = R^{i-j}$ to rewrite \eqref{eq:constraint3} in
+the original coordinates as
+\begin{align*}
+  f(x_{i}) &\geq \frac{x_i(R^2-1)f(x_{i+1}) - x_i(R-1)f(x_{i+2})}{x_i(R^2-R)} \\
+  &=  \frac{(R+1)f(x_{i+1}) - f(x_{i+2})}{R} \\
+  f(x_{i+2}) &\geq (R+1)f(x_{i+1}) - R f(x_{i}).
+\end{align*}
+Then translating to log-log coordinates yields
+\begin{align}
+  \nomf(x_{i+2}) e^{\logf(\logx_{i+2})} &\geq (e^{\Delta_\logx}  +
+  1)\nomf(x_{i+1}) e^{\logf(\logx_{i+1})} - e^{\Delta_\logx} \nomf(x_{i})
+  e^{\logf(\logx_{i})} \nonumber \\
+  \label{eq:logconC}
+  e^{\logf(\logx_{i+2})} &\geq (e^{\Delta_\logx}  + 1)e^{3{\Delta_\logx} }
+  e^{\logf(\logx_{i+1})} - e^{7{\Delta_\logx} } e^{\logf(\logx_{i})}
+\end{align}
+\end{subequations}
+which is equivalent to \eqref{eq:constraint1}, \eqref{eq:constraint2}
+and \eqref{eq:constraint3}.  Notice that in \eqref{eq:logconA},
+\eqref{eq:logconB} and \eqref{eq:logconC}, $i$ only appears in
+subscripts of $\logx$ and that otherwise neither $x$ nor $\logx$
+appears at all.  Thus the constraints are invariant with respect to
+shifts in position.
+
+\newcommand{\stationary}{\pi}%
+Figure~\ref{fig:logcon} illustrates the constraints \eqref{eq:logcon}.
+For each pair $(\logf(\logx_{i}), \logf(\logx_{i+1}))$ only a
+restricted (perhaps empty) interval of values for $\logf(\logx_{i+2})$
+are allowed.  A conditional probability function over that interval,
+$P_{\logf(\logx_{i+2})|\logf(\logx_{i+1}),\logf(\logx_{i})}$, and a
+stationary distribution $\stationary$ that satisfies
+\begin{equation}
+  \label{eq:statmu}
+  \int_{\logf(\logx_{L})}^{\logf(\logx_{U})}
+  P(\logf(\logx_{i+2})|\logf(\logx_{i+1}),\logf(\logx_{i}))\,
+  \stationary(\logf(\logx_{i+1}),\logf(\logx_{i}))\, d \logf(\logx_{i})
+  = \stationary(\logf(\logx_{i+2}),\logf(\logx_{+1}))
+\end{equation}
+define a stationary stochastic process that gives
+probabilities\footnote{A set of triples that are allowed by
+  \eqref{eq:logcon} has zero probability for the process corresponding
+  to the solution of \eqref{eq:statmu}.  Namely, the set of triples
+  that violate the recursive requirement that ``\emph{Legal triples
+    must permit a legal predecessor and a legal successor}'' is
+  excluded.  That recursive requirement combined with convexity is so
+  powerful that the monotonic constraint is not active for any allowed
+  triples.} for all measurable subsets of $\PolytopeN$.  Thus I seek
+the conditional distribution
+$P_{\logf(\logx_{i+2})|\logf(\logx_{i+1}), \logf(\logx_{i})}$ that
+yields a process that satisfies the properties that I listed in
+Section~\ref{sec:properties}.
+
+\begin{figure*}
+  \centering
+    \resizebox{1.2\textwidth}{!}{\includegraphics{allowed_tp2.pdf}}
+    \caption{Upper and lower bounds of the allowed region in
+      $g(y_{i+2})$ given $(g(y_i), g(y_{i+1}))$.  For this figure, the
+      spacing in $y$ yields 600 samples and the spacing in $g$ yields
+      50 samples. }
+  \label{fig:logcon}
+\end{figure*}
+
+\subsection{Discrete Approximation}
+\label{sec:discrete}
+
+\newcommand{\SG}{{\cal G}} \newcommand{\SH}{{\cal H}} To get a
+numerical algorithm that approximates the probability measure defined
+by the properties listed in Section~\ref{sec:properties}, I uniformly
+divide the range of $\logf$ into a set of $N+1$ segments $\SG$ each of
+which has the same length, $\Delta_\logf$, and let
+$G_i:\Polytope{N+1,\mathbf{x}} \mapsto \SG$ denote the map from EOS
+functions to elements of $\SG$ with $G_i(\logf) = \gamma \implies
+\logf(\logx_i) \in \SG_\gamma \in \SG$ where $\gamma$ is the index
+that identifies the element of $\SG$ in which $\logf(\logx_i)$ lies.
+Similarly, for sequential positions $(\logx_i,\logx_{i+1})$ I define
+$\SH \equiv \SG \times \SG$ with $H_i(\logf) =
+(\Logf_i(\logf),\Logf_{i+1}(\logf)) = \eta \implies (\logf(\logx_i),
+\logf(\logx_{i+1}) \in \SH_\eta \in \SH$ where $\eta$ is the index of
+the pair of segments in which $\logf$ lies at $\logx_i$ and
+$\logx_{i+1}$.
+
+Given a probability measure on $\PolytopeInf$, applying the partition
+$\SH$ to $\Polytope{N+1,\mathbf{x}}$ yields a discrete probability
+function, $P_{\Delta_y ,\Delta_\logf}$, for allowed sequences,
+$\eta_1^N$.  Section~\ref{sec:properties} says that the probability in
+log-log coordinates is uniform which suggests that, except for edge
+effects, each allowed sequence $\eta_1^N$ should have the same
+probability.  I formalize that intuition with the following conjecture
+which says that as the intervals in $\logf$ and $\logx$ get small, the
+discrete sequences become equally probable.
+\begin{conjecture}
+  \label{conjecture}
+  The list of properties in Section~\ref{sec:properties} defines a
+  unique probability measure which is a stationary stochastic process,
+  and for probability functions, $P_{\Delta_y ,\Delta_\logf}$, derived
+  from that measure by quantizing with a uniform resolution of
+  $\Delta_y $ in $y$ and a uniform resolution $\Delta_\logf$ in
+  $\logf$, as $\Delta_y \rightarrow 0$ and $\Delta_\logf \rightarrow
+  0$, the differences in the probabilities assigned to allowed
+  sequences, $P_{\Delta_y ,\Delta_\logf}(\eta_1^N)$, go to zero in the
+  following sense.  For all positive $\epsilon$ there are small values
+  of $\Delta_y $ and $\Delta_\logf$ such that the set of allowed
+  sequences $\SH_1^{N}$ can be divided into two parts $U$ and $V$ with
+  $\Prob(U) < \epsilon$ and for every pair of sequences $\alpha_1^N
+  \in V$ and $\beta_1^N \in V$
+  \begin{equation}
+    \label{eq:equipartition}
+    \left| \log(P_{\Delta_y ,\Delta_\logf}(\alpha_1^N)) -
+      \log(P_{\Delta_y ,\Delta_\logf}(\beta_1^N)) \right| < N\epsilon.
+  \end{equation}
+\end{conjecture}
+If one finds a stochastic process that assigns the same probability to
+all long sequences of allowed quantized function values, the
+conjecture suggests that those probabilities match the properties
+listed in Section~\ref{sec:properties}.
+
+I define the \emph{adjacency map} $A$ with elements
+\begin{equation}
+  \label{eq:adjacent}
+  A_{\eta,\theta} =
+  \begin{cases}
+    1 & \text{if } \exists \logf \in \PolytopeN \text{ such that }
+    H_i(\logf) = \eta,~H_{i+1}(\logf)=\theta \\
+    0 & \text{otherwise.}
+  \end{cases}
+\end{equation}
+Relying on the conjecture, I seek a discrete conditional probability
+matrix $\Td$ with the same shape as $A$ and zero valued entries in the
+same places with the property that the stationary stochastic process
+generated by $\Td$ assigns the same probability to all long sequences.
+The conditional probability matrix $\Td$ that satisfies that
+requirement also yields a stochastic process that maximizes the
+entropy rate\footnote{While the equivalence of uniformly probable
+  sequences and maximum entropy rate appears in and is central to
+  Shannon's 1948 paper\cite{Shannon48}, I've found the slower paced
+  development in Cover and Thomas' text\cite{CoverThomas} easier to
+  follow.  My phrasing of Conjecture~\ref{conjecture} imitates their
+  \emph{Theorem 3.1.2} and I recommend Chapter 4 of their book for
+  background on entropy rates of stochastic processes.  Notice that
+  the maximum entropy distribution here is simply a uniform
+  distribution over sequences in the limit of infinite length.  That
+  uniformity is with respect to a metric I have chosen carefully, and
+  the distribution follows from the metric.  A chosen metric implying
+  a probability measure is the essence of maximum entropy methods.}
+subject to the constraints given by $A$.  While Claude Shannon's 1948
+paper\cite{Shannon48} provides the solution as \emph{Theorem 8}, the
+alternative derivation in the next section provides more insight.
+
+\subsection{Maximum Entropy Rate}
+\label{sec:MaxEnt}
+
+In the limit of large $N$, the right probabilities will make the log
+probability of each possible trajectory of length $N$ have almost the
+same value.  In other words there is a number $h$ (called the entropy
+rate) such that
+\begin{equation*}
+  \lim_{N\rightarrow\infty} \max_{\eta_0^N} \left|h + \frac{1}{N}
+    \sum_{k=1}^N \log \left(\Td(\eta_k|\eta_{k-1}) \right) \right| = 0.
+\end{equation*}
+
+Given a list of allowed trajectories of length $2T$, I could
+approximate $\Td$ by\footnote{I used Greek letters $\eta$ and $\theta$
+  to indicate sequential elements of $\SH$ in \eqref{eq:adjacent}, but
+  here I revert to the Roman letters $i$ and $j$ which are more
+  traditional for discrete items and integers.}
+\begin{equation*}
+  \Td_{i,j} \approx \frac{_{2T}n_{T,T+1}(i,j)}{_{2T}n_{T}(i)},
+\end{equation*}
+where $_{2T}n_{T}(i)$ denotes the number of trajectories of length
+$2T$ for which $i$ is the value at position $T$ and similarly
+$_{2T}n_{T,T+1}(i,j)$ denotes the number of trajectories that have
+values $i$ and $j$ at positions $T$ and $T+1$ respectively.  While the
+exponential growth of the number of trajectories suggests that
+implementing the estimate for large $T$ is not feasible, power
+iterations for left and right eigenvectors of $A$ make it easy.
+
+The number of allowed sequences of length six that exactly matches a
+given sequence is either zero or one and can be written as
+\begin{equation*}
+  _6n_{1,2,3,4,5,6}(a,b,c,d,e,f) = A_{a,b}A_{b,c}A_{c,d}A_{d,e}A_{e,f}.
+\end{equation*}
+The number of sequences that are only required to match at positions
+three and four is
+\begin{equation*}
+ _6n_{3,4}(c,d) =  \sum_{a,b,e,f} {_6n}_{1,2,3,4,5,6}(a,b,c,d,e,f) =
+ \sum_{a,f} \left(A^2\right)_{a,c} A_{c,d} \left(A^2\right)_{d,f}.
+\end{equation*}
+Similarly
+\begin{equation*}
+ _{202}n_{101,102}(c,d) = \sum_{a,f} \left(A^{100}\right)_{a,c}
+ A_{c,d} \left(A^{100}\right)_{d,f}.
+\end{equation*}
+
+I define (and calculate) $R(t)$ and $L(t)$ recursively with the
+following power iteration scheme
+\begin{align*}
+  L(1) &= \begin{bmatrix} 1,&1,&\cdots,&1,&1\end{bmatrix} \\
+  N_L(t) &= \left| L(t) \right| \\
+  L(t+1) &= \frac{L(t) A}{N_L(t)} \\
+  R(1) &= L^{\text{T}}(1) \\
+  N_R(t) &= \left| R(t) \right| \\
+  R(t+1) &= \frac{A R(t)}{N_R(t)}.
+\end{align*}
+Note that as $t$ increases, $R(t)$ and $L(t)$ converge to $\tilde R$
+and $\tilde L$ the right and left eigenvectors respectively of $A$
+that correspond to the largest eigenvalue and
+\begin{equation}
+  \label{eq:N}
+   _{2(T+1)}n_{T+1,T+2}(c,d) \propto \left(L(T)\right)_c  A_{c,d}
+   \left(R(T)\right)_d .
+\end{equation}
+With results from \eqref{eq:N}, one can calculate $\tilde \stationary$
+and $\Td$ the stationary distribution and transition probabilities
+respectively as follows
+\begin{subequations}
+\label{eq:Peig}
+  \begin{align}
+    \tilde P_{i,j} &= \tilde L_i A_{i,j} \tilde R_j \nonumber \\
+    \tilde m_i &= \sum_j \tilde P_{i,j} \nonumber \\
+    \tilde \stationary &= \frac{\tilde m}{\sum_i \tilde m_i} \\
+    \Td_{i,j} &= \frac{\tilde P_{i,j}}{\tilde m_i}.
+  \end{align}
+\end{subequations}
+
+\section{Expected Values and Moments}
+\label{sec:expected}
+
+\newcommand{\Stationary}{\hat \stationary} %
+\newcommand{\Q}{\hat Q} %
+\newcommand{\mean}{\mu} %
+
+Given spacings $\Delta_\logf$ and $\Delta_\logx$, the algorithm of the
+previous section calculates a probability function for a successor
+partition element given two predecessors, a stationary distribution
+for successive pairs of elements and the transition probability for
+successive pairs.  Conjecture \ref{conjecture} suggests that for small
+spacings, these probability functions approximate the \emph{true}
+transition probability and stationary distribution well.  In this
+section, I present numerical approximations to moments of the EOS and
+moments of the functionals $E$ and $T$ derived from them using the
+following notation\footnote{Earlier, I used $i$ and $j$ to index the
+  set $\SH$ of successive pairs of $\SG$.  Now I am using each of them
+  to index single elements of $\SG$ and I am using $ij$ to index
+  elements of $\SH$.}:
+\begin{align*}
+  ij &\spaceop  \text{A successive pair of partition elements} \\
+  &\spaceop \text{ with }ij \iff \Logf_{y_{n+1}} = i ~\&~ \Logf_{y_n} = j \\
+  \stationary &\spaceop \text{The true stationary probability} \\
+  \Stationary &\spaceop \text{The discrete approximation of }
+  \stationary \\
+  \T &\spaceop  \text{The true transition probability} \\
+  \Td &\spaceop \text{The discrete approximation of }\T \\
+  &\spaceop \text{ with } \Td_{ij|jk} = \Prob(ij \text{ will follow } jk)\\
+  Q &\spaceop \text{Map from } \stationary \text{ to marginal } P_\logf \\
+  \Q &\spaceop \text{Map from } \Stationary \text{ to marginal } P_\SG \\
+  &\spaceop \text{ with } \left(\Q \cdot \Stationary \right)_i = \sum_j
+  \Stationary_{i,j} = \Prob(\logf \in \Logf_i)
+\end{align*}
+
+Now one can calculate an estimate of the mean by
+\begin{subequations}
+  \label{eq:StatMom}
+  \begin{equation}
+    \hat \mean(\logx) = \sum_i \left(\Q \cdot \Stationary \right)_i
+    f_i(\logx) = f(\logx) \cdot \Q\cdot \Stationary.
+  \end{equation}
+And similarly one can calculate an estimate of the covariance by
+  \begin{align}
+    \Sigma(\logx_0, \logx_n) &\equiv \EV{\stationary \T^n}{(f(\logx_0) -
+      \mean(\logx_0))(f(\logx_n) - \mean(\logx_n))} \nonumber \\
+      \hat \Sigma(\logx_0, \logx_n) &= \left(f(\logx_0) - \mean(\logx_0)
+      \right) \cdot \Q \cdot \Stationary \times \Td^n \cdot \Q^T \cdot
+      \left(f(\logx_n) - \mean(\logx_n) \right).
+  \end{align}
+\end{subequations}
+Note:
+\begin{itemize}
+\item Dots in the equations \eqref{eq:StatMom}, eg, $\Q \cdot
+  \Stationary$, indicate sums over indices of partition elements.  On
+  the other hand, the product $\Stationary \times \cdots$ yields a
+  joint probability from the product of the marginal $\Stationary$ and
+  the conditional $ \Td^n$, and it does not indicate a sum.
+\item The correlation of $f$ between two points does not depend on the
+  coordinates of the independent variable, ie, $\Sigma(x_0, x_n) =
+  \Sigma(\logx_0, \logx_n)$.
+\item I assume that the estimates are good enough and I will drop the
+  hat on $\hat \mean(\logx)$ and $\hat \Sigma(\logx_0, \logx_n)$.
+\end{itemize}
+
+Numerically implementing Eqns.~\eqref{eq:Peig} and \eqref{eq:StatMom}
+yields the plots in Fig.~\ref{fig:moments} which represent the
+marginal density $P_f$ and the auto-correlation function $\Sigma$.
+
+\begin{figure*}
+  \centering
+    \hbox{\hspace{-2cm}
+      \resizebox{1.3\textwidth}{!}{\includegraphics{moments.pdf}}}
+    \caption{Characterization of the stationary distribution
+      (Eqn.~\eqref{eq:Peig}) and moments calculated using
+      Eqn.~\eqref{eq:StatMom}. (a) Probability density $P_g$, (b) ACF
+      1-d, (c) ACF 2-d.}
+  \label{fig:moments}
+\end{figure*}
+
+\subsection{Applications of the Auto-Correlation Function}
+\label{sec:acf}
+
+Although the formulas \eqref{eq:StatMom} only provide values of
+$\Sigma(s,t)$ for pairs of positions $s$ and $t$ that obey
+$\frac{s}{t} = e^{n\Delta_\logx }$ where $n$ is an integer, I use them to
+approximately characterize $\PolytopeInf$.
+
+The discrete inner product
+\begin{equation}
+  \label{eq:inner}
+  \inner{u}{v}_\Delta = \sum_i u(x_i) v(x_i) \Delta_i
+\end{equation}
+accounts for the nonuniform spacing of samples.  Based on the
+definition of an eigenfunction of the auto-correlation function,
+\begin{align*}
+  \int \Sigma(s,t) e_\lambda(t) d\, t &= \lambda e_\lambda(s) \\
+  &\approx \sum_i \Sigma(s,t_i) \Delta_i e_\lambda(t_i) \equiv \inner{
+    \Sigma}{e_\lambda}_\Delta,
+\end{align*}
+I write the quadratic
+\begin{equation}
+  \label{eq:Quad}
+  \EV{f}{u(f-\mu)v(f-\mu)} \approx \sum_{i,j} \Sigma(x_i,x_j) u(x_i)
+  v(x_j) \Delta_i \Delta_j = \inner{u}{ \inner{\Sigma}{v }_\Delta
+  }_\Delta
+\end{equation}
+in terms of the discrete inner product and the covariance.
+
+One can use an approximation of $\Sigma(s,t)$ to estimate other
+characterizations including the following:
+\begin{description}
+\item[Correlation of functionals] For example, in
+  Section~\ref{sec:frechet} I defined the perturbation functions $q_0$
+  and $q_1$ (Eqns. \eqref{eq:DeDalpha} and \eqref{eq:DtDalpha}) which
+  enable first order calculations of the effect on muzzle energy $E$ and
+  time $T$. Given $\Sigma(s,t)$, one can calculate the covariance of
+  $V \equiv \begin{bmatrix} E \\ T \end{bmatrix} $ as follows
+  \begin{align}
+    \Sigma_V &= 
+  \begin{bmatrix}
+    \inner{q_0,\Sigma}{q_0} & \inner{q_1,\Sigma}{q_0}\\
+    \inner{q_0,\Sigma}{q_1} & \inner{q_1, \Sigma}{q_1}
+  \end{bmatrix} \text{ where}\nonumber \\
+  \inner{q_\alpha,\Sigma}{q_\beta} &=
+  \EV{f}{\inner{f-\mean}{q_\alpha}\inner{f-\mean}{q_\beta}} \nonumber \\
+    \label{eq:corr}
+   &= \int\int \Sigma(s,t) q_\alpha(s) q_\beta(t) \,ds \,dt
+\end{align}
+\item[Spectral decomposition] From eigenvalues and eigenfunctions
+  $\left\{\lambda, e_\lambda \right\}$ of $\Sigma$, one can
+  calculate the terms \eqref{eq:corr} in the following manner:
+  \begin{equation}
+    \label{eq:spec1}
+    \inner{q_\alpha, \Sigma}{q_\beta} = \sum_\lambda \lambda
+    \inner{q_\alpha}{e_\lambda} \inner{q_\beta}{e_\lambda}.
+  \end{equation}
+\item[Natural basis for perturbation studies] Since the eigenfunctions
+  corresponding to the largest eigenvalues indicate the directions in
+  function space with the largest variance
+  \begin{equation}
+    \label{eq:spec2}
+    \EV{f}{\inner{f-\mean}{e_\lambda}^2} = \inner{e_\lambda, \Sigma }{
+      e_\lambda } = \lambda,
+  \end{equation}
+  one can explore the effects of plausible errors in models of the EOS
+  using a truncation $\hat \Sigma_\lambda$ by drawing coefficient
+  vectors $\gamma$ from $\normal{0}{\hat \Sigma_\lambda}$, adding
+  $\sum_i \gamma_i e_i$ to the EOS, and doing a simulation for each
+  draw.
+\end{description}
+
+Figure~\ref{fig:PCA} illustrates the spectral decomposition of the
+covariance which I've used as the basis for an ellipsoidal
+approximation of $\PolytopeN$.  There, I have plotted normalized
+functions, \emph{viz.} $\left\{ s_i \right\}$ such that $\forall i,j$
+\begin{align*}
+  \inner{s_i}{s_j}_{\Delta} &= \delta_{i,j} \\
+  \inner{s_i}{\inner{\Sigma}{s_j}_{\Delta}}_\Delta &= \delta_{i,j}
+  \lambda_i
+\end{align*}
+Figure~\ref{fig:ellipsoid} compares cross sections of $\PolytopeN$ to
+level sets of that ellipsoid drawn at $2\sigma$.  Since the $2\sigma$
+boundary falls at the radius $r$ for a uniform distribution over a two
+dimensional disk of radius $r$, the cross sections and the level sets
+should have about the same size.
+
+The only free parameters in the maximum entropy calculation are
+$\Delta_y $, the logarithmic spacing in x, and $\Delta_\logf$, the
+logarithmic spacing in $f$.  For the simulations represented in
+Figs.~\ref{fig:moments}, \ref{fig:PCA} and \ref{fig:ellipsoid}, I used
+spacings that divide the range of $f$ into 800 segments and the range
+of $x$ into 2,000 segments\footnote{Numerical experiments indicate
+  that the estimated stationary distribution is sensitive to the
+  resolution in $x$ and $f$ and that using more than 800 segments in
+  the range of $f$ would improve the estimates.  However at that
+  resolution my code for the maximum entropy calculation requires
+  almost 16GB of memory.}.
+
+\begin{figure*}
+  \centering
+    \resizebox{0.95\textwidth}{!}{\includegraphics{PCA.pdf}}
+    \caption{A principal component analysis of $\Polytope{2000}$, a
+      polytope defined by the constraints \eqref{eq:constraint}.  The
+      eigenvalues $\lambda_i$ of the covariance appear in the upper
+      plot.  The eigenfunctions corresponding to the five largest
+      eigenvalues appear in the lower plot.}
+  \label{fig:PCA}
+\end{figure*}
+
+\begin{figure*}
+  \centering
+    \resizebox{1.25\textwidth}{!}{
+    \hspace{-0.6\textwidth}\includegraphics{ellipsoid.pdf}}
+  \caption{Cross sections of both an allowed polytope $\Polytope{2000}$
+    and an approximating ellipsoid.  In each plot coefficients of a
+    pair of basis functions appear.  The labels on the axes of each
+    plot indicate the indices of the coefficients and basis functions.
+    Given $\Sigma$, the covariance in the 2-d subspace of the two
+    basis functions conditioned on all other coefficients, the
+    equation $x^T \Sigma^{-1} x = 4$ defines the ellipse.}
+  \label{fig:ellipsoid}
+\end{figure*}
+
+\section{Conclusion}
+
+While the model of the gun and the power law nature of the nominal EOS
+that I have used here are unrealistically simple, the simplicity has
+enabled an analysis that yields a probability measure from a carefully
+chosen metric for function space.  The measure is otherwise
+independent of coordinates and parametric form.  I suggest the
+following plausible approaches to applying ideas from the paper to
+less ideal models.  First, if a model is \emph{approximately}
+invariant\footnote{In fact, the EOS for PBX-9501 is exactly such a
+  case.} in some coordinates, one can use techniques of this paper to
+draw random perturbations for the best model available.  One can use
+those perturbations directly or as a proposal distribution if the
+approximation is not very close.  Second, one can draw perturbing
+functions from the Gaussian approximation based on the moment
+calculations described in Section~\ref{sec:expected} or moments from
+Monte Carlo integration.  More speculatively, it may be possible to
+use the maximum entropy approach to \emph{locally} characterize models
+that are \emph{locally} invariant.
+
+\subsubsection*{Acknowledgments}
+I thank the following colleagues at Los Alamos for suggesting the
+problem, explaining previous work and helping me formulate the
+techniques I have described: Aric Hagberg, Nicholas Hengartner, Donald
+Hush, Sam Shaw, James Theiler, Diane Vaughan and Beate Zimmer.
+\bibliographystyle{unsrt} \bibliography{local}
+
+\end{document}
+
+%%%---------------
+%%% Local Variables:
+%%% eval: (TeX-PDF-mode)
+%%% eval: (setq ispell-personal-dictionary "./localdict")
+%%% End:
