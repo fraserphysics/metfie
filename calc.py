@@ -106,7 +106,7 @@ def acf2d(ACF,       # A 1-d auto-covariance function
     '''
     n = len(ACF)
     S = np.empty((n,n))
-    for i in xrange(n):
+    for i in range(n):
         S[i,i:] = ACF[:n-i]
         S[i,:i] = ACF[1:i+1][-1::-1]
     if scale is None:
@@ -294,7 +294,7 @@ class GUN(object):
         N_states = 0
         i_list = []
         jk = set()   # (j,k) in jk if allowed.  Only for check match
-        for i in xrange(0,Nf):
+        for i in range(0,Nf):
             # i: index at t=0, j: index at t=1, k: index at t=2
             i_go_L = self.recursive(0, L[0, i])
             j_bottom = max(0,np.searchsorted(L[1,:], [i_go_L.f_next_min])-1)
@@ -359,9 +359,9 @@ class GUN(object):
         U = np.outer(self.s[:3],U)
         envelope = np.empty((Nf, Nf, 2))
         envelope[:,:,:] = np.nan     # To hold range of allowed values
-        for i in xrange(0,Nf):
+        for i in range(0,Nf):
             # i: index at t=0, j: index at t=1, k: index at t=2
-            for j in xrange(Nf):
+            for j in range(Nf):
                 top = min(U[2,-1],   # epsilon constraint
                           U[1,j])    # Monotonic
                 bottom = max(
@@ -401,7 +401,7 @@ class GUN(object):
         diff = self.f-self.mean
         vn = Q.rmatvec(diff)*self.pi
         diff /= self.s[0]
-        for n in xrange(n_s): # acf(n) \equiv EV (f(0)-mean)(f(n)-mean)
+        for n in range(n_s): # acf(n) \equiv EV (f(0)-mean)(f(n)-mean)
             ACF[n] = np.dot(Q*vn,diff*self.s[n])
             vn = self.P_tran.rmatvec(vn)
         tilde = acf2d(ACF,self.dx*self.s/self.s[0])
@@ -429,7 +429,7 @@ class GUN(object):
         I = -1.0*np.ones(NI) # Make empty after degugging
         H = lambda P: -(P.A*np.log(P.A)).sum()
         H0 = H(P)
-        for k in xrange(NI):
+        for k in range(NI):
             I[k] = 2*H0 - H(P)
             P *= A
         return I
@@ -556,8 +556,8 @@ class GUN(object):
         if x== None:
             x = self.x_c
         if x[0] <= self.xi:
-            raise RuntimeError,'q_1(x) is not defined for x<=%f. x[0]=%f'%(
-                self.xi, x[0])
+            raise RuntimeError('q_1(x) is not defined for x<=%f. x[0]=%f'%(
+                self.xi, x[0]))
         return np.sqrt(self.m/self.C**3)*self.xi**3*(
                 (x**2-2*self.xi**2)/np.sqrt(x**2-self.xi**2)
                 -
@@ -603,7 +603,7 @@ class GUN(object):
         top[:,1] = self.LUi(self.s, 1)[1]
         top[0,1] = self.LUi(self.s, 1)[0]  # Start first downward transition
         dx = self.dx                       # Just abbreviation
-        for i in xrange(2,N):
+        for i in range(2,N):
             L,U = self.LUi(self.s,i) # Constraints from self.dev
             lower = np.maximum(             # Lower traces at i
                 ((dx[i-2]+dx[i-1])*z[:,i-1] -
@@ -617,7 +617,7 @@ class GUN(object):
         bot[:,N-1] = self.LUi(self.s, N-1)[1]
         bot[:,N-2] = self.LUi(self.s, N-2)[1]
         bot[0,N-2] = self.LUi(self.s, N-2)[0]
-        for i in xrange(N-3,-1,-1):
+        for i in range(N-3,-1,-1):
             L,U = self.LUi(self.s,i) # Constraints from self.dev
             lower = np.maximum(             # Lower trace at i
                 ((dx[i+2]+dx[i+1])*z[:,i+1] -
@@ -649,20 +649,20 @@ class GUN(object):
             v.shape, M, len(self.x_c)) # v[i,:] is a perturbation of the EOS
         r = np.ones(M)
         rb = r*1.0        # Radius Big
-        for i in xrange(100):
+        for i in range(100):
             OK = self.test(v,rb,center)
             rb += rb*OK   # double the length of those inside
             if not OK.sum():
                 break     # all rb rays are outside
             assert i < 90 # Error if many iterations to get all outside
         rs = r*1.0        # Radius Small
-        for i in xrange(100):
+        for i in range(100):
             OK = self.test(v,rs,center)
             rs -= rs*(1-OK)/2  # Halve the length of those outside
             if OK.prod():
                 break     # all rs rays are inside
             assert i < 90 # Error if many iterations to get all inside
-        for i in xrange(100):
+        for i in range(100):
             rc = (rs+rb)/2
             OK = self.test(v,rc,center)
             rs = rs + OK*(rc-rs)

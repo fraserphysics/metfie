@@ -22,8 +22,8 @@ def main(argv=None):
 help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     parser.add_argument('--n_g_step', type=int, default=25)
     parser.add_argument('--n_h_step', type=int, default=25)
-    parser.add_argument('--n_g_final', type=int, default=250)
-    parser.add_argument('--n_h_final', type=int, default=275)
+    parser.add_argument('--n_g_final', type=int, default=225)
+    parser.add_argument('--n_h_final', type=int, default=225)
     parser.add_argument('--out_file', type=str, default='result_converge',
         help="where to write result")
     args = parser.parse_args(argv)
@@ -37,18 +37,16 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     maxiter = 150
     error = {}
 
-    g = range(args.n_g0, args.n_g_final+1, args.n_g_step)
-    h = range(args.n_h0, args.n_h_final+1, args.n_h_step)
-    g.reverse()
-    h.reverse()
-    ref_LO = LO( args.u, args.dy, g[0], h[0])
+    g = np.arange(args.n_g_final, args.n_g0-1, -args.n_g_step)
+    h = np.arange(args.n_h_final, args.n_h0-1, -args.n_h_step)
+    g_ref = args.n_g_final + args.n_g_step
+    h_ref = args.n_h_final + args.n_h_step
+    ref_LO = LO( args.u, args.dy, g_ref, h_ref)
     ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
-    error['n_g=%d n_h=%d'%(g[0], h[0])] = 0
     for n_g in g:
         for n_h in h:
             key = 'n_g=%d n_h=%d'%(n_g, n_h)
-            if key in error:
-                continue
+            assert not key in error
             A = LO( args.u, args.dy, n_g, n_h)
             A.power(small=tol, n_iter=maxiter,verbose=True)
             d = sym_diff(A,ref_LO)

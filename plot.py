@@ -244,7 +244,7 @@ def _plot_plane(fig,       # matplotlib fig
 def plot_ellipsoid(gun, args, plt):
     N_p = len(args.Plane)/2
     fig = plt.figure(figsize=(6*N_p,6))
-    for i in xrange(N_p):
+    for i in range(N_p):
         a = args.Plane[2*i]
         b = args.Plane[2*i+1]
         _plot_plane(fig,
@@ -320,7 +320,7 @@ def plot_invariant(gun, plt):
         ax1.plot(gun_.x_c,y/1e10)
         ax2.plot(np.log10(gun_.x_c),np.log10(y))
         ax3.plot(np.log10(gun_.x_c),np.log10(y/nom))
-    for i in xrange(N):
+    for i in range(N):
         xx = (x[i],x[i])
         logxx = (logx[i],logx[i])
         ax1.plot(xx,(L[i]/1e10,U[i]/1e10),'k-')
@@ -405,7 +405,7 @@ def plot_allowedET(gun, plt):
     m = 10**Y_0.magnitude
     ax.plot(gun.x_c,gun.ETz[1]/m)
     M,N = gun.ETz.shape
-    for f in [gun.ETz[i,:] for i in xrange(1,M,M/n)]:
+    for f in [gun.ETz[i,:] for i in range(1,M,M/n)]:
         ax.plot(gun.x_c,f/m)
     ax.set_ylabel(ax.get_ylabel(),labelpad=-9)
 
@@ -434,7 +434,7 @@ def plot_allowedET(gun, plt):
     N_direct = 2*len(magic.samples)
     E = np.empty(N_direct)
     T = np.empty(N_direct)
-    for i in xrange(N_direct):
+    for i in range(N_direct):
         j = i%2
         k = int(i/2)
         L = min(len(gun.ETz)-1, int(N*(j+magic.samples[int(i/2)])))
@@ -456,7 +456,7 @@ def plot_nominal(gun, plt):
     ax.set_title('Time')
     E = np.empty(len(gun.x_c))
     v = np.empty(len(gun.x_c))
-    for i in xrange(len(gun.x_c)):
+    for i in range(len(gun.x_c)):
         x = gun.x_c[i]
         E[i] = gun.E(x)
         v[i] = gun.x_dot(x)
@@ -481,7 +481,7 @@ def plot_PCA(gun, plt):
     ax2 = fig.add_subplot(2,1,2)
     vecs = gun.cov_vecs
     L = int(0.6*len(gun.s))
-    for k in xrange(magic.N_plot):
+    for k in range(magic.N_plot):
         v = vecs[k].copy()
         v /= np.sqrt(gun.inner(v,v))
         if v[0] < 0:

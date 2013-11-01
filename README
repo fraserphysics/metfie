@@ -1,13 +1,3 @@
-I started this project at LANL and it was under svn.  The git log says
-I used git-svn to put it under git on Dec. 2 2011 and that the svn
-repository is svn+ssh://tu-fe1/users/afraser/SVN/eos.  The log also
-says that the last time I used the svn repository was Feb. 3 2012.
-
-In February 2013 as I prepare to submit "Constraining Uncertainty with
-Laws of Physics" to the SIAM Journal on Uncertainty Quantification, I
-find that the only code relevant to making the figures is in the files
-plot.py, MaxH.py and calc.py
-
 On March 5, 2013, I got email from NoReply@lanl.gov that said in part:
 
     Copyright Disclosure: CODE-2013-143, Maxentropic Transitions for
@@ -20,4 +10,14 @@ On March 5, 2013, I got email from NoReply@lanl.gov that said in part:
 symmetry.ipynb is a notebook.  To work with it, issue:
 
     ipython notebook symmetry.ipynb
+
+November 1, 2013: I started making code for public repository.  I
+moved some files from eos/ to eos3/ and set up repository at
+cathcart:git_repos/eos3.
+
+To do:
+
+1. Build notes.pdf and juq.pdf using python3
+
+2. Look for alternative machines on which to run converge.py
 

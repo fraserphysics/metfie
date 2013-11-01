@@ -35,7 +35,7 @@ fig2pdf = Builder(
 
 # For standard gun, collect flags and targets for single invocation of plot.py.
 plot_targets = []
-plot_command = 'python plot.py --Plane 0 1 0 6 30 31'
+plot_command = 'python3 plot.py --Plane 0 1 0 6 30 31'
 for flag,target in (('--plot_%s'%root,'%s.pdf'%root) for root in(
     'PCA','nominal','q0_1','moments','invariant','T_study','allowedET',
     'ellipsoid')):
@@ -56,18 +56,18 @@ gun.Command(
 gun.Command(
     'allowed_tp2.pdf',
     'plot.py',
-    'python plot.py --plot_allowed_tp2 allowed_tp2.pdf --N 600 --Nf 50'
+    'python3 plot.py --plot_allowed_tp2 allowed_tp2.pdf --N 600 --Nf 50'
     )
 gun.Command(
     'pert.pdf',
     'plot.py',
-    'python plot.py --plot_pert pert.pdf --N 300 --Nf 50'
+    'python3 plot.py --plot_pert pert.pdf --N 300 --Nf 50'
     ) #  --N 500 --Nf 10 Just to save time
 gun.Command(
     tuple(
     'recursive%s.pdf'%s for s in ('I', 'II', 'III', 'IV', 'V')),
     'recursive.py',
-    'python recursive.py'
+    'python3 recursive.py'
     )
 
 ist = gun.Clone()
@@ -79,14 +79,14 @@ ist.Fig('mt2')
 stat = ist.Clone()
 stat.PDF('Stat_8_12.tex')
 stat.Command('T_studyR.pdf',plot_sources,
-             'python plot.py --plot_q1R T_studyR.pdf')
+             'python3 plot.py --plot_q1R T_studyR.pdf')
 
 Help = ist.Clone()
 Help.PDF('help.tex')
 
 qm = gun.Clone()
 qm.PDF('QM_2_12.tex')
-qm.Command('mean.pdf',plot_sources,'python plot.py --plot_mean mean.pdf')
+qm.Command('mean.pdf',plot_sources,'python3 plot.py --plot_mean mean.pdf')
 
 sources = ('calc.py', 'MaxH.py', 'plot.py', 'SConstruct', 'juq.tex', 'juq.pdf',
            'notes.tex', 'notes.pdf', 'local.bib', 'README')
