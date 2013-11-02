@@ -4,3 +4,9 @@ build
 *.pyc
 result*
 .*
+*.pdf
+*.aux
+*.bbl
+*.blg
+*.fls
+*.log

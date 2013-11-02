@@ -422,8 +422,10 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''
 
         # Fit a spline and evaluate
-        self.spline()
-        return LA.norm(v - self.bs.ev(g,h))
+        self.spline()          # Build spline of self
+        w = self.bs.ev(g,h)    # Evaluate spline at points of v
+        w /= LA.norm(w)        # Make w a unit vector
+        return LA.norm(v - w)
 def sym_diff(A, B):
         '''
         Calculate difference between eigenvectors of LO instances A and B.

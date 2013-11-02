@@ -37,36 +37,36 @@ def main(argv=None):
                        help='EOS tolerance')
     parser.add_argument('--debug', action='store_true')
     # Plot requests
-    parser.add_argument('--plot_q0_1', type=argparse.FileType('w'),
+    parser.add_argument('--plot_q0_1', type=argparse.FileType('wb'),
                        help='Write figure to this file')
-    parser.add_argument('--plot_T_study', type=argparse.FileType('w'),
+    parser.add_argument('--plot_T_study', type=argparse.FileType('wb'),
                        help='Write figure to this file')
-    parser.add_argument('--plot_q1R', type=argparse.FileType('w'),
+    parser.add_argument('--plot_q1R', type=argparse.FileType('wb'),
                        help='Write figure to this file')
-    parser.add_argument('--plot_nominal', type=argparse.FileType('w'),
+    parser.add_argument('--plot_nominal', type=argparse.FileType('wb'),
                     help='Filename for plots of nominal EOS, Energy, and Time')
-    parser.add_argument('--plot_mean', type=argparse.FileType('w'),
+    parser.add_argument('--plot_mean', type=argparse.FileType('wb'),
                      help='Filename for plot of mean allowed EOS perturbation')
-    parser.add_argument('--plot_allowedET', type=argparse.FileType('w'),
+    parser.add_argument('--plot_allowedET', type=argparse.FileType('wb'),
                        help='Write ET study figure to this file')
     parser.add_argument(
-        '--plot_allowed_tp2', type=argparse.FileType('w'), help=
+        '--plot_allowed_tp2', type=argparse.FileType('wb'), help=
         'Write figure of bounding surfaces for f(t+2)|f(t),f(t+1) to this file')
     parser.add_argument(
-        '--p_stat', type=argparse.FileType('w'), help=
+        '--p_stat', type=argparse.FileType('wb'), help=
         'Make a surface plot of the stationary distribution')
-    parser.add_argument('--plot_PCA', type=argparse.FileType('w'),
+    parser.add_argument('--plot_PCA', type=argparse.FileType('wb'),
                        help='Write PCA vals/vecs figure to this file')
-    parser.add_argument('--plot_ellipsoid', type=argparse.FileType('w'),
+    parser.add_argument('--plot_ellipsoid', type=argparse.FileType('wb'),
                        help='Write 2-d PCA figure to this file')
     parser.add_argument('--Plane', type=int, nargs='+',
                        help='Pairs of PCA components')
     parser.add_argument(
-        '--plot_invariant', type=argparse.FileType('w'),
+        '--plot_invariant', type=argparse.FileType('wb'),
         help='Write figure illustrating log-log invariance to this file')
-    parser.add_argument('--plot_pert', type=argparse.FileType('w'),
+    parser.add_argument('--plot_pert', type=argparse.FileType('wb'),
                        help='Write plot of fast transitions to this file')
-    parser.add_argument('--plot_moments', type=argparse.FileType('w'), help=
+    parser.add_argument('--plot_moments', type=argparse.FileType('wb'), help=
       'Write figure with 6 plots from stationary analysis to this file')
     args = parser.parse_args(argv)
     
@@ -242,7 +242,7 @@ def _plot_plane(fig,       # matplotlib fig
     return
 
 def plot_ellipsoid(gun, args, plt):
-    N_p = len(args.Plane)/2
+    N_p = int(len(args.Plane)/2)
     fig = plt.figure(figsize=(6*N_p,6))
     for i in range(N_p):
         a = args.Plane[2*i]
@@ -405,7 +405,7 @@ def plot_allowedET(gun, plt):
     m = 10**Y_0.magnitude
     ax.plot(gun.x_c,gun.ETz[1]/m)
     M,N = gun.ETz.shape
-    for f in [gun.ETz[i,:] for i in range(1,M,M/n)]:
+    for f in [gun.ETz[i,:] for i in range(1,M,int(M/n))]:
         ax.plot(gun.x_c,f/m)
     ax.set_ylabel(ax.get_ylabel(),labelpad=-9)
 
