@@ -96,6 +96,14 @@ eos.Command(
     sources,
     'tar -cf metfie.tar ' + (len(sources)*' %s ')%sources
     )
+
+# FixMe: Have you no shame?  Scons calls make here.
+integral=Environment()
+integral.Command(
+    ('taylor.pdf', 'bounds_04.pdf'),
+    ('integral.py',),
+    'make taylor.pdf; make bounds_04.pdf; make bounds_005.pdf; make bounds_dg.pdf'
+    )
 #---------------
 # Local Variables:
 # eval: (python-mode)
