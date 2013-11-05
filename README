@@ -9,23 +9,12 @@ On March 5, 2013, I got email from NoReply@lanl.gov that said in part:
 
 symmetry.ipynb is a notebook.  To work with it, issue:
 
-    ipython notebook symmetry.ipynb
-
-November 1, 2013: I started making code for public repository.  I
-moved some files from eos/ to eos3/ and set up repository at
-cathcart:git_repos/eos3.
+    ipython3 notebook symmetry.ipynb
 
 To do:
 
-1. Build notes.pdf and juq.pdf using python3
+1. Move to google code and tell Christina T Ramos and Kathleen McDonald.
 
-2. Look for alternative machines on which to run converge.py
+2. Study behavior of \lambdaPF and \vectorPF as dy -> 0
 
-3. Check second eigenvalue
-
-4. Study behavior of \lambdaPF and \vectorPF as dy -> 0
-
-5. Check with Dan Gerth. Room 3454 Tel. 7-5011.  Note LA-CC-13-011 and
-    LA-UR-12-00305
-
-6. Move to google code and tell Christina T Ramos and Kathleen McDonald.
+3. Prove or argue that as dy -> 0 limit of measure exists
