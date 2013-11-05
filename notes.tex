@@ -32,13 +32,14 @@
 \tableofcontents
 \maketitle
 \begin{abstract}
-  I derived both these notes and \emph{Constraining Uncertainty with
-    Laws of Physics}\footnote{LA-UR-13-21824} (which I have submitted
-  to the SIAM/ASA \emph{Journal on Uncertainty Quantification}) from
-  \emph{Propagating Uncertainty About Gas EOS to Performance Bounds
-    for an Ideal Gun}\footnote{LA-UR-12-22731}.  These notes contain
-  some of the derivations and studies that I chose to delete from the
-  JUQ article.
+  Initially, I derived both these notes and \emph{Constraining
+    Uncertainty with Laws of Physics}\footnote{LA-UR-13-21824} (which
+  the SIAM/ASA \emph{Journal on Uncertainty Quantification} has
+  rejected) from a single document\footnote{\emph{Propagating
+      Uncertainty About Gas EOS to Performance Bounds for an Ideal
+      Gun} LA-UR-12-22731}.  These notes contain both some old
+  material I did not include in my JUQ manuscript and some new ideas
+  that I am developing.
 \end{abstract}
 
 \section{Moments over $\PolytopeN$}
@@ -367,6 +368,24 @@ through $(1, f_1)$ are solutions to
 \section{First Order}
 \label{sec:first-order}
 
+\subsection{To Do}
+\label{sec:do}
+
+\begin{enumerate}
+\item Analyze (and write up in this document) the effect of dividing
+  $\Delta_y$ in half on the integral operator, the eigenvalue,
+  $\lambda_{\text{PF}}$, and corresponding eigenvector.
+\item Study numerical convergence properties as $\frac{1}{n_g}
+  \rightarrow 0$ and $\frac{1}{n_h} \rightarrow 0$ and select
+  convergence criterion.
+\item Using $n_g(dy)$ and $n_h(dy)$ that satisfy convergence
+  criterion, numerically study the dependence of eigenvalue and
+  eigenvector on $dy$ as $dy \rightarrow 0$.
+\end{enumerate}
+
+\subsection{Introduction}
+  \label{sec:introduction}
+
 Here I consider a first order Markov process on 2-d states consisting
 of function values $g(y)$ and derivatives $h(y) \equiv \left. \frac{d
     g }{d t} \right|_{t=y}$.  I consider sequential samples at $y_0$
@@ -677,7 +696,7 @@ which ought to be worth something.
 
 \begin{figure*}
   \centering
-%    \resizebox{1.05\textwidth}{!}{\includegraphics{Av.pdf}}
+    \resizebox{1.05\textwidth}{!}{\includegraphics{Av.pdf}}
   \caption{Action of integral operator and its transpose on selected points}
   \label{fig:Av}
 \end{figure*}
@@ -690,28 +709,10 @@ almost has those properties, the resulting eigenvector has a small
 imaginary part and the real parts do not all have the same sign.
 \begin{figure*}
   \centering
-%    \resizebox{1.15\textwidth}{!}{\includegraphics{eigenfunction.pdf}}
+    \resizebox{1.15\textwidth}{!}{\includegraphics{eigenfunction.pdf}}
   \caption{Eigenfunction of integral operator.}
   \label{fig:eigenfunction}
 \end{figure*}
-
-\subsubsection{To Do}
-\label{sec:do}
-
-Understand and verify convergence of numerical approximation
-\begin{enumerate}
-\item Use symmetry $S$ to get eigenvector of $A^T$ from eigenvector of
-  $A$ and verify.
-\item Normalize eigenfunction so that it converges as $\frac{1}{n_g}
-  \rightarrow 0$ and $\frac{1}{n_h} \rightarrow 0$.
-\item \label{n:code} Write code to compare eigenfunctions with
-  different values of $n_g$ and $n_h$.
-\item Study convergence properties as $\frac{1}{n_g} \rightarrow 0$
-  and $\frac{1}{n_h} \rightarrow 0$ and select convergence criterion.
-\item Using $n_g(dy)$ and $n_h(dy)$ that satisfy convergence criterion
-  in \ref{n:code}, study the dependence of eigenvalue and eigenvector
-  on $dy$ as $dy \rightarrow 0$.
-\end{enumerate}
 
 \subsection{Solving the Integral Equation}
 \label{sec:solve}

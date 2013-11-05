@@ -1,8 +1,6 @@
-personal_ws-1.1 en 65 
 dynes
 vis
 Hengartner
-th
 epistemic
 al
 Fickett
@@ -10,8 +8,11 @@ Eqns
 integrable
 dyn
 ACF
+tangency
+Perron
 RMS
 Hixson
+ODEs
 polytope
 Boettger
 eg
@@ -25,16 +26,16 @@ eq
 LAUR
 dx
 eigenvectors
-et
 dy
+et
 Higdon
 affine
 eigenvector
 ie
 quantized
 JAP
-Hagberg
 Frobenius
+Hagberg
 covariances
 JUQ
 Maskaly's
@@ -48,6 +49,7 @@ logarithmically
 Buescher
 Los
 wrt
+quantization
 isentrope
 Aric
 Honnell
@@ -57,6 +59,7 @@ covariance
 Alamos
 EOSs
 Zimmer
+nonnegative
 quantizing
 ASA
 EOS

@@ -1,7 +1,20 @@
 import sys
-from first_c import LO # user    0m10.177s
-#from first import LO   # user    1m35.858s
+import numpy as np
+import matplotlib as mpl
 DEBUG = False
+def plot_eig(L, floor, ax, args):
+    g,h = L.gh(args.m_g, args.m_h)
+    G,H = np.meshgrid(g, h)
+    b = np.log10(np.fmax(L.eigenvector, floor))
+    z = L.vec2z(b, g, h, np.log10(floor))
+    surf = ax.plot_surface(
+        G, H, z.T, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
+        antialiased=False)
+    ax.set_xlabel(r'$g$')
+    ax.set_ylabel(r'$h$')
+    ax.set_title(r'$n_g=%d$ $n_h=%d$ $dy=%8.3g$ $\lambda=%8.3g$'%(
+        L.n_g, L.n_h, L.dy, L.eigenvalue))
+
 def main(argv=None):
     '''For looking at sensitivity of time and results to u, dy, n_g, n_h.
 
@@ -21,19 +34,20 @@ def main(argv=None):
                        help='number of integration elements in value')
     parser.add_argument('--n_h', type=int, default=200,
 help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
-    parser.add_argument('--n_g2', type=int, default=220,
-                       help='number of integration elements in value for 2')
-    parser.add_argument('--n_h2', type=int, default=275,
-help='number of integration elements in slope for 2')
     parser.add_argument('--m_g', type=int, default=50,
                        help='number of points for plot in g direction')
     parser.add_argument('--m_h', type=int, default=50,
                        help='number of points for plot in h direction')
+    parser.add_argument('--eigenvalue', action='store_true')
     parser.add_argument('--debug', action='store_true')
-    parser.add_argument('--file', type=str, default=None,
-        help="where to write result")
+    parser.add_argument('--eigenfunction', type=str, default=None,
+        help="Calculate eigenfunction and write to this file")
+    parser.add_argument('--Av', type=str, default=None,
+        help="Illustrate A applied to some points and write to this file")
     args = parser.parse_args(argv)
-    import matplotlib as mpl
+    if args.Av == None and args.eigenfunction == None and not args.eigenvalue:
+        print('Nothing to do')
+        return 0
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
               'text.fontsize': 15,
               'legend.fontsize': 15,
@@ -43,7 +57,7 @@ help='number of integration elements in slope for 2')
               'xtick.labelsize': 15,
               'ytick.labelsize': 15}
     mpl.rcParams.update(params)
-    if args.debug or args.file == None:
+    if args.debug:
         DEBUG = True
         mpl.rcParams['text.usetex'] = False
     else:
@@ -54,58 +68,90 @@ help='number of integration elements in slope for 2')
                                              #for "projection='3d'".
     from matplotlib import cm
     from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    import numpy as np
-    
-    def plot(L, floor, ax):
-        g,h = L.gh(args.m_g, args.m_h)
-        G,H = np.meshgrid(g, h)
-        b = np.log10(np.fmax(L.eigenvector, floor))
-        z = L.vec2z(b, g, h, np.log10(floor))
-        surf = ax.plot_surface(
-            G, H, z.T, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
-            antialiased=False)
-        ax.set_xlabel(r'$g$')
-        ax.set_ylabel(r'$h$')
-        ax.set_title(r'$n_g=%d$ $n_h=%d$ $dy=%8.3g$ $\lambda=%8.3g$'%(
-            L.n_g, L.n_h, L.dy, L.eigenvalue))
-
-    fig = plt.figure(figsize=(24,12))
-    ax1 = fig.add_subplot(1,2,1, projection='3d', elev=15, azim=-45)
-    ax2 = fig.add_subplot(1,2,2, projection='3d', elev=15, azim=-45)
-    
-    tol = 5e-6
-    maxiter = 1000
+    from first_c import LO
+    #from first import LO   # Factor of 9 slower
     
     A = LO( args.u, args.dy, args.n_g, args.n_h)
-    A.power(small=tol, n_iter=maxiter, verbose=True)
-    
-    B = LO( args.u, args.dy, args.n_g2, args.n_h2)
-    B.power(small=tol, n_iter=maxiter, verbose=True)
+    if args.eigenvalue:
+        from scipy.sparse.linalg import eigs as sparse_eigs
+        from numpy.linalg import norm
+        tol = 1e-10
+        w,b = sparse_eigs(A,  tol=tol, k=10)
+        print('Eigenvalues from scipy.sparse.linalg.eigs:')
+        for val in w:
+            print('norm:%e,  %s'%(norm(val), val))
+        A.power(small=tol)
+        print('From A.power() %e'%(A.eigenvalue,))
+    if args.Av != None:
+        # Illustrate A applied to some points
+        v = np.zeros(A.n_states)
+        f_sources = (             # Will calculate images of these points
+            (-0.98, 0.95),
+            (-0.65, 0.95),
+            (-.35, -0.95),
+            (0,0),
+            (.5, 0.9),
+            (0.995, 0.0))
+        i_sources = []            # For tagging sources in plot
+        for g_,h_ in f_sources:
+            g = A.g_max * g_
+            h_max = np.sqrt(24*(A.g_max-g))
+            h = h_max * h_
+            G = A.g2G(g)[0]
+            H = A.h2H(h)[0]
+            i_sources.append((G, H))
+            k = A.state_dict[(G,H)][-1] # get 1-d index of state vector
+            v[k] = 1                    # Set component for (g, h) to 1.0
+        f_v = A.matvec(v)               # Map v forward
+        b_v = A.rmatvec(v)              # Map v backward
+        z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
+        def two_d(w):
+            'return 2-d version of state vector suitable for plotting'
+            u = A.vec2z(w.reshape((A.n_states,)))
+            m = u.max()
+            w = u*z + m*z
+            for G,H in i_sources:
+                t = w[G,H]
+                w[G-1:G+2,H-2:H+3] = 0 # Make big markers for source points
+                w[G,H] = t
+            return w
+        fig1 = plt.figure(figsize=(24,12))
+        fig1.suptitle('Integral operator A for dy=%f'%A.dy)
+        h_max = (48*A.g_max)**.5
+        def plotv(fig, location, data, title=''):
+            data = two_d(data)
+            ax = fig.add_subplot(*location)
+            ax.imshow(
+                data.T[-1::-1,:], interpolation="nearest",
+                extent=[-A.g_max,A.g_max,-h_max,h_max], aspect='auto')
+            ax.set_title(title)
+            ax.set_xlabel('$g$')
+            ax.set_ylabel('$h$')
+        plotv(fig1, (2,2,1), np.ones((A.n_states,1)), '$v$')
+        plotv(fig1, (2,2,2), f_v, '$A(v)$')
+        plotv(fig1, (2,2,4), b_v, '$A^T(v)$')
+        if not DEBUG:
+                fig1.savefig( open(args.Av, 'wb'), format='pdf')
 
-    from first import sym_diff
-    import time
-    t1 = time.time()
-    d = sym_diff(A,B)
-    t2 = time.time()
-    print('\ncalculated sym_diff(A,B) = %f in %f seconds\n'%(d, t2-t1))
-
-    floor = 1e-20*max((A.eigenvector).max(), (B.eigenvector).max())
-    plot(A, floor, ax1)
-    plot(B, floor, ax2)
-    print('''
-    b.max()=%f, b2.max()=%f, floor=%e
-    '''%(A.eigenvector.max(), B.eigenvector.max(), floor))
+    if args.eigenfunction != None:
+        # Calculate and plot the eigenfunction
+        tol = 5e-6
+        maxiter = 1000
+        A.power(small=tol, n_iter=maxiter, verbose=True)
+        floor = 1e-20*max(A.eigenvector).max()
+        fig = plt.figure(figsize=(24,12))
+        ax1 = fig.add_subplot(1,2,1, projection='3d', elev=15, azim=-45)
+        ax2 = fig.add_subplot(1,2,2, projection='3d', elev=15, azim=-135)
+        plot_eig(A, floor, ax1, args)
+        plot_eig(A, floor, ax2, args)
+        if not DEBUG:
+                fig.savefig( open(args.eigenfunction, 'wb'), format='pdf')
     if DEBUG:
         plt.show()
-    else:
-        File = open(args.file, 'w')
-        fig.savefig(File, format='pdf')
+    return 0
 
 if __name__ == "__main__":
     rv = main()
-    if DEBUG:
-        import matplotlib.pyplot as plt
-        plt.show()
     sys.exit(rv)
 
 #---------------

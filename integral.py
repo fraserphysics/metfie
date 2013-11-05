@@ -37,13 +37,13 @@ def main(argv=None):
     parser.add_argument('--debug', action='store_true')
     # Plot requests
     parser.add_argument(
-        '--taylor', type=argparse.FileType('w'),
+        '--taylor', type=argparse.FileType('wb'),
         help='2nd order approximation to line in log-log coordinates')
     parser.add_argument(
-        '--bounds1', type=argparse.FileType('w'),
+        '--bounds1', type=argparse.FileType('wb'),
         help="bounds on g at y_1 given g and g' at y_0")
     parser.add_argument(
-        '--bounds2', type=argparse.FileType('w'),
+        '--bounds2', type=argparse.FileType('wb'),
         help="bounds on g' at y_1 given g at y_0 and g at y_1")
     args = parser.parse_args(argv)
     

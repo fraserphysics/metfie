@@ -46,7 +46,6 @@ plot_sources = ['plot.py','calc.py']
 
 gun=Environment()
 #gun.PDF('ds13.tex') scons scanner fails.  Type pdflatex ds13 on CL
-gun.PDF('notes.tex')
 gun.PDF('juq.tex')
 gun.Command(
     plot_targets,    # Targets
@@ -97,12 +96,33 @@ eos.Command(
     'tar -cf metfie.tar ' + (len(sources)*' %s ')%sources
     )
 
-# FixMe: Have you no shame?  Scons calls make here.
-integral=Environment()
-integral.Command(
-    ('taylor.pdf', 'bounds_04.pdf'),
+# Plots and tex for notes.pdf
+notes=Environment()
+notes.PDF('notes.tex')
+notes.Command(
+    ('taylor.pdf',),
     ('integral.py',),
-    'make taylor.pdf; make bounds_04.pdf; make bounds_005.pdf; make bounds_dg.pdf'
+    'python3 integral.py --Dy 0.03 --taylor taylor.pdf'
+    )
+notes.Command(
+    ('bounds_04.pdf',),
+    ('integral.py',),
+    'python3 integral.py --Dy 0.04 --bounds1 bounds_04.pdf'
+    )
+notes.Command(
+    ('bounds_005.pdf',),
+    ('integral.py',),
+    'python3 integral.py --Dy 0.005 --bounds1 bounds_005.pdf'
+    )
+notes.Command(
+    ('bounds_dg.pdf',),
+    ('integral.py',),
+    'python3 integral.py --Dy 0.005 --bounds2 bounds_dg.pdf'
+    )
+notes.Command(
+    ('eigenfunction.pdf', 'Av.pdf'),
+    ('explore.py',),
+    'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
 #---------------
 # Local Variables:
