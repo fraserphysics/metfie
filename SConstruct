@@ -42,7 +42,7 @@ for flag,target in (('--plot_%s'%root,'%s.pdf'%root) for root in(
     plot_command += ' %s %s'%(flag,target)
     plot_targets.append(target)
 
-plot_sources = ['plot.py','calc.py']
+plot_sources = ['plot.py','calc.py', 'C.cpython-33m.so']
 
 gun=Environment()
 #gun.PDF('ds13.tex') scons scanner fails.  Type pdflatex ds13 on CL
@@ -51,6 +51,11 @@ gun.Command(
     plot_targets,    # Targets
     plot_sources,    # Sources
     plot_command     # Command
+    )
+gun.Command(
+    ('C.cpython-33m.so', 'first_c.cpython-33m.so'),
+    ('C.pyx', 'first_c.pyx'),
+    'python3 setup.py build_ext --inplace'
     )
 gun.Command(
     'allowed_tp2.pdf',
@@ -121,7 +126,7 @@ notes.Command(
     )
 notes.Command(
     ('eigenfunction.pdf', 'Av.pdf'),
-    ('explore.py',),
+    ('explore.py', 'first_c.cpython-33m.so'),
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
 #---------------
