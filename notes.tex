@@ -24,6 +24,8 @@
 \newcommand\bw{\mathbf{w}}
 \newcommand\dum{\xi}
 \newcommand\Ddum{d\dum}
+\newcommand\lambdaPF{\lambda_{\rm{PF}}} % Peron Frobenius eigenvalue
+\newcommand\rhoPF{\rho_{\rm{PF}}} % Peron Frobenius eigenvector
 
 \title{Notes on Constraining Uncertainty with Laws of Physics}
 
@@ -374,7 +376,7 @@ through $(1, f_1)$ are solutions to
 \begin{enumerate}
 \item Analyze (and write up in this document) the effect of dividing
   $\Delta_y$ in half on the integral operator, the eigenvalue,
-  $\lambda_{\text{PF}}$, and corresponding eigenvector.
+  $\lambdaPF$ and the eigenvector $\rhoPF$.
 \item Study numerical convergence properties as $\frac{1}{n_g}
   \rightarrow 0$ and $\frac{1}{n_h} \rightarrow 0$ and select
   convergence criterion.
@@ -588,19 +590,20 @@ I will use the following notation:
     \end{cases}
   \end{equation}
   I will drop the subscript from $I_\Delta$ unless I need it.
-\item[$\rho_{\lambda}$] An eigenfunction of $I$ that
-  corresponds to the eigenvalue $\lambda$, defined by
+\item[${\lambdaPF}_\Delta$] The eigenvalue of the linear operator
+  consisting of integration over $I_\Delta$ with the largest
+  magnitude.  The Peron-Frobenius theorem promises that
+  ${\lambdaPF}_\Delta$ is isolated and positive and that there is a
+  corresponding eigenfunction that is strictly positive.
+\item[${\rhoPF}_\Delta$] The positive unit norm eigenfunction that
+  corresponds to ${\lambdaPF}_\Delta$; defined by
   \begin{equation}
     \label{eq:integralI}
-    \int I(z_0, z_1) \rho_{\lambda, R}(z_1) d z_1 \equiv \lambda
-    \rho_{\lambda, R}(z_0).
+    \int I(z_0, z_1) {\rhoPF}_\Delta(z_1) d z_1 \equiv {\lambdaPF}_\Delta
+    {\rhoPF}_\Delta(z_0).
   \end{equation}
-  Notes: 1. The Peron-Frobenius theorem promises that the largest
-  eigenvalue of $I$ is positive and that there are corresponding
-  eigenvectors that are non-negative.  2. I only need the eigenvector
-  corresponding to the largest eigenvalue $\lambda$.  Thus I can (and
-  will) drop the subscript on $\rho$ without ambiguity. 3. Since $I$
-  is symmetric, the right eigenfunctions are also left eigenfunctions.
+  I will drop the subscripts of ${\lambdaPF}_\Delta$ and
+  ${\rhoPF}_\Delta$ when I can without creating ambiguity.
 \item[$\psi, \phi$] A decomposition of $\rho$ with
   \begin{equation*}
     \rho(g,h) = \psi(g) \phi(h,g).
@@ -612,8 +615,8 @@ I will use the following notation:
   \begin{equation}
     \label{eq:integralUL_}
     \int_{L_g(g_0,h_0)}^{U_g(g_0)} dg_1
-    \int_{L_h(g_1,g_0)}^{U_h(g_1)} dh_1~ \rho_\lambda(g_1, h_1) = \lambda
-    \rho_\lambda(g_0, h_0)
+    \int_{L_h(g_1,g_0)}^{U_h(g_1)} dh_1~ \rho(g_1, h_1) = \lambda
+    \rho(g_0, h_0)
   \end{equation}
 \end{description}
 
@@ -696,7 +699,7 @@ which ought to be worth something.
 
 \begin{figure*}
   \centering
-    \resizebox{1.05\textwidth}{!}{\includegraphics{Av.pdf}}
+    \resizebox{1.2\textwidth}{!}{\includegraphics{Av.pdf}}
   \caption{Action of integral operator and its transpose on selected points}
   \label{fig:Av}
 \end{figure*}
@@ -709,12 +712,12 @@ almost has those properties, the resulting eigenvector has a small
 imaginary part and the real parts do not all have the same sign.
 \begin{figure*}
   \centering
-    \resizebox{1.15\textwidth}{!}{\includegraphics{eigenfunction.pdf}}
+    \resizebox{1.3\textwidth}{!}{\includegraphics{eigenfunction.pdf}}
   \caption{Eigenfunction of integral operator.}
   \label{fig:eigenfunction}
 \end{figure*}
 
-\subsection{Solving the Integral Equation}
+\subsection{Attempts to Solve the Integral Equation}
 \label{sec:solve}
 
 Differentiating
@@ -790,7 +793,7 @@ solution is
   \rho(g,h) \equiv \psi(g) \phi(h,g) \equiv \psi(g) \altphiHG{h}{g}.  
 \end{equation}
 
-\subsection{ODE for $\psi$}
+\subsubsection{ODE for $\psi$}
 \label{sec:ODE}
 
 Next I use \eqref{eq:sol_h} in \eqref{eq:integralULq} and
@@ -1239,11 +1242,8 @@ Differentiating \eqref{eq:Int}  wrt to $g_0$ yields
   \item Find and characterize variation orthogonal to $q_0$ and $q_1$
   \item Price new experiments
   \end{itemize}
-\item Figure out convergence of numerical estimates of the transition
-  probability and stationary distribution.
 \item Think about the utility of feature selection.  What is the use
   of a low dimensional function of measurements?
-\item Try eliminating new memory allocation from power for speed up.
 \end{itemize}
 
 \subsection{Elliptical Approximation of Cross Sections of
