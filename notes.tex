@@ -374,6 +374,18 @@ through $(1, f_1)$ are solutions to
 \label{sec:do}
 
 \begin{enumerate}
+\item For fixed $u$, find $n_g$ and $n_h$ that get eigenvector error
+  below 0.02 for $dy \in \left\{dy_0, dy_1,dy_2 \right\}$ where $dy_k
+  \equiv \frac{dy_0}{2^k}$ and $dy_0$ is \emph{small}.  Then for each
+  $k$:
+  \begin{enumerate}
+  \item Calculate stationary joint, conditional and marginal
+    distributions
+  \item Plot the marginals and calculate the KL differences
+  \item Raise the conditional to the $2^k$ power and multiply by the
+    marginal to get the joint and then use KL difference to compare
+    the result to the joint for $k=0$.
+  \end{enumerate}
 \item Analyze (and write up in this document) the effect of dividing
   $\Delta_y$ in half on the integral operator, the eigenvalue,
   $\lambdaPF$ and the eigenvector $\rhoPF$.
