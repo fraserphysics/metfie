@@ -57,7 +57,7 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     return 0
 def plot(file_name='result_converge'):
     '''Function to plot result of main.  Invoke with
-    python -c "from converge import plot; plot('result_converge')"
+    python3 -c "from converge import plot; plot('result_converge')"
     '''
     import pickle
     import numpy as np
@@ -88,8 +88,6 @@ def plot(file_name='result_converge'):
               'text.fontsize': 15,
               'legend.fontsize': 15,
               'text.usetex': True,
-              'font.family':'serif',
-              'font.serif':'Computer Modern Roman',
               'xtick.labelsize': 15,
               'ytick.labelsize': 15}
     mpl.rcParams.update(params)
