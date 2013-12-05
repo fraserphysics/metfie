@@ -1,22 +1,33 @@
 """
-This file is derived from  wx_embedding.py.  It is modified to display
+This file is derived from wx_embedding.py.  It is modified to display
 an ideal gas EOS.
 
-I will try to duplicate-improve-replace it using qt
+To do:
+
+1. Switch to qt (see qt_embedding.py)
+2. Move controls from traits to qt
+3. Move dot smoothly
+4. Draw nice lines smoothly
+5. Erase lines
+6. Strip down
 
 http://github.enthought.com/traitsui/tutorials/index.html
 http://github.enthought.com/traits/index.html
 http://github.enthought.com/mayavi/mayavi/index.html
 http://github.enthought.com/traitsui/traitsui_user_manual/factories_basic.html
 """
-import support, numpy as np, mayavi.mlab as ML, traits.api as TA
-import traitsui.api as TUA, mayavi.core.ui.api as MCUA
+from ideal_eos import EOS as IDEAL
+import mayavi.mlab as ML
+import traits.api as TA
 
-EOS = support.EOS()
+EOS = IDEAL()
 # Values for initial slider positions:
 P_0,v_0 = 3.0e10,3.0e-6
 E_0 = EOS.Pv2E(P_0,v_0)
 class MayaviView(TA.HasTraits):
+    import traitsui.api as TUA
+    import mayavi.core.ui.api as MCUA
+
     # Trait control vaiables:
     P = TA.Range(1.0e10,4.0e10,P_0)
     v = TA.Range(1.0e-6,4.0e-6,float(v_0))
@@ -54,6 +65,7 @@ class MayaviView(TA.HasTraits):
  %e seconds via numerical integration"""%(KE_A,KE,t))
     def point_3d(self):
         # Makes triple of numpy arrays from slider positions for plotting
+        import numpy as np
         scale = lambda z,i: np.array([(z-self.ranges[2*i])/(
             self.ranges[2*i+1]-self.ranges[2*i])],np.float64)
         return (scale(self.P,0),scale(self.v,1),scale(self.E,2))
@@ -111,6 +123,7 @@ class MayaviView(TA.HasTraits):
         """ Calculate three 2-d arrays of values to describe EOS
         surface and put the surface into self.scene
         """
+        import numpy as np
         TA.HasTraits.__init__(self)
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T
