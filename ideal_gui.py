@@ -16,6 +16,18 @@ http://github.enthought.com/traits/index.html
 http://github.enthought.com/mayavi/mayavi/index.html
 http://github.enthought.com/traitsui/traitsui_user_manual/factories_basic.html
 """
+# First, and before importing any Enthought packages, set the ETS_TOOLKIT
+# environment variable to qt4, to tell Traits that we will use Qt.
+import os
+os.environ['ETS_TOOLKIT'] = 'qt4'
+# To be able to use PySide or PyQt4 and not run in conflicts with traits,
+# we need to import QtGui and QtCore from pyface.qt
+from pyface.qt import QtGui, QtCore
+# Alternatively, you can bypass this line, but you need to make sure that
+# the following lines are executed before the import of PyQT:
+#   import sip
+#   sip.setapi('QString', 2)
+
 from ideal_eos import EOS as IDEAL
 import mayavi.mlab as ML
 import traits.api as TA
@@ -24,7 +36,7 @@ EOS = IDEAL()
 # Values for initial slider positions:
 P_0,v_0 = 3.0e10,3.0e-6
 E_0 = EOS.Pv2E(P_0,v_0)
-class MayaviView(TA.HasTraits):
+class Visualization(TA.HasTraits):
     import traitsui.api as TUA
     import mayavi.core.ui.api as MCUA
 
@@ -136,26 +148,58 @@ class MayaviView(TA.HasTraits):
 	ML.mesh(scale(P),scale(v),scale(E),figure=self.scene.mayavi_scene)
         self.flag = False
 #-----------------------------------------------------------------------------
-# Wx Code
-import wx
+# The QWidget containing the visualization, this is pure PyQt4 code.
+class MayaviQWidget(QtGui.QWidget):
+    def __init__(self, parent=None):
+        QtGui.QWidget.__init__(self, parent)
+        layout = QtGui.QVBoxLayout(self)
+        layout.setMargin(0)
+        layout.setSpacing(0)
+        self.visualization = Visualization()
 
-class MainWindow(wx.Frame):
+        # If you want to debug, beware that you need to remove the Qt
+        # input hook.
+        #QtCore.pyqtRemoveInputHook()
+        #import pdb ; pdb.set_trace()
+        #QtCore.pyqtRestoreInputHook()
 
-    def __init__(self, parent, id):
-        wx.Frame.__init__(self, parent, id,
-                          'Equation of State via Mayavi and WX')
-        self.mayavi_view = MayaviView()
-        # Use traits to create a panel, and use it as the content of this
-        # wx frame.
-        self.control = self.mayavi_view.edit_traits(
-                        parent=self,
-                        kind='subpanel').control
-        self.Show(True)
+        # The edit_traits call will generate the widget to embed.
+        self.ui = self.visualization.edit_traits(parent=self,
+                                                 kind='subpanel').control
+        layout.addWidget(self.ui)
+        self.ui.setParent(self)
 
-app = wx.PySimpleApp()
-frame = MainWindow(None, wx.ID_ANY)
-app.MainLoop()
 
+if __name__ == "__main__":
+    # Don't create a new QApplication, it would unhook the Events
+    # set by Traits on the existing QApplication. Simply use the
+    # '.instance()' method to retrieve the existing one.
+    app = QtGui.QApplication.instance()
+    container = QtGui.QWidget()
+    container.setWindowTitle("Embedding Mayavi in a PyQt4 Application")
+    # define a "complex" layout to test the behaviour
+    layout = QtGui.QGridLayout(container)
+
+    # put some stuff around mayavi
+    label_list = []
+    for i in range(3):
+        for j in range(3):
+            if (i==1) and (j==1):continue
+            label = QtGui.QLabel(container)
+            label.setText("Your QWidget at (%d, %d)" % (i,j))
+            label.setAlignment(QtCore.Qt.AlignHCenter|QtCore.Qt.AlignVCenter)
+            layout.addWidget(label, i, j)
+            label_list.append(label)
+    mayavi_widget = MayaviQWidget(container)
+
+    layout.addWidget(mayavi_widget, 1, 1)
+    container.show()
+    window = QtGui.QMainWindow()
+    window.setCentralWidget(container)
+    window.show()
+
+    # Start the main event loop.
+    app.exec_()
 
 #---------------
 # Local Variables:
