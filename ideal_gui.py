@@ -1,11 +1,11 @@
-"""
-This file is derived from wx_embedding.py.  It is modified to display
+"""This file is derived from wx_embedding.py.  It is modified to display
 an ideal gas EOS.
 
 To do:
 
-1. Switch to qt (see qt_embedding.py)
-2. Move controls from traits to qt
+1. Learn how to write a clean qt4 script by writing one that makes
+   sliders etc. with no enthought stuff
+2. Move controls from traits to qt in this script
 3. Move dot smoothly
 4. Draw nice lines smoothly
 5. Erase lines
@@ -15,6 +15,7 @@ http://github.enthought.com/traitsui/tutorials/index.html
 http://github.enthought.com/traits/index.html
 http://github.enthought.com/mayavi/mayavi/index.html
 http://github.enthought.com/traitsui/traitsui_user_manual/factories_basic.html
+
 """
 # First, and before importing any Enthought packages, set the ETS_TOOLKIT
 # environment variable to qt4, to tell Traits that we will use Qt.
@@ -153,7 +154,7 @@ class MayaviQWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
         layout = QtGui.QVBoxLayout(self)
-        layout.setMargin(0)
+        #layout.setMargin(0)
         layout.setSpacing(0)
         self.visualization = Visualization()
 
@@ -170,7 +171,7 @@ class MayaviQWidget(QtGui.QWidget):
         self.ui.setParent(self)
 
 
-if __name__ == "__main__":
+def main():
     # Don't create a new QApplication, it would unhook the Events
     # set by Traits on the existing QApplication. Simply use the
     # '.instance()' method to retrieve the existing one.
@@ -184,6 +185,8 @@ if __name__ == "__main__":
     label_list = []
     for i in range(3):
         for j in range(3):
+            if i == 1 and j == 2:
+                continue
             if (i==1) and (j==1):continue
             label = QtGui.QLabel(container)
             label.setText("Your QWidget at (%d, %d)" % (i,j))
@@ -191,7 +194,10 @@ if __name__ == "__main__":
             layout.addWidget(label, i, j)
             label_list.append(label)
     mayavi_widget = MayaviQWidget(container)
-
+    slider=QtGui.QSlider(QtCore.Qt.Vertical, container)
+    slider.setRange(0,127)
+    slider.setFixedWidth(30)
+    layout.addWidget(slider, 1, 2)
     layout.addWidget(mayavi_widget, 1, 1)
     container.show()
     window = QtGui.QMainWindow()
@@ -201,6 +207,8 @@ if __name__ == "__main__":
     # Start the main event loop.
     app.exec_()
 
+if __name__ == "__main__":
+    main()
 #---------------
 # Local Variables:
 # eval: (python-mode)
