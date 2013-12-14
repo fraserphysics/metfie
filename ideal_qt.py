@@ -10,7 +10,16 @@
 # it will be useful, but WITHOUT ANY WARRANTY; without even the implied
 # warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
 # the GNU General Public Licence for more details.
+'''
+To do:
 
+1. Use mayavi without traits.  http://docs.enthought.com/mayavi/mayavi/
+2. Get useful parts of surf.py and ideal_gui.py
+3. Move dot smoothly
+4. Draw nice lines smoothly
+5. Erase lines
+6. Strip down
+'''
 import sys
 
 from PySide.QtGui import QApplication, QMainWindow, QTextEdit, QPushButton
@@ -22,6 +31,7 @@ from ui_ideal_qt import Ui_MainWindow
 from ui_P_control import Ui_Form as P_control
 from ui_PVE_control import Ui_Form as PVE_control
 
+import surf
 class P_widget(QtGui.QWidget, P_control):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''
@@ -66,6 +76,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(parent)
         #self.setupUi(self)
         self.setupUi(self, P_widget, PVE_widget)
+        #self.setupUi(self, surf.MayaviQWidget, PVE_widget)
         #self.setupUi(self, QtGui.QListView)
         #self.showButton.clicked.connect(self.fileRead)
         

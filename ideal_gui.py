@@ -3,8 +3,7 @@ an ideal gas EOS.
 
 To do:
 
-1. Learn how to write a clean qt4 script by writing one that makes
-   sliders etc. with no enthought stuff
+1. Write mayavi code without traits
 2. Move controls from traits to qt in this script
 3. Move dot smoothly
 4. Draw nice lines smoothly
@@ -146,7 +145,7 @@ class Visualization(TA.HasTraits):
         for a in (P,v,E):
             self.ranges += [a.min(),a.max()]
         scale = lambda z: (z-z.min())/(z.max()-z.min())
-	ML.mesh(scale(P),scale(v),scale(E),figure=self.scene.mayavi_scene)
+        ML.mesh(scale(P),scale(v),scale(E),figure=self.scene.mayavi_scene)
         self.flag = False
 #-----------------------------------------------------------------------------
 # The QWidget containing the visualization, this is pure PyQt4 code.
@@ -154,7 +153,6 @@ class MayaviQWidget(QtGui.QWidget):
     def __init__(self, parent=None):
         QtGui.QWidget.__init__(self, parent)
         layout = QtGui.QVBoxLayout(self)
-        #layout.setMargin(0)
         layout.setSpacing(0)
         self.visualization = Visualization()
 
@@ -165,8 +163,8 @@ class MayaviQWidget(QtGui.QWidget):
         #QtCore.pyqtRestoreInputHook()
 
         # The edit_traits call will generate the widget to embed.
-        self.ui = self.visualization.edit_traits(parent=self,
-                                                 kind='subpanel').control
+        self.ui = self.visualization.edit_traits(
+            parent=self, kind='subpanel').control
         layout.addWidget(self.ui)
         self.ui.setParent(self)
 
