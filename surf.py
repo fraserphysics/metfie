@@ -12,7 +12,7 @@ os.environ['ETS_TOOLKIT'] = 'qt4'
 import mayavi.mlab as ML
 import traits.api as TA
 class Visualization(TA.HasTraits):
-    import traitsui.api as TUA # Just importing creates a QApplication
+    import traitsui.api as TUA # Doing this import creates a QApplication
     import mayavi.core.ui.api as MCUA
     # Scene variable
     scene = TA.Instance(MCUA.MlabSceneModel, ())

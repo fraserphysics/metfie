@@ -129,6 +129,19 @@ notes.Command(
     ('explore.py', 'first_c.cpython-33m.so'),
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
+
+qt = Environment()
+qt.Command(
+    ('ui_ideal_qt.py',),
+    ('ideal_qt.ui', 'patch_ideal'),
+    'pyside-uic ideal_qt.ui > ui_ideal_qt.py; patch ui_ideal_qt.py patch_ideal'
+    )
+qt.Command(
+    ('ui_PVE_control.py',),
+    ('PVE_control.ui',),
+    'pyside-uic PVE_control.ui > ui_PVE_control.py'
+    )
+
 #---------------
 # Local Variables:
 # eval: (python-mode)

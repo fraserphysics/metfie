@@ -17,7 +17,7 @@
    <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
      <item row="0" column="0">
-      <widget class="QLabel" name="label">
+      <widget class="QLabel" name="label_P">
        <property name="toolTip">
         <string>Pressure / 10^10</string>
        </property>
@@ -27,7 +27,7 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_P">
        <property name="minimum">
         <double>1.000000000000000</double>
        </property>
@@ -43,14 +43,17 @@
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButton">
+      <widget class="QRadioButton" name="radioButtonP">
+       <property name="toolTip">
+        <string>Make P constant</string>
+       </property>
        <property name="text">
         <string/>
        </property>
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QSlider" name="verticalSlider">
+      <widget class="QSlider" name="verticalSlider_P">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
@@ -61,7 +64,7 @@
    <item row="0" column="1">
     <layout class="QGridLayout" name="gridLayout_2">
      <item row="0" column="0">
-      <widget class="QLabel" name="label_2">
+      <widget class="QLabel" name="label_V">
        <property name="toolTip">
         <string>Volume / 10^-6</string>
        </property>
@@ -71,7 +74,7 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_2">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_V">
        <property name="minimum">
         <double>1.000000000000000</double>
        </property>
@@ -87,7 +90,7 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QSlider" name="verticalSlider_2">
+      <widget class="QSlider" name="verticalSlider_V">
        <property name="maximum">
         <number>99</number>
        </property>
@@ -97,7 +100,10 @@
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButton_2">
+      <widget class="QRadioButton" name="radioButton_V">
+       <property name="toolTip">
+        <string>Make V constant</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -108,7 +114,7 @@
    <item row="0" column="2">
     <layout class="QGridLayout" name="gridLayout_3">
      <item row="0" column="0">
-      <widget class="QLabel" name="label_3">
+      <widget class="QLabel" name="label_E">
        <property name="toolTip">
         <string>Energy / 10^3</string>
        </property>
@@ -118,7 +124,7 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_3">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_E">
        <property name="minimum">
         <double>20.000000000000000</double>
        </property>
@@ -134,14 +140,17 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QSlider" name="verticalSlider_3">
+      <widget class="QSlider" name="verticalSlider_E">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButton_3">
+      <widget class="QRadioButton" name="radioButton_E">
+       <property name="toolTip">
+        <string>Make E constant</string>
+       </property>
        <property name="text">
         <string/>
        </property>
@@ -152,7 +161,7 @@
    <item row="0" column="3">
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="0" column="0">
-      <widget class="QLabel" name="label_4">
+      <widget class="QLabel" name="label_S">
        <property name="toolTip">
         <string>Entropy</string>
        </property>
@@ -162,7 +171,7 @@
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_4">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_S">
        <property name="maximum">
         <double>1000.000000000000000</double>
        </property>
@@ -172,16 +181,22 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QSlider" name="verticalSlider_4">
+      <widget class="QSlider" name="verticalSlider_S">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButton_4">
+      <widget class="QRadioButton" name="radioButton_S">
+       <property name="toolTip">
+        <string>Make S constant</string>
+       </property>
        <property name="text">
         <string/>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
       </widget>
      </item>

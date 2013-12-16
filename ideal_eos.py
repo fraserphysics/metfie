@@ -18,7 +18,7 @@ TNT CJ temp 3712 degrees K
 
 """
 import numpy as np, scipy.integrate
-class EOS(object):
+class EOS:
     """This EOS class is designed to be subclassed, but it is filled
 out for theideal gas law (and perhaps hydrogen if molar mass
 necessary).
@@ -26,20 +26,29 @@ necessary).
 T Temperature in degrees K
 v Specific volume, volume of one mol
 P Pressure in Pascals
+E in Joules
+S in Joules/degree
     """
     R = 8.3144621 #Joules/(degree mol) = (Meters^3 Pascal)/(degrees mol)
+    cv = 2.5      # 5/2 for diatomic gas
+    v_0 = 1.0e-6  # Molar volume in cubic meters that gives zero entropy
+    T_0 = 2000.0  # Absolute temperature that gives zero entropy
     def __init__(self):
         pass
     def Pv2T(self, P, v):
         """Return Temprature given pressure and specific volume
         (volume of 1 mole)"""
         return P*v/self.R
+    def Pv2S(self, P, v):
+        """Return entropy given pressure and specific volume"""
+        T = self.Pv2T(P,v)
+        return self.R*(cv*np.log(T/self.T_0) + np.log(v/v_0))
     def PT2v(self, P,T):
         return self.R*T/P
     def Tv2P(self, T, v):
         return self.R*T/v
     # The next 3 methods work with energy E instead of T via E=(5/2)RT
-    # or T = (2/5)(E/R) or Pv = (2/5)E
+    # or T = (2/5)(E/R) or Pv = (2/5)E.  This is a diatomic gas model.
     def Pv2E(self, P, v):
         return 2.5*P*v
     def PE2v(self, P,E):
@@ -95,6 +104,15 @@ P Pressure in Pascals
         E_f = E_i*(v_i/v_f)**.4
         return (_KE[-1],Dt,E_i-E_f)
 
+class state:
+    def __init__(self, P, v, constant):
+        self.eos = EOS() 
+        self.P = P
+        self.v = v
+        self.E = self.eos.Pv2E()
+        self.T = self.eos.Pv2T()
+        self.S = self.eos.Pv2S()
+        self.new_constant(constant)
 def _test():
     import doctest
     doctest.testmod()
