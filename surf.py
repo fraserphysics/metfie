@@ -1,17 +1,18 @@
+''' surf.py derived from Enthought example qt_embedding.py
 '''
-'''
-import ideal_eos
-import traits.api as TA
+# First, and before importing any Enthought packages, set the ETS_TOOLKIT
+# environment variable to qt4, to tell Traits that we will use Qt.
+import os
+os.environ['ETS_TOOLKIT'] = 'qt4'
+
 # To be able to use PySide or PyQt4 and not run in conflicts with traits,
 # we need to import QtGui and QtCore from pyface.qt
 #from pyface.qt import QtGui, QtCore
-from PySide import QtGui, QtCore
-
-EOS = ideal_eos.EOS()
 
 import mayavi.mlab as ML
+import traits.api as TA
 class Visualization(TA.HasTraits):
-    import traitsui.api as TUA
+    import traitsui.api as TUA # Just importing creates a QApplication
     import mayavi.core.ui.api as MCUA
     # Scene variable
     scene = TA.Instance(MCUA.MlabSceneModel, ())
@@ -23,17 +24,17 @@ class Visualization(TA.HasTraits):
         )
     @TA.on_trait_change('scene.activated')
     def create_pipeline(self):
-        # Can't make axes or outline till scene is active
+        ''' Put frame/axes around surface plot
+        '''
         ML.axes(ranges=self.ranges,xlabel='P',ylabel='v',zlabel='E')
         ML.outline()
-        x,y,z = self.point_3d()
-        self.point = ML.points3d(x,y,z,
-                    color=(1,0,0),mode='2dcircle',scale_factor=.005)
     def __init__(self):
         """ Calculate three 2-d arrays of values to describe EOS
         surface and put the surface into self.scene
         """
         import numpy as np
+        import ideal_eos
+        EOS = ideal_eos.EOS()
         TA.HasTraits.__init__(self)
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T
@@ -46,21 +47,15 @@ class Visualization(TA.HasTraits):
         ML.mesh(scale(P),scale(v),scale(E),figure=self.scene.mayavi_scene)
         self.flag = False
 #-----------------------------------------------------------------------------
-# The QWidget containing the visualization, this is pure PyQt4 code.
-class MayaviQWidget(QtGui.QWidget):
+# The QWidget containing the visualization
+from PySide.QtGui import QWidget, QVBoxLayout
+class MayaviQWidget(QWidget):
     def __init__(self, parent=None):
-        QtGui.QWidget.__init__(self, parent)
-        layout = QtGui.QVBoxLayout(self)
+        QWidget.__init__(self, parent)
+        layout = QVBoxLayout(self)
         layout.setSpacing(0)
         self.visualization = Visualization()
-
-        # If you want to debug, beware that you need to remove the Qt
-        # input hook.
-        #QtCore.pyqtRemoveInputHook()
-        #import pdb ; pdb.set_trace()
-        #QtCore.pyqtRestoreInputHook()
-
-        # The edit_traits call will generate the widget to embed.
+        # The edit_traits call generates the widget to embed.
         self.ui = self.visualization.edit_traits(
             parent=self, kind='subpanel').control
         layout.addWidget(self.ui)

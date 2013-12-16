@@ -11,14 +11,13 @@
 # warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
 # the GNU General Public Licence for more details.
 '''
+Reference:  http://docs.enthought.com/mayavi/mayavi/
 To do:
 
-1. Use mayavi without traits.  http://docs.enthought.com/mayavi/mayavi/
-2. Get useful parts of surf.py and ideal_gui.py
-3. Move dot smoothly
-4. Draw nice lines smoothly
-5. Erase lines
-6. Strip down
+1. Move dot smoothly
+2. Draw nice lines smoothly
+3. Erase lines
+4. Strip down
 '''
 import sys
 
@@ -74,14 +73,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''
         super(MainWindow, self).__init__(parent)
-        #self.setupUi(self)
-        self.setupUi(self, P_widget, PVE_widget)
-        #self.setupUi(self, surf.MayaviQWidget, PVE_widget)
-        #self.setupUi(self, QtGui.QListView)
-        #self.showButton.clicked.connect(self.fileRead)
+        #self.setupUi(self, P_widget, PVE_widget)
+        self.setupUi(self, surf.MayaviQWidget, PVE_widget)
         
 if __name__ == '__main__':
-    app = QApplication(sys.argv)
+    #app = QApplication(sys.argv)
+    app = QtGui.QApplication.instance() # traitsui.api has created app
     frame = MainWindow()
     frame.show()
     app.exec_()
