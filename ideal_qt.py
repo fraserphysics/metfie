@@ -30,7 +30,16 @@ from ui_PVE_control import Ui_Form as PVE_control
 
 import surf
 class variable:
-    def __init__(self, spin, slide, button, name, factor):
+    '''A class that collects, for a single variable, the spin box, slider
+    and button widgets and their service routines.
+    '''
+    def __init__(
+            self,    # variable instance
+            spin,    # Qt spin box widget
+            slide,   # Qt slider widget
+            button,  # Qt radio button widget
+            name,    # On character string that is one of PvES
+            factor): # (variable value)/(spin box value) 
         assert name in 'PvES'
         self.spin = spin          # Holds value/factor
         self.slide = slide        # Goes 0 to 99
@@ -39,11 +48,17 @@ class variable:
         self.name = name
         self.min = float(self.spin.minimum())
         self.max = float(self.spin.maximum())
-    def spin_value(self, f):
+    def spin_value(self, # varible instance
+                   f):   # value from spin box
+        '''Keep slider synchronized when spin box value changed
+        '''
         frac = (f - self.min)/(self.max - self.min)
         i = max(0, min(99, int(frac*99)))
         self.slide.setValue(i)
-    def slide_value(self, i):
+    def slide_value(self, # variable instance
+                    i):   # value from slider
+        '''Keep spin box synchronized when slider value changed
+        '''
         frac = float(i)/float(99)
         f = self.min + frac*(self.max - self.min)
         self.spin.setValue(f)
@@ -70,8 +85,7 @@ class PVE_widget(QtGui.QWidget, PVE_control):
 (self.doubleSpinBox_E, self.verticalSlider_E, self.radioButton_E, 'E', 1e3),
 (self.doubleSpinBox_S, self.verticalSlider_S, self.radioButton_S, 'S', 1.0)):
             var = variable(spin, slide, button, name, factor)
-            for key in spin, slide, button, name:
-                var_dict[key] = var
+            var_dict[name] = var
             slide.valueChanged.connect(var.slide_value)
             spin.valueChanged.connect(var.spin_value)
             button.clicked.connect(self.state.new_constant)
