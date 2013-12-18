@@ -26,49 +26,56 @@ from PySide.QtGui import QApplication, QMainWindow, QTextEdit, QPushButton
 
 from PySide import QtGui, QtCore
 
-from ui_P_control import Ui_Form as P_control
 from ui_PVE_control import Ui_Form as PVE_control
 
 import surf
-class P_widget(QtGui.QWidget, P_control):
-    '''Dead code.  Delete after Christmas.
-    '''
-    def __init__(self, parent=None):
-        '''Mandatory initialisation of a class.'''
-        super(P_widget, self).__init__(parent)
-        self.setupUi(self)
-        QtCore.QObject.connect(
-            self.verticalSlider,
-            QtCore.SIGNAL("valueChanged(int)"),
-            self.slider_V_spin_box)
-        QtCore.QObject.connect(
-            self.doubleSpinBox,
-            QtCore.SIGNAL("valueChanged(double)"),
-            self.spin_box_V_slider)
-    def slider_V_spin_box(self, i):
-        self.doubleSpinBox.setValue(float(i))
-    def spin_box_V_slider(self, f):
-        self.verticalSlider.setValue(int(f))
-    def debug(*args):
-        print('args=%s'%(args,))
-
+class variable:
+    def __init__(self, spin, slide, button, name, factor):
+        assert name in 'PvES'
+        self.spin = spin          # Holds value/factor
+        self.slide = slide        # Goes 0 to 99
+        self.button = button
+        self.factor = factor      # Multiplier for spin
+        self.name = name
+        self.min = float(self.spin.minimum())
+        self.max = float(self.spin.maximum())
+    def spin_value(self, f):
+        frac = (f - self.min)/(self.max - self.min)
+        i = max(0, min(99, int(frac*99)))
+        self.slide.setValue(i)
+    def slide_value(self, i):
+        frac = float(i)/float(99)
+        f = self.min + frac*(self.max - self.min)
+        self.spin.setValue(f)
+class state:
+    def __init__(self, var_dict):
+        self.var_dict = var_dict
+    def new_constant(self):
+        for s in 'PvES':
+            if self.var_dict[s].button.isChecked():
+                self.constant = s
+                return
+        assert False
+        
 class PVE_widget(QtGui.QWidget, PVE_control):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''
         super(PVE_widget, self).__init__(parent)
         self.setupUi(self)
-        QtCore.QObject.connect(
-            self.verticalSlider_V,
-            QtCore.SIGNAL("valueChanged(int)"),
-            self.slider_V_spin_box)
-        QtCore.QObject.connect(
-            self.doubleSpinBox_V,
-            QtCore.SIGNAL("valueChanged(double)"),
-            self.spin_box_V_slider)
-    def slider_V_spin_box(self, i):
-        self.doubleSpinBox_V.setValue(float(i)/4)
-    def spin_box_V_slider(self, f):
-        self.verticalSlider_V.setValue(int(f*4))
+        var_dict = {}
+        self.state = state(var_dict)
+        for spin, slide, button, name, factor in (
+(self.doubleSpinBox_P, self.verticalSlider_P, self.radioButton_P, 'P', 1e10),
+(self.doubleSpinBox_v, self.verticalSlider_v, self.radioButton_v, 'v', 1e-6),
+(self.doubleSpinBox_E, self.verticalSlider_E, self.radioButton_E, 'E', 1e3),
+(self.doubleSpinBox_S, self.verticalSlider_S, self.radioButton_S, 'S', 1.0)):
+            var = variable(spin, slide, button, name, factor)
+            for key in spin, slide, button, name:
+                var_dict[key] = var
+            slide.valueChanged.connect(var.slide_value)
+            spin.valueChanged.connect(var.spin_value)
+            button.clicked.connect(self.state.new_constant)
+        self.state.new_constant()
 
 from ui_ideal_qt import Ui_MainWindow
 class MainWindow(QMainWindow, Ui_MainWindow):

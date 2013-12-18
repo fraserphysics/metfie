@@ -106,6 +106,7 @@ S in Joules/degree
 
 class state:
     def __init__(self, P, v, constant):
+        assert constant in 'PvES'
         self.eos = EOS() 
         self.P = P
         self.v = v

@@ -43,7 +43,7 @@
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButtonP">
+      <widget class="QRadioButton" name="radioButton_P">
        <property name="toolTip">
         <string>Make P constant</string>
        </property>
@@ -64,17 +64,17 @@
    <item row="0" column="1">
     <layout class="QGridLayout" name="gridLayout_2">
      <item row="0" column="0">
-      <widget class="QLabel" name="label_V">
+      <widget class="QLabel" name="label_v">
        <property name="toolTip">
         <string>Volume / 10^-6</string>
        </property>
        <property name="text">
-        <string>V</string>
+        <string>v</string>
        </property>
       </widget>
      </item>
      <item row="1" column="0">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_V">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_v">
        <property name="minimum">
         <double>1.000000000000000</double>
        </property>
@@ -90,7 +90,7 @@
       </widget>
      </item>
      <item row="2" column="0">
-      <widget class="QSlider" name="verticalSlider_V">
+      <widget class="QSlider" name="verticalSlider_v">
        <property name="maximum">
         <number>99</number>
        </property>
@@ -100,7 +100,7 @@
       </widget>
      </item>
      <item row="3" column="0">
-      <widget class="QRadioButton" name="radioButton_V">
+      <widget class="QRadioButton" name="radioButton_v">
        <property name="toolTip">
         <string>Make V constant</string>
        </property>
