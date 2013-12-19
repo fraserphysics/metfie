@@ -21,14 +21,8 @@ To do:
 4. Strip down
 '''
 import sys
-
-from PySide.QtGui import QApplication, QMainWindow, QTextEdit, QPushButton
-
-from PySide import QtGui, QtCore
-
+from PySide.QtGui import QApplication, QMainWindow, QWidget
 from ui_PVE_control import Ui_Form as PVE_control
-
-import surf
 class variable:
     '''A class that collects, for a single variable, the spin box, slider
     and button widgets and their service routines.
@@ -39,40 +33,114 @@ class variable:
             slide,   # Qt slider widget
             button,  # Qt radio button widget
             name,    # On character string that is one of PvES
-            factor): # (variable value)/(spin box value) 
+            factor,  # (variable value)/(spin box value)
+            state):  # Link to other variables
         assert name in 'PvES'
-        self.spin = spin          # Holds value/factor
-        self.slide = slide        # Goes 0 to 99
+        self.spin = spin
+        self.slide = slide                    # Goes 0 to 99
         self.button = button
-        self.factor = factor      # Multiplier for spin
         self.name = name
+        self.factor = factor
+        self.state = state
         self.min = float(self.spin.minimum())
         self.max = float(self.spin.maximum())
-    def spin_value(self, # varible instance
+        self.value = spin.value()*factor
+    def spin_value(self, # variable instance
                    f):   # value from spin box
-        '''Keep slider synchronized when spin box value changed
+        '''Interrupt service routine for spin box value change.  Sends new
+        value to slider and calls state.update().
         '''
+        self.value = f*self.factor
         frac = (f - self.min)/(self.max - self.min)
         i = max(0, min(99, int(frac*99)))
         self.slide.setValue(i)
+        self.state.update(self.name, value=self.value)
     def slide_value(self, # variable instance
-                    i):   # value from slider
-        '''Keep spin box synchronized when slider value changed
+                    i):    # value from slider
+        '''Interrupt service routine for slider value change.  Sends new
+        value to spin box and calls state.update().
         '''
         frac = float(i)/float(99)
         f = self.min + frac*(self.max - self.min)
         self.spin.setValue(f)
+        self.value = f*self.factor
+        self.state.update(self.name, value=self.value)
+    def set_value(self, v):
+        if self.value != v:
+            self.value = v
+            f = v/self.factor
+            self.spin.setValue(f)
+            frac = (f - self.min)/(self.max - self.min)
+            i = max(0, min(99, int(frac*99)))
+            self.slide.setValue(i)
+        return self.spin.value()*self.factor # Return a quantized value
 class state:
     def __init__(self, var_dict):
         self.var_dict = var_dict
+        self.moving = None         # Last manipulated variable
+        self.constant = None
+        self.dispatch = {
+            ('v','P'):self.vP,
+            ('E','P'):self.vP,
+            ('P','v'):self.vP,
+            ('E','v'):self.vP,
+            ('P','E'):self.vP,
+            ('v','E'):self.vP,
+            ('P','S'):self.vP,
+            ('v','S'):self.vP,
+            ('E','S'):self.vP
+            }
+    def vP(self, s, button):
+        pass # FixMe: Do calculations here
+    def initial_values(
+            self,  # state instance
+            x):    # triple of value dictionaries
+        '''Separate from __init__ because values may not be ready when
+        __init__ is called.
+        '''
+        self.values, self.old_values, self.displayed_values = x
+    def gui_2_values(self):
+        rv = {}
+        for s in self.var_dict:
+            rv[s] = self.var_dict[s].value
+        rv['constant'] = self.constant
+        return rv
     def new_constant(self):
         for s in 'PvES':
             if self.var_dict[s].button.isChecked():
                 self.constant = s
+                self.update(s, button=True)
                 return
         assert False
+    def display(self, # state instance
+                ):
+        ''' Make sliders and spin boxes match self.values
+        '''
+        for s in self.var_dict:
+            if s not in self.values:
+                print('%s not in values'%(s,))
+                return
+            v = self.values[s]
+            var = self.var_dict[s]
+            self.displayed_values[s] = var.set_value(v)
+            
+    def update(self,            # state instance
+               s,               # key for variable
+               value = None,
+               button = False   # Flag for button event
+               ):
+        ''' Called when GUI manipulated
+        '''
+        key = (s, self.constant)
+        if key not in self.dispatch:
+            print('key %s not in dispatch'%(key,))
+        else:
+            self.dispatch[key](s, button)
+        for s, var in self.var_dict.items():
+            self.displayed_values[s] = var.set_value(self.values[s])
+        return
         
-class PVE_widget(QtGui.QWidget, PVE_control):
+class PVE_widget(QWidget, PVE_control):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''
         super(PVE_widget, self).__init__(parent)
@@ -84,19 +152,20 @@ class PVE_widget(QtGui.QWidget, PVE_control):
 (self.doubleSpinBox_v, self.verticalSlider_v, self.radioButton_v, 'v', 1e-6),
 (self.doubleSpinBox_E, self.verticalSlider_E, self.radioButton_E, 'E', 1e3),
 (self.doubleSpinBox_S, self.verticalSlider_S, self.radioButton_S, 'S', 1.0)):
-            var = variable(spin, slide, button, name, factor)
+            var = variable(spin, slide, button, name, factor, self.state)
             var_dict[name] = var
             slide.valueChanged.connect(var.slide_value)
             spin.valueChanged.connect(var.spin_value)
             button.clicked.connect(self.state.new_constant)
+        self.state.initial_values(3*(self.state.gui_2_values(),))
         self.state.new_constant()
 
+import surf
 from ui_ideal_qt import Ui_MainWindow
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''
         super(MainWindow, self).__init__(parent)
-        #self.setupUi(self, P_widget, PVE_widget)
         self.setupUi(self, surf.MayaviQWidget, PVE_widget)
 
 def calc_PVE():
@@ -115,7 +184,7 @@ def calc_PVE():
     return (ranges, scale(P), scale(v), scale(E))
 if __name__ == '__main__':
     #app = QApplication(sys.argv)
-    app = QtGui.QApplication.instance() # traitsui.api has created app
+    app = QApplication.instance() # traitsui.api has created app
     frame = MainWindow()
     frame.show()
     app.exec_()
