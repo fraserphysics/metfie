@@ -49,8 +49,8 @@ class variable:
         value to slider and calls state.update().
         '''
         self.value = f*self.factor
-        frac = (f - self.min)/(self.max - self.min)
-        i = max(0, min(99, int(frac*99)))
+        self.frac = (f - self.min)/(self.max - self.min)
+        i = max(0, min(99, int(self.frac*99)))
         self.slide.blockSignals(True) # So setValue won't trigger slide_move
         self.slide.setValue(i)
         self.slide.blockSignals(False)
@@ -60,8 +60,8 @@ class variable:
         '''Interrupt service routine for slider value change.  Sends new
         value to spin box and calls state.update().
         '''
-        frac = float(i)/float(99)
-        f = self.min + frac*(self.max - self.min)
+        self.frac = float(i)/float(99)
+        f = self.min + self.frac*(self.max - self.min)
         self.spin.blockSignals(True) # So setValue won't trigger spin_move
         self.spin.setValue(f)
         self.spin.blockSignals(False)
@@ -80,8 +80,8 @@ class variable:
             self.spin.blockSignals(True) # So setValue won't trigger spin_move
             self.spin.setValue(f)
             self.spin.blockSignals(False)
-            frac = (f - self.min)/(self.max - self.min)
-            i = max(0, min(99, int(frac*99)))
+            self.frac = (f - self.min)/(self.max - self.min)
+            i = max(0, min(99, int(self.frac*99)))
             self.slide.blockSignals(True)# So setValue won't trigger slide_move
             self.slide.setValue(i)
             self.slide.blockSignals(False)
@@ -112,6 +112,7 @@ class state:
         This is separate from __init__ because var_dict isn't ready when
         __init__ is called.
         '''
+        import mayavi.mlab as ML
         self.values = {}
         self.displayed_values = {}
         for s, var in self.var_dict.items():
@@ -125,11 +126,16 @@ class state:
             v = self.values[s]
             self.displayed_values[s] = var.set_value(v, force=True)
         self.old_values = self.values.copy()
-    def __init__(self, var_dict, vis_point):
+        # Get coordinates for the displayed state point + size
+        args = tuple(self.var_dict[s].frac for s in 'PvE') + (.05,)
+        # Initialize the displayed state point
+        self.vis.point =  ML.points3d(
+            *args, scale_factor=1.0, figure=self.vis.scene.mayavi_scene)
+    def __init__(self, var_dict, vis):
         import ideal_eos
         self.EOS = ideal_eos.EOS()       # Methods for EOS constraints
         self.var_dict = var_dict         # Holds variables of GUI
-        self.vis_point = vis_point
+        self.vis = vis                   # Mayavi visualization instance
         self.dispatch = {                # Map GUI actions to methods
             #(Moved, constant): Method,
             ('v',    'P'):      self.vP,
@@ -188,19 +194,6 @@ class state:
                 self.update(s, button=True)
                 return
         assert False
-    def display(self,     # state instance
-                skip=None # Value of s to skip
-                ):
-        '''Make sliders and spin boxes match self.values.  Put the quantized
-        values from the spin boxers in self.displayed_values.
-        '''
-        for s in self.var_dict:
-            if s == skip: continue
-            assert s in self.values
-            v = self.values[s]
-            var = self.var_dict[s]
-            self.displayed_values[s] = var.set_value(v)
-            
     def update(self,            # state instance
                s,               # key for manipulated variable
                value = None,
@@ -252,7 +245,9 @@ class state:
             for t, var in self.var_dict.items(): # Update display
                 if t == s: continue
                 self.displayed_values[t] = var.set_value(self.values[t])
-            self.vis_point.mlab_source.set(x=[self.var_dict['P'].value/3e10])
+            # Move the displayed state point
+            fracs = list(self.var_dict[s].frac for s in 'PvE')
+            self.vis.point.mlab_source.set(x=fracs[0], y=fracs[1], z=fracs[2])
             return
         revert()
         return
@@ -263,7 +258,7 @@ class PVE_widget(QWidget, PVE_control):
         super(PVE_widget, self).__init__(parent)
         self.setupUi(self)
         var_dict = {}
-        self.state = state(var_dict, vis_widget.visualization.point)
+        self.state = state(var_dict, vis_widget.visualization)
         for spin, slide, button, name, factor in (
 # spin                 slide                  button             name  factor
 (self.doubleSpinBox_P, self.verticalSlider_P, self.radioButton_P, 'P', 1e10),
