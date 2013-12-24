@@ -44,6 +44,12 @@ class Visualization(TA.HasTraits):
         for a in (P,v,E):
             self.ranges += [a.min(),a.max()]
         scale = lambda z: (z-z.min())/(z.max()-z.min())
+        x_ = scale(P)[10,10]
+        y_ = scale(v)[10,10]
+        z_ = scale(E)[10,10]
+        x,y,z,s = ([x_],[y_],[z_],[.05])
+        self.point = ML.points3d(
+            x,y,z,s, scale_factor=1.0,figure=self.scene.mayavi_scene)
         ML.mesh(scale(P),scale(v),scale(E),figure=self.scene.mayavi_scene)
         self.flag = False
 #-----------------------------------------------------------------------------

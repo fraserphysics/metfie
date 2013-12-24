@@ -14,7 +14,6 @@
 Reference:  http://docs.enthought.com/mayavi/mayavi/
 To do:
 
-0. Manage old_values and motion beyond bounds
 1. Move dot smoothly
 2. Draw nice lines smoothly
 3. Erase lines
@@ -57,7 +56,7 @@ class variable:
         self.slide.blockSignals(False)
         self.state.update(self.name, value=self.value)
     def slide_move(self, # variable instance
-                    i):    # value from slider
+                    i):  # value from slider
         '''Interrupt service routine for slider value change.  Sends new
         value to spin box and calls state.update().
         '''
@@ -68,7 +67,10 @@ class variable:
         self.spin.blockSignals(False)
         self.value = f*self.factor
         self.state.update(self.name, value=self.value)
-    def set_value(self, v, force=False):
+    def set_value(self,       # variable instance
+                  v,          # New value
+                  force=False # Do everything even if value already right
+                  ):
         '''Called by state.update().  Sets self.value, slider and spin,
         and returns quantized number from spin.
         '''
@@ -80,13 +82,29 @@ class variable:
             self.spin.blockSignals(False)
             frac = (f - self.min)/(self.max - self.min)
             i = max(0, min(99, int(frac*99)))
-            self.slide.blockSignals(True)
+            self.slide.blockSignals(True)# So setValue won't trigger slide_move
             self.slide.setValue(i)
             self.slide.blockSignals(False)
         return self.spin.value()*self.factor # Return a quantized value
+    def bounds_check(self, v):
+        if v > self.max * self.factor or v < self.min * self.factor:
+            return False
+        return True
 class state:
     '''Contains links to GUI and present and past values of state variables.
-    Has methods for moving on the EOS sub-manifold.
+    Has methods for moving on the EOS sub-manifold.  Keeps 3 sets of
+    values:
+
+    self.displayed_values: Correspond to quantized values in
+        spin blocks.  The coarse quantization may push the values off of
+        the EOS
+    
+    self.values: A set of values used for calculation in response to user
+        manipulation of the gui.
+    
+    self.old_values: These values are on the EOS to within the precision
+        of floating point calculation and they are within the bounds given
+        by the spin boxes which are also the bounds on the surface plot.
     '''
     def initial_values(self,  # state instance
                        ):
@@ -107,11 +125,12 @@ class state:
             v = self.values[s]
             self.displayed_values[s] = var.set_value(v, force=True)
         self.old_values = self.values.copy()
-    def __init__(self, var_dict):
+    def __init__(self, var_dict, vis_point):
         import ideal_eos
-        self.EOS = ideal_eos.EOS()
-        self.var_dict = var_dict
-        self.dispatch = {
+        self.EOS = ideal_eos.EOS()       # Methods for EOS constraints
+        self.var_dict = var_dict         # Holds variables of GUI
+        self.vis_point = vis_point
+        self.dispatch = {                # Map GUI actions to methods
             #(Moved, constant): Method,
             ('v',    'P'):      self.vP,
             ('E',    'P'):      self.EP,
@@ -159,7 +178,8 @@ class state:
         P = self.values['P']
         E = self.EOS.Pv2E(P, v)
         self.values['E'] = E
-    def new_constant(self):
+    def new_constant(self # state instance
+                     ):
         '''Find which radio button is checked and then do update
         '''
         for s in 'PvES':
@@ -186,32 +206,64 @@ class state:
                value = None,
                button = False   # Flag for button event
                ):
-        '''Called when GUI manipulated.  Put new value in self.values[s] and set
-        new values of other variables that follow from that change.
+        '''Manipulation of the GUI initiates the following sequence:
+
+        1. Change the value and display of the manipulated variable
+
+        2. This method is called
+
+        This method continues the response as follows:
+
+        3. If a radio button was pressed, set old_values['constant'], then
+           propagate old_values to displayed values and values and return
+
+        4. Calculate new self.values consistent with selected constant and
+           changed variable
+
+        5. If new values are in bounds, copy them to self.old_values and
+           propagate the to the GUI/display and return
+
+        6. If the new values are out of bounds, revert to self.old_values
         '''
-        if button:
+        def revert():
             for t, var in self.var_dict.items():
-                self.displayed_values[t] = var.set_value(self.values[t])
+                self.displayed_values[t] = var.set_value(self.old_values[t])
+            self.values = self.old_values.copy()
+            return
+        if button:
+            self.old_values['constant'] = s
+            revert()
             return
         key = (s, self.constant)
         if key not in self.dispatch:
             print('Pushing %s with constant %s has no effect'%key)
-            self.var_dict[s].set_value(self.values[s]) # Return to last value
+            self.var_dict[s].set_value(self.old_values[s])
             return
         self.values[s] = value
         self.dispatch[key](s, button) # Calculate effect on other variables
-        for t, var in self.var_dict.items():
-            if t == s: continue
-            self.displayed_values[t] = var.set_value(self.values[t])
+        # Now self.values is on the EOS.  Check that it is in bounds
+        OK = True
+        for t in 'PvE':
+            if not self.var_dict[t].bounds_check(self.values[t]):
+                OK = False
+                break
+        if OK:
+            self.old_values = self.values.copy()
+            for t, var in self.var_dict.items(): # Update display
+                if t == s: continue
+                self.displayed_values[t] = var.set_value(self.values[t])
+            self.vis_point.mlab_source.set(x=[self.var_dict['P'].value/3e10])
+            return
+        revert()
         return
-        
+
 class PVE_widget(QWidget, PVE_control):
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, vis_widget=None):
         '''Mandatory initialisation of a class.'''
         super(PVE_widget, self).__init__(parent)
         self.setupUi(self)
         var_dict = {}
-        self.state = state(var_dict)
+        self.state = state(var_dict, vis_widget.visualization.point)
         for spin, slide, button, name, factor in (
 # spin                 slide                  button             name  factor
 (self.doubleSpinBox_P, self.verticalSlider_P, self.radioButton_P, 'P', 1e10),
