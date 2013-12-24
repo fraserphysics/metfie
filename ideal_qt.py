@@ -14,10 +14,11 @@
 Reference:  http://docs.enthought.com/mayavi/mayavi/
 To do:
 
-1. Move dot smoothly
-2. Draw nice lines smoothly
-3. Erase lines
-4. Strip down
+1. Draw nice lines smoothly
+2. Erase lines
+3. Strip down
+4. Calculate entropy and put value in slider
+5. For isentropic changes, explicitly keep entropy constant
 '''
 from PySide.QtGui import QApplication, QMainWindow, QWidget
 from ui_PVE_control import Ui_Form as PVE_control
@@ -136,6 +137,8 @@ class state:
         self.EOS = ideal_eos.EOS()       # Methods for EOS constraints
         self.var_dict = var_dict         # Holds variables of GUI
         self.vis = vis                   # Mayavi visualization instance
+        self.vis.curve = None
+        self.curve_data = []
         self.dispatch = {                # Map GUI actions to methods
             #(Moved, constant): Method,
             ('v',    'P'):      self.vP,
@@ -188,10 +191,16 @@ class state:
                      ):
         '''Find which radio button is checked and then do update
         '''
+        import mayavi.mlab as ML
+        import numpy as np
         for s in 'PvES':
             if self.var_dict[s].button.isChecked():
                 self.constant = s
                 self.update(s, button=True)
+                if self.vis.curve != None:
+                    self.vis.curve.remove()
+                    self.curve_data = []
+                self.vis.curve = None
                 return
         assert False
     def update(self,            # state instance
@@ -218,6 +227,8 @@ class state:
 
         6. If the new values are out of bounds, revert to self.old_values
         '''
+        import numpy as np
+        import mayavi.mlab as ML
         def revert():
             for t, var in self.var_dict.items():
                 self.displayed_values[t] = var.set_value(self.old_values[t])
@@ -248,6 +259,21 @@ class state:
             # Move the displayed state point
             fracs = list(self.var_dict[s].frac for s in 'PvE')
             self.vis.point.mlab_source.set(x=fracs[0], y=fracs[1], z=fracs[2])
+            # Add point to curve
+            self.curve_data.append(fracs)
+            if len(self.curve_data) == 1: return
+            if self.constant == 'P':
+                key = lambda v: v[1]
+            else:
+                key = lambda v: v[0]
+            self.curve_data.sort(key=key)
+            xyz = np.array(self.curve_data)
+            if self.vis.curve != None:
+                    self.vis.curve.remove()
+            self.vis.curve = ML.plot3d(
+                    xyz[:,0], xyz[:,1], xyz[:,2],
+                    figure=self.vis.scene.mayavi_scene,
+                    tube_radius=0.01)
             return
         revert()
         return
