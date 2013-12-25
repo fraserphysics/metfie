@@ -1,16 +1,12 @@
-5c5
-< # Created: Mon Dec 16 10:11:36 2013
----
-> # Created: Fri Dec 13 11:45:12 2013
 13c13
-<     def setupUi(self, MainWindow, vis_widget, PVE_widget):
+<     def setupUi(self, MainWindow):
 ---
->     def setupUi(self, MainWindow, P_widget, PVE_widget):
+>     def setupUi(self, MainWindow, vis_widget, PVE_widget):
 24c24
-<         self.widget = vis_widget(self.centralwidget)
+<         self.widget = QtGui.QWidget(self.centralwidget)
 ---
->         self.widget = P_widget(self.centralwidget)
+>         self.widget = vis_widget(self.centralwidget)
 28c28
-<         self.widget_2 = PVE_widget(self.centralwidget, vis_widget=self.widget)
+<         self.widget_2 = QtGui.QWidget(self.centralwidget)
 ---
->         self.widget_2 = PVE_widget(self.centralwidget)
+>         self.widget_2 = PVE_widget(self.centralwidget, vis_widget=self.widget)

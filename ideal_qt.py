@@ -1,29 +1,28 @@
 #!/usr/bin/env python
-# licence.py - display GPL licence
+# Derived from licence.py by Algis Kabaila.
 
-# Copyright (c) 2010-2011 Algis Kabaila. All rights reserved.
-# This program or module is free software: you can redistribute it and/or
-# modify it under the terms of the GNU General Public Licence as published
-# by the Free Software Foundation, either version 2 of the Licence, or
-# version 3 of the Licence, or (at your option) any later version. It is
-# provided for educational purposes and is distributed in the hope that
-# it will be useful, but WITHOUT ANY WARRANTY; without even the implied
-# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See
-# the GNU General Public Licence for more details.
+# Copyright (c) 2010-2011 Algis Kabaila.  Copyright 2013 Andrew Fraser
+# and Los Alamos National Laboratory. All rights reserved.  This
+# program or module is free software: you can redistribute it and/or
+# modify it under the terms of the GNU General Public Licence as
+# published by the Free Software Foundation, either version 2 of the
+# Licence, or version 3 of the Licence, or (at your option) any later
+# version. It is provided for educational purposes and is distributed
+# in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE. See the GNU General Public Licence for more
+# details.
 '''
 Reference:  http://docs.enthought.com/mayavi/mayavi/
 To do:
 
-1. Draw nice lines smoothly
-2. Erase lines
-3. Strip down
-4. Calculate entropy and put value in slider
-5. For isentropic changes, explicitly keep entropy constant
+1. Calculate entropy and put value in slider
+2. For isentropic changes, explicitly keep entropy constant
 '''
 from PySide.QtGui import QApplication, QMainWindow, QWidget
 from ui_PVE_control import Ui_Form as PVE_control
 class variable:
-    '''A class that collects, for a single variable, the spin box, slider
+    '''A class that collects, for P, v, E or S the spin box, slider
     and button widgets and their service routines.
     '''
     def __init__(
@@ -31,16 +30,16 @@ class variable:
             spin,    # Qt spin box widget
             slide,   # Qt slider widget
             button,  # Qt radio button widget
-            name,    # On character string that is one of PvES
+            name,    # One character string \in 'PvES'
             factor,  # (variable value)/(spin box value)
-            state):  # Link to other variables
+            state):  # Connection to other variables and GUI
         assert name in 'PvES'
         self.spin = spin
-        self.slide = slide                    # Goes 0 to 99
+        self.slide = slide    # Goes 0 to 99
         self.button = button
         self.name = name
         self.factor = factor
-        self.state = state
+        self.state = state    # Not fully developed yet
         self.min = float(self.spin.minimum())
         self.max = float(self.spin.maximum())
         self.value = spin.value()*factor
@@ -75,20 +74,21 @@ class variable:
         '''Called by state.update().  Sets self.value, slider and spin,
         and returns quantized number from spin.
         '''
-        if self.value != v or force:
+        if self.value != v or force: # Skip if new value same as old
             self.value = v
             f = v/self.factor
-            self.spin.blockSignals(True) # So setValue won't trigger spin_move
+            self.spin.blockSignals(True)  #  Prevent triggering spin_move
             self.spin.setValue(f)
             self.spin.blockSignals(False)
             self.frac = (f - self.min)/(self.max - self.min)
             i = max(0, min(99, int(self.frac*99)))
-            self.slide.blockSignals(True)# So setValue won't trigger slide_move
+            self.slide.blockSignals(True) # Prevent triggering slide_move
             self.slide.setValue(i)
             self.slide.blockSignals(False)
         return self.spin.value()*self.factor # Return a quantized value
     def bounds_check(self, v):
-        if v > self.max * self.factor or v < self.min * self.factor:
+        t = v/self.factor
+        if t > self.max or t < self.min:
             return False
         return True
 class state:
@@ -96,9 +96,7 @@ class state:
     Has methods for moving on the EOS sub-manifold.  Keeps 3 sets of
     values:
 
-    self.displayed_values: Correspond to quantized values in
-        spin blocks.  The coarse quantization may push the values off of
-        the EOS
+    self.displayed_values: Correspond to quantized values in spin blocks.
     
     self.values: A set of values used for calculation in response to user
         manipulation of the gui.
@@ -106,6 +104,7 @@ class state:
     self.old_values: These values are on the EOS to within the precision
         of floating point calculation and they are within the bounds given
         by the spin boxes which are also the bounds on the surface plot.
+
     '''
     def initial_values(self,  # state instance
                        ):
@@ -120,23 +119,22 @@ class state:
             self.values[s] = var.value
         self.vP(None, None)  # Set values['E'] to be consistent with v and P
         for s, var in self.var_dict.items():
-            if self.var_dict[s].button.isChecked():
-                self.constant = s
-                self.displayed_values['constant'] = s
-                self.values['constant'] = s
             v = self.values[s]
             self.displayed_values[s] = var.set_value(v, force=True)
         self.old_values = self.values.copy()
+        self.new_constant()
         # Get coordinates for the displayed state point + size
         args = tuple(self.var_dict[s].frac for s in 'PvE') + (.05,)
         # Initialize the displayed state point
         self.vis.point =  ML.points3d(
             *args, scale_factor=1.0, figure=self.vis.scene.mayavi_scene)
-    def __init__(self, var_dict, vis):
+    def __init__(self,     # state instance
+                 var_dict, # Dictionary that will hold variable instances
+                 vis):     # mayavi visualization instance
         import ideal_eos
         self.EOS = ideal_eos.EOS()       # Methods for EOS constraints
-        self.var_dict = var_dict         # Holds variables of GUI
-        self.vis = vis                   # Mayavi visualization instance
+        self.var_dict = var_dict
+        self.vis = vis
         self.vis.curve = None
         self.curve_data = []
         self.dispatch = {                # Map GUI actions to methods
@@ -191,8 +189,6 @@ class state:
                      ):
         '''Find which radio button is checked and then do update
         '''
-        import mayavi.mlab as ML
-        import numpy as np
         for s in 'PvES':
             if self.var_dict[s].button.isChecked():
                 self.constant = s
@@ -201,6 +197,11 @@ class state:
                     self.vis.curve.remove()
                     self.curve_data = []
                 self.vis.curve = None
+                if s == 'P':
+                    self.u_key = lambda v: v[1] # Sort on v
+                else:
+                    self.u_key = lambda v: v[0] # Sort on P
+                self.unique = set([])           # set of keys
                 return
         assert False
     def update(self,            # state instance
@@ -223,20 +224,22 @@ class state:
            changed variable
 
         5. If new values are in bounds, copy them to self.old_values and
-           propagate the to the GUI/display and return
+           propagate them to the GUI/display and return
 
         6. If the new values are out of bounds, revert to self.old_values
         '''
         import numpy as np
         import mayavi.mlab as ML
         def revert():
+            '''Revert to self.old_values
+            '''
             for t, var in self.var_dict.items():
                 self.displayed_values[t] = var.set_value(self.old_values[t])
             self.values = self.old_values.copy()
             return
         if button:
             self.old_values['constant'] = s
-            revert()
+            revert() # Don't move, use old_values
             return
         key = (s, self.constant)
         if key not in self.dispatch:
@@ -246,36 +249,28 @@ class state:
         self.values[s] = value
         self.dispatch[key](s, button) # Calculate effect on other variables
         # Now self.values is on the EOS.  Check that it is in bounds
-        OK = True
-        for t in 'PvE':
-            if not self.var_dict[t].bounds_check(self.values[t]):
-                OK = False
-                break
-        if OK:
-            self.old_values = self.values.copy()
-            for t, var in self.var_dict.items(): # Update display
-                if t == s: continue
+        for t, var in self.var_dict.items():
+            if not var.bounds_check(self.values[t]):
+                revert()
+                return
+        self.old_values = self.values.copy()
+        for t, var in self.var_dict.items(): # Update display
+            if t != s:
                 self.displayed_values[t] = var.set_value(self.values[t])
-            # Move the displayed state point
-            fracs = list(self.var_dict[s].frac for s in 'PvE')
-            self.vis.point.mlab_source.set(x=fracs[0], y=fracs[1], z=fracs[2])
-            # Add point to curve
-            self.curve_data.append(fracs)
-            if len(self.curve_data) == 1: return
-            if self.constant == 'P':
-                key = lambda v: v[1]
-            else:
-                key = lambda v: v[0]
-            self.curve_data.sort(key=key)
-            xyz = np.array(self.curve_data)
-            if self.vis.curve != None:
-                    self.vis.curve.remove()
-            self.vis.curve = ML.plot3d(
-                    xyz[:,0], xyz[:,1], xyz[:,2],
-                    figure=self.vis.scene.mayavi_scene,
-                    tube_radius=0.01)
-            return
-        revert()
+        # Move the displayed state point
+        fracs = list(self.var_dict[s].frac for s in 'PvE')
+        self.vis.point.mlab_source.set(x=fracs[0], y=fracs[1], z=fracs[2])
+        # Add point to curve if it is new
+        key = self.u_key(fracs)
+        if key in self.unique: return
+        self.unique.add(key)
+        self.curve_data.append(fracs)
+        if len(self.curve_data) == 1: return
+        if self.vis.curve != None: self.vis.curve.remove()
+        self.curve_data.sort(key=self.u_key)
+        x,y,z = (np.array(self.curve_data)[:,i] for i in (0,1,2))
+        self.vis.curve = ML.plot3d(
+            x, y, z, figure=self.vis.scene.mayavi_scene, tube_radius=0.01)
         return
 
 class PVE_widget(QWidget, PVE_control):
