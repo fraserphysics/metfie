@@ -14,10 +14,7 @@
 # details.
 '''
 Reference:  http://docs.enthought.com/mayavi/mayavi/
-To do:
 
-1. Calculate entropy and put value in slider
-2. For isentropic changes, explicitly keep entropy constant
 '''
 from PySide.QtGui import QApplication, QMainWindow, QWidget
 from ui_PVE_control import Ui_Form as PVE_control
@@ -117,7 +114,8 @@ class state:
         self.displayed_values = {}
         for s, var in self.var_dict.items():
             self.values[s] = var.value
-        self.vP(None, None)  # Set values['E'] to be consistent with v and P
+        self.vP(None, None)  # Set values['E'] and values['S'] to be
+                             #consistent with v and P
         for s, var in self.var_dict.items():
             v = self.values[s]
             self.displayed_values[s] = var.set_value(v, force=True)
@@ -150,41 +148,31 @@ class state:
             ('E',    'S'):      self.ES
             }
     def PS(self, s, button):
-        P = self.values['P']
-        v = self.values['v']
-        E = self.values['E']
-        v_new, E_new = self.EOS.isentrope_P(P, v, E)
-        self.values['v'] = v_new
-        self.values['E'] = E_new
+        self.values['v'],self.values['E'] = self.EOS.SP2vE(
+            self.values['S'],self.values['P'])
     def vS(self, s, button):
-        P = self.values['P']
-        v = self.values['v']
-        E = self.values['E']
-        P_new, E_new = self.EOS.isentrope_v(v, P, E)
-        self.values['P'] = P_new
-        self.values['E'] = E_new
+        self.values['P'], self.values['E'] = self.EOS.Sv2PE(
+            self.values['S'],self.values['v'])
     def ES(self, s, button):
-        P = self.values['P']
-        v = self.values['v']
-        E = self.values['E']
-        P_new, v_new = self.EOS.isentrope_E(E, P, v)
-        self.values['P'] = P_new
-        self.values['v'] = v_new
+        self.values['P'],self.values['v'] = self.EOS.SE2Pv(
+            self.values['S'], self.values['E'])
     def Ev(self, s, button):
         E = self.values['E']
         v = self.values['v']
-        P = self.EOS.Ev2P(E, v)
-        self.values['P'] = P
+        self.values['P'] = self.EOS.Ev2P(E, v)
+        self.values['S'] = self.EOS.Ev2S(E,v)
     def EP(self, s, button):
         E = self.values['E']
         P = self.values['P']
         v = self.EOS.PE2v(P, E)
         self.values['v'] = v
+        self.values['S'] = self.EOS.Ev2S(E,v)
     def vP(self, s, button):
         v = self.values['v']
         P = self.values['P']
         E = self.EOS.Pv2E(P, v)
         self.values['E'] = E
+        self.values['S'] = self.EOS.Ev2S(E,v)
     def new_constant(self # state instance
                      ):
         '''Find which radio button is checked and then do update

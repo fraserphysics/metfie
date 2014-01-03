@@ -173,10 +173,10 @@
      <item row="1" column="0">
       <widget class="QDoubleSpinBox" name="doubleSpinBox_S">
        <property name="maximum">
-        <double>1000.000000000000000</double>
+        <double>69.159999999999997</double>
        </property>
        <property name="singleStep">
-        <double>0.100000000000000</double>
+        <double>0.010000000000000</double>
        </property>
       </widget>
      </item>

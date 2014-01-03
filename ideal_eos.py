@@ -28,48 +28,81 @@ v Specific volume, volume of one mol
 P Pressure in Pascals
 E in Joules
 S in Joules/degree
-    """
-    R = 8.3144621 #Joules/(degree mol) = (Meters^3 Pascal)/(degrees mol)
-    cv = 2.5      # 5/2 for diatomic gas
-    v_0 = 1.0e-6  # Molar volume in cubic meters that gives zero entropy
-    T_0 = 2000.0  # Absolute temperature that gives zero entropy
+
+Assuming cv=5/2 (5 degrees of freedom for a diatomic ideal gas). I got
+the following equations from Wikipedia:
+
+Pv = RT
+E = cvRT = cvPv
+S = R*( cv*log(T/T_0) + log(v/v_0) )
+
+From the above, I find:
+
+S = R*( cv*log(E/E_0) + log(v/v_0) )
+e^{S/R} = (E/E_0)^cv * v/v_0
+v(E,S) = v_0 * (E_0/E)^cv * (e^{S/R})
+E(v,S) = E_0 * ( e^(S/R) * v_0/v )^(1/cv)
+v(P,S) = ( e^(S/R) v_0 )^ (1/(1+cv)) * ( E_0/(cv*P) )^(cv/(1+cv))
+
+Below, I list chosen parameters and some consequences
+
+P_min = 1e10 Pascals
+P_max = 4e10 Pascals
+v_min = 1e-6 Cubic meters/mole
+v_max = 4e-6 Cubic meters/mole
+
+E_min = 25e3 Joules/mole
+E_max = 400e3 Joules/mole
+
+E_0 = 2.5*R*T_0 = 25e3 Joules/mole
+T_0 = 1.20272e3 Degrees K
+v_0 = 1e-6 Cubic meters/mole
+
+S_min = 0
+S_max = 69.16 Joules/degree
+"""
+    R = 8.3144621    #Joules/(degree mol) = (Meters^3 Pascal)/(degrees mol)
+    cv = 2.5         # 5/2 for diatomic gas
+    v_0 = 1.0e-6     # Molar volume in cubic meters that gives zero entropy
+    E_0 = 25e3       # Absolute temperature that gives zero entropy
+    T_0 = E_0*(cv*R) # Absolute temperature that gives zero entropy
     def __init__(self):
         pass
     def Pv2T(self, P, v):
         """Return Temprature given pressure and specific volume
         (volume of 1 mole)"""
         return P*v/self.R
-    def Pv2S(self, P, v):
-        """Return entropy given pressure and specific volume"""
-        T = self.Pv2T(P,v)
-        return self.R*(cv*np.log(T/self.T_0) + np.log(v/v_0))
     def PT2v(self, P,T):
         return self.R*T/P
     def Tv2P(self, T, v):
         return self.R*T/v
-    # The next 3 methods work with energy E instead of T via E=(5/2)RT
-    # or T = (2/5)(E/R) or Pv = (2/5)E.  This is a diatomic gas model.
+    # The next 4 methods work with energy E instead of T via E=c_v*RT.
+    # c_v=5/2 for a diatomic gas model.
     def Pv2E(self, P, v):
-        return 2.5*P*v
+        return self.cv*P*v
     def PE2v(self, P,E):
-        return 0.4*E/P
+        return (E/P)/self.cv
     def Ev2P(self, E, v):
-        return 0.4*E/v
-    def isentrope_v(self, new_v, old_P, old_E):
-        old_v = self.PE2v(old_P,old_E)
-        new_P = old_P*(old_v/new_v)**1.2
-        new_E = self.Pv2E(new_P,new_v)
-        return (new_P,new_E)
-    def isentrope_P(self, new_P, old_v, old_E):
-        old_P = self.Ev2P(old_E,old_v)
-        new_v = old_v*(old_P/new_P)**(5.0/7.0)
-        new_E = self.Pv2E(new_P,new_v)
-        return (new_v,new_E)
-    def isentrope_E(self, new_E, old_P, old_v):
-        old_E = self.Pv2E(old_P,old_v)
-        new_P = old_P*(new_E/old_E)**(7.0/2.0)
-        new_v = self.PE2v(new_P,new_E)
-        return (new_P,new_v)
+        return (E/v)/self.cv
+    def Ev2S(self, E, v):
+        """Return entropy given energy and specific volume"""
+        return self.R*(self.cv*np.log(E/self.E_0) + np.log(v/self.v_0))
+    # The next 3 methods calculate 2 state variables from entropy and
+    # the third state variable.
+    def Sv2PE(self, S, v):
+        E = self.E_0 * ( np.exp(S/self.R) * self.v_0/v )**(1/self.cv)
+        P = self.Ev2P(E,v)
+        return P,E
+    def SE2Pv(self, S, E):
+        v = self.v_0 * (self.E_0/E)**self.cv * (np.exp(S/self.R))
+        P = self.Ev2P(E,v)
+        return P,v
+    def SP2vE(self, S, P):
+        t = np.exp(S/self.R) * self.v_0
+        t *= ( self.E_0/(self.cv*P) )**self.cv
+        v = t ** (1/(1+self.cv))
+        E = self.Pv2E(P,v)
+        return v,E
     def isentropic_expansion(self,
                              P_i,      #Initial pressure in Pa
                              v_i,      #Initial volume in M^3
@@ -104,16 +137,6 @@ S in Joules/degree
         E_f = E_i*(v_i/v_f)**.4
         return (_KE[-1],Dt,E_i-E_f)
 
-class state:
-    def __init__(self, P, v, constant):
-        assert constant in 'PvES'
-        self.eos = EOS() 
-        self.P = P
-        self.v = v
-        self.E = self.eos.Pv2E()
-        self.T = self.eos.Pv2T()
-        self.S = self.eos.Pv2S()
-        self.new_constant(constant)
 def _test():
     import doctest
     doctest.testmod()
