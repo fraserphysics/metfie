@@ -11,3 +11,6 @@ result*
 *.fls
 *.log
 *.toc
+safe
+ui_*.py*
+study_*

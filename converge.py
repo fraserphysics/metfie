@@ -1,6 +1,19 @@
 '''converge.py study convergence of numerical estimates of the
 eigenfunction corresponding to the largest eigenvector of the first
 order Markov integral operator.
+
+After calculating errors, look at them with:
+
+->python3 -c "from converge import plot; plot('result_converge')"
+
+Default arguments have n_g and n_h take values 200 and 225.  With the
+default arguments, script calls LO.power() 5 times and on watcher, the
+run time is
+
+real    2m57.357s
+user    2m56.151s
+sys     0m0.820s
+
 '''
 import sys
 from first_c import LO
