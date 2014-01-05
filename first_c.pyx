@@ -11,9 +11,9 @@ DTYPE = np.float64
 ITYPE = np.int32
 ctypedef np.float64_t DTYPE_t
 ctypedef np.int32_t ITYPE_t
-from first import LO as LO_py
+from first import LO_step
 
-class LO(LO_py):
+class LO(LO_step):
     ''' 
     '''
     @cython.boundscheck(False)

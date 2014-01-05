@@ -19,6 +19,7 @@ import sys
 from first_c import LO
 def main(argv=None):
     import argparse
+    import numpy as np
     global DEBUG
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
@@ -31,18 +32,32 @@ def main(argv=None):
                        help='y_1-y_0 = log(x_1/x_0)')
     parser.add_argument('--n_g0', type=int, default=200,
                        help='number of integration elements in value')
-    parser.add_argument('--n_h0', type=int, default=200,
-help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
-    parser.add_argument('--n_g_step', type=int, default=25)
-    parser.add_argument('--n_h_step', type=int, default=25)
+    parser.add_argument('--n_h0', type=int, default=200, help=
+'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
+    parser.add_argument('--n_g_step', type=int, default=2, help=
+                        'Number of different delta_gs')
+    parser.add_argument('--n_h_step', type=int, default=2, help=
+                        'Number of different delta_hs')
     parser.add_argument('--n_g_final', type=int, default=225)
     parser.add_argument('--n_h_final', type=int, default=225)
+    parser.add_argument('--ref_frac', type=float, default=0.9, help=
+                        'Fraction of finest resoultion used for reference')
     parser.add_argument('--out_file', type=str, default='result_converge',
         help="where to write result")
     args = parser.parse_args(argv)
+
+    d_g_big = 2*args.u/args.n_g0
+    d_g_small = 2*args.u/args.n_g_final
+    dd_g = (d_g_big - d_g_small)/args.n_g_step
+    d_g_ref = args.ref_frac*d_g_small
+
+    h_lim = np.sqrt(48*args.u)
+    d_h_big = 2*h_lim/args.n_h0
+    d_h_small = 2*h_lim/args.n_h_final
+    dd_h = (d_h_big - d_h_small)/args.n_h_step
+    d_h_ref = args.ref_frac*d_h_small
     
     from scipy.sparse.linalg import LinearOperator
-    import numpy as np
     from first import sym_diff
     import pickle
     
@@ -50,17 +65,15 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     maxiter = 150
     error = {}
 
-    g = np.arange(args.n_g_final, args.n_g0-1, -args.n_g_step)
-    h = np.arange(args.n_h_final, args.n_h0-1, -args.n_h_step)
-    g_ref = args.n_g_final + args.n_g_step
-    h_ref = args.n_h_final + args.n_h_step
-    ref_LO = LO( args.u, args.dy, g_ref, h_ref)
+    ref_LO = LO( args.u, args.dy, d_g_ref, d_h_ref)
+    print('Call power() with n_h=%d and n_g=%d'%(ref_LO.n_h,ref_LO.n_g))
     ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
-    for n_g in g:
-        for n_h in h:
-            key = 'n_g=%d n_h=%d'%(n_g, n_h)
+    for d_g in np.arange(d_g_small, d_g_big, dd_g):
+        for d_h in np.arange(d_h_small, d_h_big, dd_h):
+            key = 'd_g=%g d_h=%g'%(d_g, d_h)
             assert not key in error
-            A = LO( args.u, args.dy, n_g, n_h)
+            A = LO( args.u, args.dy, d_g, d_h)
+            print('Call power() with n_h=%d and n_g=%d'%(A.n_h,A.n_g))
             A.power(small=tol, n_iter=maxiter,verbose=True)
             d = sym_diff(A,ref_LO)
             error[key] = d
@@ -68,35 +81,42 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
 
     pickle.dump(error, open( args.out_file, "wb" ) )
     return 0
-def plot(file_name='result_converge'):
-    '''Function to plot result of main.  Invoke with
-    python3 -c "from converge import plot; plot('result_converge')"
+def read_ghz(file_name):
+    '''Get arrays g (1-d array of n_g values), h (1-d array of n_h values)
+    and z (2-d array of error values from pickled dict.
+
     '''
     import pickle
     import numpy as np
     error = pickle.load( open( file_name, "rb" ) )
-    gs = []
-    hs = []
+    gs = set([])
+    hs = set([])
     for key,d in error.items():
-        n_g,n_h = (int(s.split('=')[-1]) for s in key.split())
-        gs.append(n_g)
-        hs.append(n_h)
-        print('%s error=%f'%(key, d))
-    g = sorted(set(gs))
-    h = sorted(set(hs))
-    G,H = np.meshgrid(g, h)
-    z = np.empty(G.shape)
-    assert G.shape == (len(h), len(g))
+        d_g,d_h = (s.split('=')[-1] for s in key.split())
+        gs.add((float(d_g),d_g))
+        hs.add((float(d_h),d_h))
+    gs = sorted(set(gs)) # Sort on floats and keep strings for keys
+    hs = sorted(set(hs))
+    z = np.empty((len(hs), len(gs)))
+    for i in range(len(hs)):
+        for j in range(len(gs)):
+            key = 'd_g=%s d_h=%s'%(gs[j][1], hs[i][1])
+            z[i,j] = error[key]
+    h = [x[0] for x in hs]
+    g = [x[0] for x in gs]
+    return g,h,z
+
+def plot(file_name='result_converge'):
+    '''Function to plot result of main.  Invoke with
+    python3 -c "from converge import plot; plot('result_converge')"
+    '''
+    import numpy as np
+    import matplotlib as mpl
+    g,h,z = read_ghz(file_name)
     for i in range(len(h)):
         for j in range(len(g)):
-            try:
-                key = 'n_g=%d n_h=%d'%(g[j], h[i])
-            except:
-                print('j=%d i=%d'%(j,i))
-                key = 'n_g=%d n_h=%d'%(g[j], h[i])
-            z[i,j] = error[key]
-
-    import matplotlib as mpl
+            print('d_h=%g, d_g=%g,  %f'%(h[i],g[j],z[i,j]))
+    G,H = np.meshgrid(g, h)
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
               'text.fontsize': 15,
               'legend.fontsize': 15,
@@ -119,8 +139,8 @@ def plot(file_name='result_converge'):
     surf = ax.plot_surface(
             G, H, z, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
             antialiased=False)
-    ax.set_xlabel(r'$n_g$')
-    ax.set_ylabel(r'$n_h$')
+    ax.set_xlabel(r'$d_g$')
+    ax.set_ylabel(r'$d_h$')
     plt.show()
     
 if __name__ == "__main__":

@@ -216,8 +216,6 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.h_step = 2*self.h_max/(n_h-1)
         if self.h_step > 2*dy:
             print('WARNING: h_step=%f, dy=%f'%(self.h_step, dy))
-        g_step = self.g_step
-        h_step = self.h_step
 
         self.allowed()
         if not skip_pairs: self.pairs()
@@ -426,6 +424,35 @@ class LO(scipy.sparse.linalg.LinearOperator):
         w = self.bs.ev(g,h)    # Evaluate spline at points of v
         w /= LA.norm(w)        # Make w a unit vector
         return LA.norm(v - w)
+class LO_step(LO):
+    '''Variant of LO that uses g_step and h_step rather than n_h and n_g
+    as arguments to __init__
+    '''
+    def __init__(self,              # LO instance
+                 u,                 # Upper bound
+                 dy,                # Change in y
+                 g_step,            # Size of steps in position g
+                 h_step,            # Size of steps in slope h
+                 skip_pairs=False   # Call self.pairs if False
+                 ):
+        if h_step > 2*dy:
+            print('WARNING: h_step=%f, dy=%f'%(h_step, dy))
+        self.eigenvector = None
+        self.eigenvalue = None
+        self.dtype = np.dtype(np.float64)
+        self.dy = dy
+        self.g_max = u
+        self.g_min = -u
+        self.g_step = g_step
+        self.h_step = h_step
+        self.h_max = self.h_lim(self.g_min)
+        self.h_min = -self.h_max
+        self.n_h = int(1 + 2*self.h_max/h_step)
+        self.n_g = int(1 + 2*self.g_max/g_step)
+
+        self.allowed()
+        if not skip_pairs: self.pairs()
+        return
 def sym_diff(A, B):
         '''
         Calculate difference between eigenvectors of LO instances A and B.
