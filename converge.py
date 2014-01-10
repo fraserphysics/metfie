@@ -64,22 +64,22 @@ def main(argv=None):
     tol = 5e-6
     maxiter = 150
     error = {}
+    text = ''
 
     ref_LO = LO( args.u, args.dy, d_g_ref, d_h_ref)
-    print('Call power() with n_h=%d and n_g=%d'%(ref_LO.n_h,ref_LO.n_g))
+    text += 'For ref, n_g=%d and n_h=%d\n'%(ref_LO.n_g,ref_LO.n_h)
     ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
     for d_g in np.arange(d_g_small, d_g_big, dd_g):
         for d_h in np.arange(d_h_small, d_h_big, dd_h):
             key = 'd_g=%g d_h=%g'%(d_g, d_h)
             assert not key in error
             A = LO( args.u, args.dy, d_g, d_h)
-            print('Call power() with n_h=%d and n_g=%d'%(A.n_h,A.n_g))
             A.power(small=tol, n_iter=maxiter,verbose=True)
             d = sym_diff(A,ref_LO)
             error[key] = d
-            print('%s error=%f'%(key, d))
+            text += 'n_g=%d and n_h=%d, error=%g\n'%(A.n_g,A.n_h,d)
 
-    pickle.dump(error, open( args.out_file, "wb" ) )
+    pickle.dump((args,text,error), open( args.out_file, "wb" ) )
     return 0
 def read_ghz(file_name):
     '''Get arrays g (1-d array of n_g values), h (1-d array of n_h values)
@@ -88,7 +88,9 @@ def read_ghz(file_name):
     '''
     import pickle
     import numpy as np
-    error = pickle.load( open( file_name, "rb" ) )
+    args,text,error = pickle.load( open( file_name, "rb" ) )
+    print('args=\n%s\ntext=%s\n'%(args,text))
+    #error = pickle.load( open( file_name, "rb" ) )
     gs = set([])
     hs = set([])
     for key,d in error.items():
@@ -113,8 +115,8 @@ def plot(file_name='result_converge'):
     import numpy as np
     import matplotlib as mpl
     g,h,z = read_ghz(file_name)
-    for i in range(len(h)):
-        for j in range(len(g)):
+    for j in range(len(g)):
+        for i in range(len(h)):
             print('d_h=%g, d_g=%g,  %f'%(h[i],g[j],z[i,j]))
     G,H = np.meshgrid(g, h)
     params = {'axes.labelsize': 18,     # Plotting parameters for latex

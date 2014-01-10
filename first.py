@@ -410,10 +410,11 @@ class LO(scipy.sparse.linalg.LinearOperator):
         from scipy.interpolate import RectBivariateSpline
         self.bs = RectBivariateSpline(g, h, z, kx=3, ky=3)
         return
-    def diff(self, #LO instance
-                g, #List(like) of g values
-                h, #List(like) of h values
-                v, #eigenfunction at (g,h)
+    def diff(self,     #LO instance
+             g,        #List(like) of g values
+             h,        #List(like) of h values
+             v,        #eigenfunction at (g,h)
+             rv=False  #Return the vector difference 
                     ):
         ''' Calculate and return error of spline self.eigenvector at
         points g[i],h[i]
@@ -423,7 +424,10 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.spline()          # Build spline of self
         w = self.bs.ev(g,h)    # Evaluate spline at points of v
         w /= LA.norm(w)        # Make w a unit vector
-        return LA.norm(v - w)
+        u = v-w
+        d = LA.norm(u)
+        if rv: return d, u
+        else: return d
 class LO_step(LO):
     '''Variant of LO that uses g_step and h_step rather than n_h and n_g
     as arguments to __init__
