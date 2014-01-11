@@ -6,47 +6,12 @@ Default arguments have n_g and n_h take values (200,200) and
 (225,225).
 
 '''
-def plot(op, # Linear operator
-         f   # Difference of v_{PF}
-    ):
-    '''Function to plot a result of main.  
-    '''
-    import numpy as np
-    import matplotlib as mpl
-    g,h = op.gh()
-    z = op.vec2z(f)
-    G,H = np.meshgrid(g, h)
-    params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
-              'legend.fontsize': 15,
-              'text.usetex': True,
-              'xtick.labelsize': 15,
-              'ytick.labelsize': 15}
-    mpl.rcParams.update(params)
-    if True:
-        DEBUG = True
-        mpl.rcParams['text.usetex'] = False
-    else:
-        mpl.use('PDF')
-    import matplotlib.pyplot as plt  # must be after mpl.use
-    from mpl_toolkits.mplot3d import Axes3D  # Mysteriously necessary
-                                             #for "projection='3d'".
-    from matplotlib import cm
-    from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    fig = plt.figure(figsize=(24,12))
-    ax = fig.add_subplot(1,1,1, projection='3d', elev=5, azim=15)
-    surf = ax.plot_surface(
-            G, H, z, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
-            antialiased=False)
-    ax.set_xlabel(r'$g$')
-    ax.set_ylabel(r'$h$')
-    plt.show()
+import numpy as np
+import mayavi.mlab as ML
 import sys
 from first_c import LO
 def main(argv=None):
     import argparse
-    import numpy as np
-    global DEBUG
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
@@ -69,8 +34,6 @@ def main(argv=None):
     h_lim = np.sqrt(48*args.u)
     d_h = {'big':2*h_lim/args.n_h0, 'small':2*h_lim/args.n_h1}
     
-    from scipy.sparse.linalg import LinearOperator
-    
     tol = 5e-6
     maxiter = 150
     LO_ = {}
@@ -80,13 +43,61 @@ def main(argv=None):
         print('For %s, n_g=%d and n_h=%d\n'%(size, op.n_g, op.n_h))
         LO_[size] = op
     diffs = {}
+    plots = [] # to keep safe from garbage collection
     for a,b in (('big','small'),('small','big')):
         x = LO_[a].xyz()
         d, f = LO_[b].diff(x[0],x[1],x[2],rv=True)
         print('%s.diff(%s)=%g'%(b, a, d))
-        plot(LO_[a], f)
+        plots.append(plot(LO_[a], f))
+    ML.show()
     return 0
     
+def plot(op, # Linear operator
+         f   # Difference of v_{PF}
+    ):
+    '''Function to plot a result of main.  
+    '''
+    assert len(f) == op.n_states
+
+    def scale(*xyz):
+        '''This is a ultility function to prepare data for mayavi surface plots.
+        xyz should be a list of three numpy arrays each with the same
+        shape.  This function calculates applies a scalar affine
+        transformation to each so that the results range from 0 to 1.
+        It returns those 3 arrays and the oringinal bounds.
+        '''
+        rv = []
+        ranges = []
+        for w in xyz:
+            rv.append((w-w.min())/(w.max()-w.min()))
+            ranges.append(w.min())
+            ranges.append(w.max())
+        rv.append(ranges)
+        return rv
+    
+    g,h = op.gh()           # Get arrays of g and h values that occur
+    G,H = np.meshgrid(g, h) # Make 2d arrays
+    
+    floor=1e-30             # Need positive floor because I use logs
+    v = op.eigenvector
+    b = np.log10(np.fmax(v, floor))
+    z = op.vec2z(b, g, h, np.log10(floor))
+    fig_0 = ML.figure()
+    X,Y,Z,ranges = scale(G,H,z.T)
+    ranges[-2:] = [floor, v.max()] # Make plot show max before log
+    s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot
+    ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='v', figure=fig_0)
+
+    z = np.zeros(G.T.shape)
+    for i in range(op.n_states):
+        g,h,g_int,h_int = op.state_list[i]
+        z[g_int,h_int] = f[i]
+    fig_1 = ML.figure()
+    X,Y,Z,ranges = scale(G,H,z.T)
+    s_1 = ML.mesh(X,Y,Z, figure=fig_1) # This call makes the surface plot
+    ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='d', figure=fig_1)
+    return (fig_0, fig_1)
+
 if __name__ == "__main__":
     rv = main()
     sys.exit(rv)
