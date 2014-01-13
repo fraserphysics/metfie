@@ -12,6 +12,8 @@ ITYPE = np.int32
 ctypedef np.float64_t DTYPE_t
 ctypedef np.int32_t ITYPE_t
 from first import LO_step
+from cython.parallel import prange
+
 
 class LO(LO_step):
     ''' 
@@ -46,6 +48,42 @@ class LO(LO_step):
                 b = b_bounds[i,k]
                 for j in range(a,b):
                     rv_[j] += t
+        return rv
+    @cython.boundscheck(False)
+    def rmatvec(self, v, rv=None):
+        '''Implements transpose matrix vector multiply.  Allocates new vector
+        and returns v * self
+        '''
+        if not 'n_bounds' in self.__dict__: # See if rebound() already done
+            self.rebound()
+        if rv == None:
+            rv = np.zeros(self.n_states)
+        else:
+            rv[:] = 0.0
+        # Make views of numpy arrays
+        cdef ITYPE_t [:] n_bounds = self.n_bounds
+        cdef ITYPE_t [:,:] a_bounds = self.a_bounds
+        cdef ITYPE_t [:,:] b_bounds = self.b_bounds
+        cdef DTYPE_t [:] v__ = v
+        cdef DTYPE_t * v_
+        cdef DTYPE_t [:] rv_ = rv
+        cdef DTYPE_t temp
+        cdef int i, j, k, a, b, n, t_n, n_threads=8
+        cdef int n_states = self.n_states
+        cdef float dgdh = self.g_step*self.h_step
+        cdef float t
+
+        '''See http://docs.cython.org/src/userguide/parallelism.html.  Work on matvec()'''
+        v_ = &(v__[0])
+        for i in prange(n_states, nogil=True):
+            temp = 0.0
+            n = n_bounds[i]
+            for k in range(n):
+                a = a_bounds[i,k]
+                b = b_bounds[i,k]
+                for j in range(a,b):
+                    temp += v_[j] * dgdh
+            rv_[i] +=  temp
         return rv
     def rebound(self):
         '''Make numpy arrays from bounds for speed in matvec
@@ -83,7 +121,7 @@ class LO(LO_step):
                  v_old, # Last estimate of eigenvector.  Assume norm(v) = 1
                  v_new  # Storage for new eigenvector estimate
                  ):
-            self.matvec(v_old, v_new)
+            self.rmatvec(v_old, v_new)
             s = LA.norm(v_new)
             assert s > 0.0
             v_new /= s
