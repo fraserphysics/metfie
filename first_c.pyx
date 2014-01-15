@@ -47,7 +47,7 @@ class LO(LO_step):
         cdef float dgdh = self.g_step*self.h_step
         cdef float t
 
-        for i in range(n_states):
+        for i in range(n_states): # prange is slower
             t = v_[i] * dgdh
             n = n_bounds[i]
             bounds_a_i = <ITYPE_t *>(a_pointers[i])
@@ -59,6 +59,7 @@ class LO(LO_step):
                     rv_[j] += t
         return rv
     @cython.boundscheck(False)
+    @cython.wraparound(False)
     def rmatvec(self, v, rv=None):
         '''Implements transpose matrix vector multiply.  Allocates new vector
         and returns v * self
@@ -85,8 +86,8 @@ class LO(LO_step):
 
         '''See http://docs.cython.org/src/userguide/parallelism.html.  Work on matvec()'''
         v_ = &(v__[0])
-        #for i in prange(n_states, nogil=True):
-        for i in range(n_states):
+        for i in prange(n_states, nogil=True):
+        #for i in range(n_states):
             temp = 0.0
             n = n_bounds[i]
             bounds_a_i = <ITYPE_t *>(a_pointers[i])
@@ -160,48 +161,10 @@ class LO(LO_step):
         self.eigenvector = v_new
         return s,v_new
     
-    def ab(self,  # LO instance
-           low_,  # Lower limit of h range
-           high_, # Upper limit of h range
-           G_     # Combining G with each H in retuned range must be allowed
-           ):
-        ''' Return range of allowed state indices
-        '''
-
-        cdef float f, g, h, h_
-        cdef float h_step = self.h_step
-        cdef float h_min = self.h_min
-        cdef float low = low_
-        cdef float high = high_
-        
-        cdef int H
-        cdef int G = G_
-        cdef int a = -1
-        cdef int b = -2
-
-        h = low - h_step
-        while h < high + h_step:
-            H = int(round((h-h_min)/h_step))
-            f = h_min + H * h_step
-            if (G,H) in self.state_dict and f >= low:
-                g,h_,a = self.state_dict[(G,H)]
-                break
-            h += h_step*.4 # FixMe: why not .9 ?
-        if h > high:
-            return -1, -2 # No h values allowed
-        h = high + h_step
-        while h >  low - h_step:
-            H = int(round((h-h_min)/h_step))
-            f = h_min + H * h_step
-            if (G,H) in self.state_dict and f <= high:
-                g,h_,b = self.state_dict[(G,H)]
-                break
-            h -= h_step*.4
-        return a,b
+    @cython.boundscheck(False)
+    @cython.wraparound(False)
     def s_bounds(
             self,         # LO instance
-            L_g_,         # Lower bound on g in image
-            U_g_,         # Upper bound on g in image
             i,            # index of state in self.state_list
             backward=False):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
@@ -214,33 +177,56 @@ class LO(LO_step):
         cdef float g_step = self.g_step
         cdef float g_min = self.g_min
         cdef float g_max = self.g_max
-        cdef float L_g = L_g_
-        cdef float U_g = U_g_
+        cdef float h_step = self.h_step
+        cdef float h_min = self.h_min
         cdef float g_0
         cdef float dy = self.dy
+
+        assert backward == False
         
+        g_0, h_0, G_0, H_0 = self.state_list[i]
+        # Calculate float range of allowed g values
+        if g_0 > self.g_max - 6*self.dy**2:
+            U_g = self.g_max
+        else:
+            U_g = min(self.g_max,
+                g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
+        L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
+
         if L_g > U_g:
             return 0
-        
-        if backward:
-            ab = lambda L, U, G: self.ab(-U, -L, G)
-        else:
-            ab = lambda L, U, G: self.ab(L, U, G)
+        def ab(
+            low_,  # Lower limit of h range
+            high_, # Upper limit of h range
+            G_     # Combining G_ with each H in retuned range must be allowed
+            ):
+            ''' Return range of allowed state indices
+            '''
+
+            if G_ >= len(self.G2h_list):
+                return  -1, -2 # No h values allowed
+            i,j = np.searchsorted(self.G2h_list[G_], [low_,high_])
+            if j == 0:
+                return  -1, -2 # No h values allowed
+            i = min(i+1,j)
+            return (self.G2state[G_][x-1] for x in [i,j])
+
         g_0 = self.state_list[i][0]
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
 
-        i_min = int(round((L_g-g_min)/g_step)) - 1
-        i_max = int(round((U_g-g_min)/g_step)) + 1
+        i_min = max(0,int(round((L_g-g_min)/g_step)) - 1)
+        i_max = min(len(self.G2h_list), (int(round((U_g-g_min)/g_step)+1)))
         
+        #for G_1 in prange(i_min,i_max, nogil=True):
         for G_1 in range(i_min,i_max):
             g_1 = g_min + G_1 * g_step
             if g_1 < L_g or g_1 > U_g:
                 continue
             L_h = (g_1 - g_0)/dy - 6 * dy
-            U_h = np.sqrt(24*(g_max - g_1)) # self.h_lim(g_1) Slow
+            U_h = (24*(g_max - g_1))**.5
             if g_0 > g_max - 6*dy:
                 if L_h < -U_h:
                     L_h = -U_h

@@ -64,14 +64,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''
         rv = int(round((f-_min)/step)) # Simply round in python3
         return rv,self.I2f(rv,n_max,step,_min,_max)
-    def h2H(self,
-            h,  # float
+    def h2H(self, # LO instance
+            h,    # float
             ):
         return self.f2I(h, self.n_h, self.h_step, self.h_min, self.h_max)
     def g2G(self, g  # float
             ):
         return self.f2I(g, self.n_g, self.g_step, self.g_min, self.g_max)
-    def I2f(self,
+    def I2f(self,  # LO instance
             I,     # float
             n_max,
             step,
@@ -81,12 +81,12 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''
         rv = _min + I * step
         return rv
-    def H2h(self,
-            H,  # Int
+    def H2h(self,  # LO instance
+            H,     # Int
             ):
         return self.I2f(H, self.n_h, self.h_step, self.h_min, self.h_max)
-    def G2g(self,
-            G,  # Int
+    def G2g(self,  # LO instance
+            G,     # Int
             ):
         return self.I2f(G, self.n_g, self.g_step, self.g_min, self.g_max)
     
@@ -100,6 +100,12 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''Return range of allowed state indices for given G and
         low <= h <= high
         '''
+        if G >= len(self.G2h_list):
+            return  -1, -2 # No h values allowed
+        i,j = np.searchsorted(self.G2h_list[G], [low,high])
+        if i == j:
+            return  -1, -2 # No h values allowed
+        A,B = (self.G2state[G][x-1] for x in [i,j])
         h_step = self.h_step
         a = -1
         b = -2
@@ -119,7 +125,19 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 g,h_,b = self.state_dict[(G,H)]
                 break
             h -= h_step*.4
-        return a,b
+        if a==A and b==B:
+            return a,b
+        print('a=%d, b=%d, searchsorted found %d %d'%(a,b,A,B))
+        A,B = np.searchsorted(self.G2h_list[G], np.array([low,high]))
+        print('A=%d, low=%g'%(A,low))
+        print('B=%d, high=%g'%(B,high))
+        for i in [A-1,A,A+1,B-1,B,B+1]:
+            if i<0 or i >= len(self.G2h_list[G]):
+                continue
+            print('state[%d] =%d h[%d]=%g'%(
+                i,self.G2state[G][i],i,self.G2h_list[G][i]))
+        #return a,b
+        assert False
     def fi_range(self, # LO instance
                  low, high, step, f2i):
         '''Return sequence of int,float pairs defined by method passed
@@ -142,19 +160,27 @@ class LO(scipy.sparse.linalg.LinearOperator):
             yield (i,f)
     def s_bounds(
             self,          # LO instance
-            L_g,           # Lower bound on g in image
-            U_g,           # Upper bound on g in image
             i,             # index of state in self.state_list
             backward=False):
-        '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
-        find sequences of state indices for allowed successors and append
-        them to bounds.
+        '''Find legal successors of state i and save representations
+        of them in the self.*bounds* arrays.  Only state points that are
+        within the continuous region that is the image of state i are
+        considered.
         '''
         if backward:
             ab = lambda L, U, G: self.ab(-U, -L, G)
         else:
             ab = lambda L, U, G: self.ab(L, U, G)
-        g_0 = self.state_list[i][0]
+        
+        g_0, h_0, G_0, H_0 = self.state_list[i]
+        # Calculate float range of allowed g values
+        if g_0 > self.g_max - 6*self.dy**2:
+            U_g = self.g_max
+        else:
+            U_g = min(self.g_max,
+                g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
+        L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
+
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
@@ -165,7 +191,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             if g_0 > self.g_max - 6*self.dy:
                 L_h = max( L_h, -U_h )
             a,b = ab(L_h, U_h, G_1)
-            if b >= a:
+            if b > a:
                 bounds_a[len_bounds] = a
                 bounds_b[len_bounds] = b
                 len_bounds += 1
@@ -177,6 +203,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         # Calculate the allowed states
         self.state_list = []
         self.state_dict = {}
+        self.G2h_list = []   # G2h_list[G] is sorted list of h values
+        self.G2state = []    # G2state[i] is state with h value G2h_list[G][i]
         for _g in np.arange(self.g_min, self.g_max, self.g_step):
             G,g = self.g2G(_g)
             T,t = self.g2G(g)
@@ -185,9 +213,15 @@ class LO(scipy.sparse.linalg.LinearOperator):
             assert abs(g-_g) < self.g_step
             h_max = self.h_lim(g)
             h_min = -h_max
+            h_list_G = []
+            state_list_G = []
             for H,h in self.fi_range(h_min, h_max, self.h_step, self.h2H):
                 self.state_dict[(G,H)] = (g,h,len(self.state_list))
+                h_list_G.append(h)
+                state_list_G.append(len(self.state_list))
                 self.state_list.append((g,h,G,H))
+            self.G2h_list.append(np.array(h_list_G))
+            self.G2state.append(np.array(state_list_G))
         self.n_states = len(self.state_list)
         return
     def pairs(self):
@@ -198,14 +232,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.bounds_a = np.empty((n_states), np.object)
         self.bounds_b = np.empty((n_states), np.object)
         for i in range(n_states):
-            g_0, h_0, G_0, H_0 = self.state_list[i]
-            if g_0 > self.g_max - 6*self.dy**2:
-                U_g = self.g_max
-            else:
-                U_g = min(self.g_max,
-                    g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
-            L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
-            n_pairs += self.s_bounds(L_g, U_g, i)
+            n_pairs += self.s_bounds(i)
         self.n_pairs = n_pairs
         return
     def __init__(self,              # LO instance
