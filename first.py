@@ -140,7 +140,12 @@ class LO(scipy.sparse.linalg.LinearOperator):
             if f < low or f > high:
                 continue
             yield (i,f)
-    def s_bounds(self, L_g, U_g, g_0, bounds, backward=False):
+    def s_bounds(
+            self,          # LO instance
+            L_g,           # Lower bound on g in image
+            U_g,           # Upper bound on g in image
+            i,             # index of state in self.state_list
+            backward=False):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
         them to bounds.
@@ -149,6 +154,10 @@ class LO(scipy.sparse.linalg.LinearOperator):
             ab = lambda L, U, G: self.ab(-U, -L, G)
         else:
             ab = lambda L, U, G: self.ab(L, U, G)
+        g_0 = self.state_list[i][0]
+        bounds_a = np.zeros(self.n_g, dtype=np.int32)
+        bounds_b = np.zeros(self.n_g, dtype=np.int32)
+        len_bounds = 0
         n_pairs = 0
         for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
             L_h = (g_1 - g_0)/self.dy - 6 * self.dy
@@ -157,8 +166,12 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 L_h = max( L_h, -U_h )
             a,b = ab(L_h, U_h, G_1)
             if b >= a:
-                bounds.append( (a,b+1) )
+                bounds_a[len_bounds] = a
+                bounds_b[len_bounds] = b
+                len_bounds += 1
                 n_pairs += b + 1 - a
+        self.bounds_a[i] = np.array(bounds_a[:len_bounds])
+        self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         return n_pairs
     def allowed(self):
         # Calculate the allowed states
@@ -178,13 +191,13 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.n_states = len(self.state_list)
         return
     def pairs(self):
-        # Calculate allowed pairs of states
+        # Calculate allowed sequential pairs of states
         n_states = self.n_states
         self.shape = (n_states, n_states)
         n_pairs = 0
-        self.bounds = np.empty((n_states), np.object)
+        self.bounds_a = np.empty((n_states), np.object)
+        self.bounds_b = np.empty((n_states), np.object)
         for i in range(n_states):
-            self.bounds[i] = []
             g_0, h_0, G_0, H_0 = self.state_list[i]
             if g_0 > self.g_max - 6*self.dy**2:
                 U_g = self.g_max
@@ -192,7 +205,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 U_g = min(self.g_max,
                     g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
             L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
-            n_pairs += self.s_bounds(L_g, U_g, g_0, self.bounds[i])
+            n_pairs += self.s_bounds(L_g, U_g, i)
         self.n_pairs = n_pairs
         return
     def __init__(self,              # LO instance
@@ -301,7 +314,9 @@ class LO(scipy.sparse.linalg.LinearOperator):
         dgdh = self.g_step*self.h_step
         for i in range(self.n_states):
             x = v[i]
-            for a,b in self.bounds[i]:
+            for j in range(len(self.bounds_a[i])):
+                a = self.bounds_a[i][j]
+                b = self.bounds_b[i][j]
                 rv[a:b] += x*dgdh
         return rv
     def rmatvec(self, v, rv=None):

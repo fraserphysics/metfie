@@ -7,10 +7,16 @@ than first.py, but it does not introduce any new methods.
 # python setup.py build_ext --inplace
 import numpy as np
 cimport cython, numpy as np
+
 DTYPE = np.float64
-ITYPE = np.int32
 ctypedef np.float64_t DTYPE_t
+
+ITYPE = np.int32
 ctypedef np.int32_t ITYPE_t
+
+PTYPE = np.int64               # For pointers
+ctypedef np.int64_t PTYPE_t
+
 from first import LO_step
 from cython.parallel import prange
 
@@ -31,8 +37,9 @@ class LO(LO_step):
             rv[:] = 0.0
         # Make views of numpy arrays
         cdef ITYPE_t [:] n_bounds = self.n_bounds
-        cdef ITYPE_t [:,:] a_bounds = self.a_bounds
-        cdef ITYPE_t [:,:] b_bounds = self.b_bounds
+        cdef PTYPE_t [:] a_pointers = self.a_pointers
+        cdef PTYPE_t [:] b_pointers = self.b_pointers
+        cdef ITYPE_t *bounds_a_i, *bounds_b_i
         cdef DTYPE_t [:] v_ = v
         cdef DTYPE_t [:] rv_ = rv
         cdef int i, j, k, a, b, n
@@ -43,9 +50,11 @@ class LO(LO_step):
         for i in range(n_states):
             t = v_[i] * dgdh
             n = n_bounds[i]
+            bounds_a_i = <ITYPE_t *>(a_pointers[i])
+            bounds_b_i = <ITYPE_t *>(b_pointers[i])
             for k in range(n):
-                a = a_bounds[i,k]
-                b = b_bounds[i,k]
+                a = bounds_a_i[k]
+                b = bounds_b_i[k]
                 for j in range(a,b):
                     rv_[j] += t
         return rv
@@ -62,8 +71,9 @@ class LO(LO_step):
             rv[:] = 0.0
         # Make views of numpy arrays
         cdef ITYPE_t [:] n_bounds = self.n_bounds
-        cdef ITYPE_t [:,:] a_bounds = self.a_bounds
-        cdef ITYPE_t [:,:] b_bounds = self.b_bounds
+        cdef PTYPE_t [:] a_pointers = self.a_pointers
+        cdef PTYPE_t [:] b_pointers = self.b_pointers
+        cdef ITYPE_t *bounds_a_i, *bounds_b_i
         cdef DTYPE_t [:] v__ = v
         cdef DTYPE_t * v_
         cdef DTYPE_t [:] rv_ = rv
@@ -75,36 +85,43 @@ class LO(LO_step):
 
         '''See http://docs.cython.org/src/userguide/parallelism.html.  Work on matvec()'''
         v_ = &(v__[0])
-        for i in prange(n_states, nogil=True):
+        #for i in prange(n_states, nogil=True):
+        for i in range(n_states):
             temp = 0.0
             n = n_bounds[i]
+            bounds_a_i = <ITYPE_t *>(a_pointers[i])
+            bounds_b_i = <ITYPE_t *>(b_pointers[i])
             for k in range(n):
-                a = a_bounds[i,k]
-                b = b_bounds[i,k]
+                a = bounds_a_i[k]
+                b = bounds_b_i[k]
                 for j in range(a,b):
                     temp += v_[j] * dgdh
             rv_[i] +=  temp
         return rv
     def rebound(self):
-        '''Make numpy arrays from bounds for speed in matvec
+        '''Make numpy arrays for speed in matvec
         '''
-        cdef int n_states = self.n_states
-        cdef int i, j, n
-        bounds = self.bounds
-        max_len = max([len(bounds[i]) for i in range(n_states)])
-        self.n_bounds = np.zeros(n_states, dtype=np.int32)
-        self.a_bounds = np.zeros((n_states, max_len), dtype=np.int32)
-        self.b_bounds = np.zeros((n_states, max_len), dtype=np.int32)
-        # Make views of numpy arrays
-        cdef ITYPE_t [:] n_bounds = self.n_bounds
-        cdef ITYPE_t [:,:] a_bounds = self.a_bounds
-        cdef ITYPE_t [:,:] b_bounds = self.b_bounds
-        for i in range(n_states):
-            n = len(bounds[i])
-            n_bounds[i] = n
-            for j in range(n):
-                a_bounds[i,j],b_bounds[i,j] = bounds[i][j]
-        self.bounds = None # Memory management
+        cdef int i, m, n = self.n_states
+        cdef PTYPE_t [:] a_pointers = np.empty(n, dtype=np.int64)
+        cdef PTYPE_t [:] b_pointers = np.empty(n, dtype=np.int64)
+        cdef ITYPE_t [:] n_bounds = np.empty(n, dtype=np.int32)
+        cdef ITYPE_t [:] i_view
+
+        for i in range(n):
+            m = len(self.bounds_a[i])
+            n_bounds[i] = m
+            if m == 0:
+                a_pointers[i] = <PTYPE_t>0
+                b_pointers[i] = <PTYPE_t>0
+            else:
+                i_view = self.bounds_a[i]
+                a_pointers[i] = <PTYPE_t>(&(i_view[0]))
+                i_view = self.bounds_b[i]
+                b_pointers[i] = <PTYPE_t>(&(i_view[0]))
+            
+        self.n_bounds = n_bounds
+        self.a_pointers = a_pointers
+        self.b_pointers = b_pointers
         return
 
     def power(self, n_iter=1000, small=1.0e-5, v=None, op=None, verbose=False):
@@ -181,7 +198,12 @@ class LO(LO_step):
                 break
             h -= h_step*.4
         return a,b
-    def s_bounds(self, L_g_, U_g_, g_0_, bounds, backward=False):
+    def s_bounds(
+            self,         # LO instance
+            L_g_,         # Lower bound on g in image
+            U_g_,         # Upper bound on g in image
+            i,            # index of state in self.state_list
+            backward=False):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
         them to bounds.
@@ -194,7 +216,7 @@ class LO(LO_step):
         cdef float g_max = self.g_max
         cdef float L_g = L_g_
         cdef float U_g = U_g_
-        cdef float g_0 = g_0_
+        cdef float g_0
         cdef float dy = self.dy
         
         if L_g > U_g:
@@ -204,6 +226,10 @@ class LO(LO_step):
             ab = lambda L, U, G: self.ab(-U, -L, G)
         else:
             ab = lambda L, U, G: self.ab(L, U, G)
+        g_0 = self.state_list[i][0]
+        bounds_a = np.zeros(self.n_g, dtype=np.int32)
+        bounds_b = np.zeros(self.n_g, dtype=np.int32)
+        len_bounds = 0
         n_pairs = 0
 
         i_min = int(round((L_g-g_min)/g_step)) - 1
@@ -220,8 +246,12 @@ class LO(LO_step):
                     L_h = -U_h
             a,b = ab(L_h, U_h, G_1)         # Slow
             if b >= a:
-                bounds.append( (a,b+1) )    # Slow
+                bounds_a[len_bounds] = a
+                bounds_b[len_bounds] = b
+                len_bounds += 1
                 n_pairs += b + 1 - a
+        self.bounds_a[i] = np.array(bounds_a[:len_bounds])
+        self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         return n_pairs
     
 #---------------
