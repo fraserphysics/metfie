@@ -21,7 +21,7 @@ from first import LO_step
 from cython.parallel import prange
 
 
-class LO(LO_step):
+class LO_step(LO_step):
     ''' 
     '''
     @cython.boundscheck(False)
@@ -171,16 +171,10 @@ class LO(LO_step):
         find sequences of state indices for allowed successors and append
         them to bounds.
         '''
-        cdef int i_min, i_max, G_1, n_pairs
-
-        cdef float g_1
-        cdef float g_step = self.g_step
-        cdef float g_min = self.g_min
-        cdef float g_max = self.g_max
-        cdef float h_step = self.h_step
-        cdef float h_min = self.h_min
-        cdef float g_0
-        cdef float dy = self.dy
+        cdef ITYPE_t [:,:] G2state = np.array(self.G2state, dtype=ITYPE)
+        cdef DTYPE_t [:,:] G2h_list = np.array(self.G2h_list, dtype=DTYPE)
+        cdef double L_h, U_h
+        cdef int G_1
 
         assert backward == False
         
@@ -192,50 +186,58 @@ class LO(LO_step):
             U_g = min(self.g_max,
                 g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
         L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
-
         if L_g > U_g:
             return 0
         def ab(
-            low_,  # Lower limit of h range
-            high_, # Upper limit of h range
-            G_     # Combining G_ with each H in retuned range must be allowed
+            double low,  # Lower limit of h range
+            double high, # Upper limit of h range
+            int G        # Index of g for state
             ):
             ''' Return range of allowed state indices
             '''
+            cdef int a,b
+            s_i, s_f = G2state[G]
+            h_i, h_f = G2h_list[G]
+            if s_i == s_f:
+                if low <= h_i and h_i <= high:
+                    return s_i, s_i+1           # Single state in image
+                else:
+                    return -1, -2               # No states allowed
+            Ds = s_f-s_i
+            dh_ds = (h_f-h_i)/Ds
+            if low <= h_i:
+                a = s_i
+            else:
+                i = int((low-h_i)/dh_ds)
+                a = s_i + i
+                if h_i+dh_ds*i < low:
+                    a += 1
+            if high >= h_f:
+                b = s_f + 1
+            else:
+                i = int((h_f - high)/dh_ds)
+                b = s_i + i
+                if h_i+dh_ds*i < high:
+                    b += 1
+            return a,b
 
-            if G_ >= len(self.G2h_list):
-                return  -1, -2 # No h values allowed
-            i,j = np.searchsorted(self.G2h_list[G_], [low_,high_])
-            if j == 0:
-                return  -1, -2 # No h values allowed
-            i = min(i+1,j)
-            return (self.G2state[G_][x-1] for x in [i,j])
-
-        g_0 = self.state_list[i][0]
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
-
-        i_min = max(0,int(round((L_g-g_min)/g_step)) - 1)
-        i_max = min(len(self.G2h_list), (int(round((U_g-g_min)/g_step)+1)))
-        
-        #for G_1 in prange(i_min,i_max, nogil=True):
-        for G_1 in range(i_min,i_max):
-            g_1 = g_min + G_1 * g_step
-            if g_1 < L_g or g_1 > U_g:
-                continue
-            L_h = (g_1 - g_0)/dy - 6 * dy
-            U_h = (24*(g_max - g_1))**.5
-            if g_0 > g_max - 6*dy:
-                if L_h < -U_h:
-                    L_h = -U_h
-            a,b = ab(L_h, U_h, G_1)         # Slow
-            if b >= a:
+        for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
+            if G_1 >= len(self.G2state):
+                break
+            L_h = (g_1 - g_0)/self.dy - 6 * self.dy
+            U_h = self.h_lim(g_1)
+            if g_0 > self.g_max - 6*self.dy:
+                L_h = max( L_h, -U_h )
+            a,b = ab(L_h, U_h, G_1)
+            if b > a:
                 bounds_a[len_bounds] = a
                 bounds_b[len_bounds] = b
                 len_bounds += 1
-                n_pairs += b + 1 - a
+                n_pairs += b - a
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         return n_pairs

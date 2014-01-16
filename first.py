@@ -60,7 +60,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             step,
             _min,
             _max):
-        ''' Map float to integer index and fiducial float
+        ''' Map float to integer index of closest fiducial float
         '''
         rv = int(round((f-_min)/step)) # Simply round in python3
         return rv,self.I2f(rv,n_max,step,_min,_max)
@@ -72,7 +72,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             ):
         return self.f2I(g, self.n_g, self.g_step, self.g_min, self.g_max)
     def I2f(self,  # LO instance
-            I,     # float
+            I,     # int
             n_max,
             step,
             _min,
@@ -100,44 +100,30 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''Return range of allowed state indices for given G and
         low <= h <= high
         '''
-        if G >= len(self.G2h_list):
-            return  -1, -2 # No h values allowed
-        i,j = np.searchsorted(self.G2h_list[G], [low,high])
-        if i == j:
-            return  -1, -2 # No h values allowed
-        A,B = (self.G2state[G][x-1] for x in [i,j])
-        h_step = self.h_step
-        a = -1
-        b = -2
-        h = low - h_step
-        while h < high + h_step:
-            H,f = self.h2H(h)
-            if (G,H) in self.state_dict and f >= low:
-                g,h_,a = self.state_dict[(G,H)]
-                break
-            h += h_step*.4 # FixMe: why not .9 ?
-        if h > high:
-            return -1, -2 # No h values allowed
-        h = high + h_step
-        while h >  low - h_step:
-            H,f = self.h2H(h)
-            if (G,H) in self.state_dict and f <= high:
-                g,h_,b = self.state_dict[(G,H)]
-                break
-            h -= h_step*.4
-        if a==A and b==B:
-            return a,b
-        print('a=%d, b=%d, searchsorted found %d %d'%(a,b,A,B))
-        A,B = np.searchsorted(self.G2h_list[G], np.array([low,high]))
-        print('A=%d, low=%g'%(A,low))
-        print('B=%d, high=%g'%(B,high))
-        for i in [A-1,A,A+1,B-1,B,B+1]:
-            if i<0 or i >= len(self.G2h_list[G]):
-                continue
-            print('state[%d] =%d h[%d]=%g'%(
-                i,self.G2state[G][i],i,self.G2h_list[G][i]))
-        #return a,b
-        assert False
+        s_i, s_f = self.G2state[G]
+        h_i, h_f = self.G2h_list[G]
+        if s_i == s_f:
+            if low <= h_i and h_i <= high:
+                return s_i, s_i+1           # Single state in image
+            else:
+                return -1, -2               # No states allowed
+        Ds = s_f-s_i
+        dh_ds = (h_f-h_i)/Ds
+        if low <= h_i:
+            a = s_i
+        else:
+            i = int((low-h_i)/dh_ds)
+            a = s_i + i
+            if h_i+dh_ds*i < low:
+                a += 1
+        if high >= h_f:
+            b = s_f + 1
+        else:
+            i = int((h_f - high)/dh_ds)
+            b = s_i + i
+            if h_i+dh_ds*i < high:
+                b += 1
+        return a,b
     def fi_range(self, # LO instance
                  low, high, step, f2i):
         '''Return sequence of int,float pairs defined by method passed
@@ -180,12 +166,15 @@ class LO(scipy.sparse.linalg.LinearOperator):
             U_g = min(self.g_max,
                 g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
         L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
-
+        if L_g > U_g:
+            return 0
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
         for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
+            if G_1 >= len(self.G2state):
+                break
             L_h = (g_1 - g_0)/self.dy - 6 * self.dy
             U_h = self.h_lim(g_1)
             if g_0 > self.g_max - 6*self.dy:
@@ -195,7 +184,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 bounds_a[len_bounds] = a
                 bounds_b[len_bounds] = b
                 len_bounds += 1
-                n_pairs += b + 1 - a
+                n_pairs += b - a
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         return n_pairs
@@ -205,20 +194,35 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.state_dict = {}
         self.G2h_list = []   # G2h_list[G] is sorted list of h values
         self.G2state = []    # G2state[i] is state with h value G2h_list[G][i]
+        First = True
         for _g in np.arange(self.g_min, self.g_max, self.g_step):
             G,g = self.g2G(_g)
             T,t = self.g2G(g)
             assert T == G
             assert t == g
             assert abs(g-_g) < self.g_step
+            if First:
+                First = False
+            else:
+                assert G_old != G
+            G_old = G
             h_max = self.h_lim(g)
             h_min = -h_max
+            list_ = list(self.fi_range(h_min, h_max, self.h_step, self.h2H))
+            assert len(list_) > 0
+            bottom = list_[0]
+            top = list_[-1]
             h_list_G = []
             state_list_G = []
-            for H,h in self.fi_range(h_min, h_max, self.h_step, self.h2H):
+            for i in range(len(list_)):
+                H,h = list_[i]
                 self.state_dict[(G,H)] = (g,h,len(self.state_list))
-                h_list_G.append(h)
-                state_list_G.append(len(self.state_list))
+                if i == 0:
+                    h_list_G.append(h)
+                    state_list_G.append(len(self.state_list))
+                if i == (len(list_))-1:
+                    h_list_G.append(h)
+                    state_list_G.append(len(self.state_list))
                 self.state_list.append((g,h,G,H))
             self.G2h_list.append(np.array(h_list_G))
             self.G2state.append(np.array(state_list_G))
