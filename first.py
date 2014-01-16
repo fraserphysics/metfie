@@ -204,12 +204,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
             if First:
                 First = False
             else:
-                assert G_old != G
+                if G_old == G:
+                    continue    # Round off lead to repeated G
             G_old = G
             h_max = self.h_lim(g)
             h_min = -h_max
             list_ = list(self.fi_range(h_min, h_max, self.h_step, self.h2H))
-            assert len(list_) > 0
+            if len(list_) == 0:
+                continue        # No alowed states for this value of g
             bottom = list_[0]
             top = list_[-1]
             h_list_G = []
@@ -235,9 +237,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
         n_pairs = 0
         self.bounds_a = np.empty((n_states), np.object)
         self.bounds_b = np.empty((n_states), np.object)
+        childless = 0
         for i in range(n_states):
-            n_pairs += self.s_bounds(i)
+            n_successors = self.s_bounds(i)
+            n_pairs += n_successors
+            if n_successors == 0: childless += 1
         self.n_pairs = n_pairs
+        print('%d states without successors, fraction=%g'%(
+            childless, float(childless)/n_states))
         return
     def __init__(self,              # LO instance
                  u,                 # Upper bound

@@ -164,7 +164,7 @@ class LO_step(LO_step):
     @cython.wraparound(False)
     def s_bounds(
             self,         # LO instance
-            int i,        # index of state in self.state_list
+            int state_n,        # index of state in self.state_list
             backward=False):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
@@ -179,7 +179,7 @@ class LO_step(LO_step):
 
         assert backward == False
         
-        g_0, h_0, G_0, H_0 = self.state_list[i]
+        g_0, h_0, G_0, H_0 = self.state_list[state_n]
         # Calculate float range of allowed g values
         if g_0 > g_max - 6*dy**2:
             U_g = g_max
@@ -188,6 +188,8 @@ class LO_step(LO_step):
                 g_0 + dy*self.h_lim(g_0) - 6*dy**2)
         L_g = max(self.g_min,g_0 + h_0*dy - 6*dy**2)
         if L_g > U_g:
+            self.bounds_a[state_n] = np.zeros(0, dtype=np.int32)
+            self.bounds_b[state_n] = self.bounds_a[state_n]
             return 0
 
         cdef int G_len = len(self.G2state)
@@ -203,7 +205,7 @@ class LO_step(LO_step):
         cdef DTYPE_t [:] gs = np.array(gs_p, dtype=DTYPE)
         cdef ITYPE_t [:] bounds_a = np.zeros(self.n_g, dtype=np.int32)
         cdef ITYPE_t [:] bounds_b = np.zeros(self.n_g, dtype=np.int32)
-        cdef int j, s_i, s_f, Ds, a, b, len_bounds = 0
+        cdef int i, j, s_i, s_f, Ds, a, b, len_bounds = 0
         cdef double h_i, h_f, Dh
         for j in range(n_g):
             a = b = 0
@@ -245,8 +247,8 @@ class LO_step(LO_step):
             bounds_b[len_bounds] = b
             len_bounds += 1
             n_pairs += b - a
-        self.bounds_a[i] = np.array(bounds_a[:len_bounds])
-        self.bounds_b[i] = np.array(bounds_b[:len_bounds])
+        self.bounds_a[state_n] = np.array(bounds_a[:len_bounds])
+        self.bounds_b[state_n] = np.array(bounds_b[:len_bounds])
         return n_pairs
     
 #---------------
