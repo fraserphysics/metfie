@@ -17,7 +17,7 @@ sys     0m0.820s
 '''
 import sys
 #from first import LO_step as LO
-from first_c import LO
+from first_c import LO_step as LO
 def main(argv=None):
     import argparse
     import numpy as np
@@ -58,7 +58,6 @@ def main(argv=None):
     dd_h = (d_h_big - d_h_small)/args.n_h_step
     d_h_ref = args.ref_frac*d_h_small
     
-    from scipy.sparse.linalg import LinearOperator
     from first import sym_diff
     import pickle
     

@@ -87,7 +87,6 @@ class LO_step(LO_step):
         '''See http://docs.cython.org/src/userguide/parallelism.html.  Work on matvec()'''
         v_ = &(v__[0])
         for i in prange(n_states, nogil=True):
-        #for i in range(n_states):
             temp = 0.0
             n = n_bounds[i]
             bounds_a_i = <ITYPE_t *>(a_pointers[i])
@@ -165,7 +164,7 @@ class LO_step(LO_step):
     @cython.wraparound(False)
     def s_bounds(
             self,         # LO instance
-            i,            # index of state in self.state_list
+            int i,        # index of state in self.state_list
             backward=False):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
@@ -173,71 +172,79 @@ class LO_step(LO_step):
         '''
         cdef ITYPE_t [:,:] G2state = np.array(self.G2state, dtype=ITYPE)
         cdef DTYPE_t [:,:] G2h_list = np.array(self.G2h_list, dtype=DTYPE)
-        cdef double L_h, U_h
-        cdef int G_1
+        cdef double g_max = self.g_max
+        cdef double dy = self.dy
+        cdef double g_0, h_0, g_1, L_h, U_h
+        cdef int G_0, G_1
 
         assert backward == False
         
         g_0, h_0, G_0, H_0 = self.state_list[i]
         # Calculate float range of allowed g values
-        if g_0 > self.g_max - 6*self.dy**2:
-            U_g = self.g_max
+        if g_0 > g_max - 6*dy**2:
+            U_g = g_max
         else:
-            U_g = min(self.g_max,
-                g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
-        L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
+            U_g = min(g_max,
+                g_0 + dy*self.h_lim(g_0) - 6*dy**2)
+        L_g = max(self.g_min,g_0 + h_0*dy - 6*dy**2)
         if L_g > U_g:
             return 0
-        def ab(
-            double low,  # Lower limit of h range
-            double high, # Upper limit of h range
-            int G        # Index of g for state
-            ):
-            ''' Return range of allowed state indices
-            '''
-            cdef int a,b
-            s_i, s_f = G2state[G]
-            h_i, h_f = G2h_list[G]
-            if s_i == s_f:
-                if low <= h_i and h_i <= high:
-                    return s_i, s_i+1           # Single state in image
-                else:
-                    return -1, -2               # No states allowed
+
+        cdef int G_len = len(self.G2state)
+        cdef int n_pairs = 0
+        cdef int n_g = 0
+        Gs_p = []
+        gs_p = []
+        for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
+            Gs_p.append(G_1)
+            gs_p.append(g_1)
+            n_g += 1
+        cdef ITYPE_t [:] Gs = np.array(Gs_p, dtype=ITYPE)
+        cdef DTYPE_t [:] gs = np.array(gs_p, dtype=DTYPE)
+        cdef ITYPE_t [:] bounds_a = np.zeros(self.n_g, dtype=np.int32)
+        cdef ITYPE_t [:] bounds_b = np.zeros(self.n_g, dtype=np.int32)
+        cdef int j, s_i, s_f, Ds, a, b, len_bounds = 0
+        cdef double h_i, h_f, Dh
+        for j in range(n_g):
+            a = b = 0
+            G_1 = Gs[j]
+            g_1 = gs[j]
+            if G_1 >= G_len:
+                break
+            L_h = (g_1 - g_0)/dy - 6 * dy
+            U_h = (24*(g_max - g_1))**.5
+            if g_0 > g_max - 6*dy:
+                L_h = max( L_h, -U_h )
+
+
+            s_i = G2state[G_1,0]
+            s_f = G2state[G_1,1]
+            h_i = G2h_list[G_1,0]
+            h_f = G2h_list[G_1,1]
+            if s_i == s_f and not (L_h <= h_i and h_f <= U_h):
+                continue               # No states allowed
             Ds = s_f-s_i
-            dh_ds = (h_f-h_i)/Ds
-            if low <= h_i:
+            Dh = h_f-h_i
+            if L_h <= h_i:
                 a = s_i
             else:
-                i = int((low-h_i)/dh_ds)
+                i = int((L_h-h_i)/(Dh/Ds))
                 a = s_i + i
-                if h_i+dh_ds*i < low:
+                if h_i+(Dh/Ds)*i < L_h:
                     a += 1
-            if high >= h_f:
+            if U_h >= h_f:
                 b = s_f + 1
             else:
-                i = int((h_f - high)/dh_ds)
+                i = int((h_f - U_h)/(Dh/Ds))
                 b = s_i + i
-                if h_i+dh_ds*i < high:
+                if h_i+(Dh/Ds)*i < U_h:
                     b += 1
-            return a,b
-
-        bounds_a = np.zeros(self.n_g, dtype=np.int32)
-        bounds_b = np.zeros(self.n_g, dtype=np.int32)
-        len_bounds = 0
-        n_pairs = 0
-        for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
-            if G_1 >= len(self.G2state):
-                break
-            L_h = (g_1 - g_0)/self.dy - 6 * self.dy
-            U_h = self.h_lim(g_1)
-            if g_0 > self.g_max - 6*self.dy:
-                L_h = max( L_h, -U_h )
-            a,b = ab(L_h, U_h, G_1)
-            if b > a:
-                bounds_a[len_bounds] = a
-                bounds_b[len_bounds] = b
-                len_bounds += 1
-                n_pairs += b - a
+            if b <= a:
+                continue
+            bounds_a[len_bounds] = a
+            bounds_b[len_bounds] = b
+            len_bounds += 1
+            n_pairs += b - a
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         return n_pairs
