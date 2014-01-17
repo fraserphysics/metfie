@@ -235,6 +235,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.bounds_b = np.empty((n_states), np.object)
         childless = 0
         for i in range(n_states):
+            # Commenting out the following call reduces LO build time
+            # (n_g=500, n_h=500) from 9.8 seconds to 0.3 seconds.
             n_successors = self.s_bounds(i)
             n_pairs += n_successors
             if n_successors == 0: childless += 1

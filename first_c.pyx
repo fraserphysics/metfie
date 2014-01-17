@@ -160,6 +160,24 @@ class LO_step(LO_step):
         self.eigenvector = v_new
         return s,v_new
     
+    def pointerize_G2(self):
+        '''Get arrays of pointers to np.arrays in self.G2state and
+        self.G2h_list.  In the main loop in s_bounds, those pointers are
+        accessed as c objects for speed.
+        '''
+        cdef int i, n = len(self.G2state)
+        cdef PTYPE_t [:] G2state = np.empty(n, dtype=np.int64)
+        cdef PTYPE_t [:] G2h_list = np.empty(n, dtype=np.int64)
+        cdef ITYPE_t [:] i_view
+        cdef DTYPE_t [:] d_view
+        for i in range(n):
+            i_view = self.G2state[i]
+            G2state[i] = <PTYPE_t>(&(i_view[0]))
+            d_view = self.G2h_list[i]
+            G2h_list[i] = <PTYPE_t>(&(d_view[0]))
+        self.G2state_ = G2state
+        self.G2h_list_ = G2h_list
+
     @cython.boundscheck(False)
     @cython.wraparound(False)
     def s_bounds(
@@ -170,15 +188,19 @@ class LO_step(LO_step):
         find sequences of state indices for allowed successors and append
         them to bounds.
         '''
-        cdef ITYPE_t [:,:] G2state = np.array(self.G2state, dtype=ITYPE)
-        cdef DTYPE_t [:,:] G2h_list = np.array(self.G2h_list, dtype=DTYPE)
+        # "return 1" here reduces LO build time (n_g=500, n_h=500)
+        # from 9.8 seconds to 0.3 seconds.
+        if not 'G2state_' in self.__dict__:
+            self.pointerize_G2()
+        cdef PTYPE_t [:] G2state = self.G2state_
+        cdef PTYPE_t [:] G2h_list = self.G2h_list_
         cdef double g_max = self.g_max
         cdef double dy = self.dy
         cdef double g_0, h_0, g_1, L_h, U_h, U_g, L_g
         cdef int G_0, G_1
 
-        #return 1
-        # 75% of LO build time is spent before this point.
+        # "return 1" here reduces LO build time (n_g=500, n_h=500)
+        # from 9.8 seconds to 0.4 seconds.
         assert backward == False
         
         g_0, h_0, G_0, H_0 = self.state_list[state_n]
@@ -205,18 +227,23 @@ class LO_step(LO_step):
         cdef int G_i = G_i_
         cdef int G_f = min(G_f_,len(self.G2state))
         cdef double g_step = self.g_step, g_min = self.g_min
+        cdef ITYPE_t *I_pointer
+        cdef DTYPE_t *D_pointer
         
-        for G_1 in range(G_i,G_f): # only 5% of build time in this loop
+        # This loop compiles as pure c
+        for G_1 in range(G_i, G_f):
             g_1 = g_min + G_1 * g_step
             L_h = (g_1 - g_0)/dy - 6 * dy
             U_h = (24*(g_max - g_1))**.5
             if g_0 > g_max - 6*dy:
                 L_h = max( L_h, -U_h )
             # start code segment that is self.ab() in first.py
-            s_i = G2state[G_1,0]
-            s_f = G2state[G_1,1]
-            h_i = G2h_list[G_1,0]
-            h_f = G2h_list[G_1,1]
+            I_pointer = <ITYPE_t *>(G2state[G_1])
+            D_pointer = <DTYPE_t *>(G2h_list[G_1])
+            s_i = I_pointer[0]
+            s_f = I_pointer[1]
+            h_i = D_pointer[0]
+            h_f = D_pointer[1]
             if s_i == s_f and not (L_h <= h_i and h_f <= U_h):
                 continue               # No states allowed
             Ds = s_f-s_i
