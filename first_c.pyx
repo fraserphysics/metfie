@@ -174,9 +174,11 @@ class LO_step(LO_step):
         cdef DTYPE_t [:,:] G2h_list = np.array(self.G2h_list, dtype=DTYPE)
         cdef double g_max = self.g_max
         cdef double dy = self.dy
-        cdef double g_0, h_0, g_1, L_h, U_h
+        cdef double g_0, h_0, g_1, L_h, U_h, U_g, L_g
         cdef int G_0, G_1
 
+        #return 1
+        # 75% of LO build time is spent before this point.
         assert backward == False
         
         g_0, h_0, G_0, H_0 = self.state_list[state_n]
@@ -191,34 +193,26 @@ class LO_step(LO_step):
             self.bounds_a[state_n] = np.zeros(0, dtype=np.int32)
             self.bounds_b[state_n] = self.bounds_a[state_n]
             return 0
-
-        cdef int G_len = len(self.G2state)
+        
+        # Prepare for loop over g values in image.  Have no python
+        # objects in the loop.
+        G_i_, G_f_ = self.fi_range(L_g, U_g, self.g_step, self.g_min)
         cdef int n_pairs = 0
-        cdef int n_g = 0
-        Gs_p = []
-        gs_p = []
-        for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
-            Gs_p.append(G_1)
-            gs_p.append(g_1)
-            n_g += 1
-        cdef ITYPE_t [:] Gs = np.array(Gs_p, dtype=ITYPE)
-        cdef DTYPE_t [:] gs = np.array(gs_p, dtype=DTYPE)
         cdef ITYPE_t [:] bounds_a = np.zeros(self.n_g, dtype=np.int32)
         cdef ITYPE_t [:] bounds_b = np.zeros(self.n_g, dtype=np.int32)
         cdef int i, j, s_i, s_f, Ds, a, b, len_bounds = 0
         cdef double h_i, h_f, Dh
-        for j in range(n_g):
-            a = b = 0
-            G_1 = Gs[j]
-            g_1 = gs[j]
-            if G_1 >= G_len:
-                break
+        cdef int G_i = G_i_
+        cdef int G_f = min(G_f_,len(self.G2state))
+        cdef double g_step = self.g_step, g_min = self.g_min
+        
+        for G_1 in range(G_i,G_f): # only 5% of build time in this loop
+            g_1 = g_min + G_1 * g_step
             L_h = (g_1 - g_0)/dy - 6 * dy
             U_h = (24*(g_max - g_1))**.5
             if g_0 > g_max - 6*dy:
                 L_h = max( L_h, -U_h )
-
-
+            # start code segment that is self.ab() in first.py
             s_i = G2state[G_1,0]
             s_f = G2state[G_1,1]
             h_i = G2h_list[G_1,0]
@@ -241,6 +235,7 @@ class LO_step(LO_step):
                 b = s_i + i
                 if h_i+(Dh/Ds)*i < U_h:
                     b += 1
+            # finish code segment that is self.ab() in first.py
             if b <= a:
                 continue
             bounds_a[len_bounds] = a

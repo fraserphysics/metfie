@@ -125,25 +125,21 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 b += 1
         return a,b
     def fi_range(self, # LO instance
-                 low, high, step, f2i):
-        '''Return sequence of int,float pairs defined by method passed
-         as f2i that satisfy:
-            low <= float[i] <= high
-            int[i+1] > int[i]
-            float[i+1] - float[i] >= step*.9
+                 low, high, step, floor):
+        '''Return pair of integers Low, High that satisfy:
+        step*(Low-1) < low-floor <= step*Low
+        setp*(High-1) <= high-floor < step*High
         '''
-        if low > high:
-            return
-        i_old, f_old = f2i(low-2*step)
-        for f_ in np.arange(low-step, high+step, step*.9):
-            i,f = f2i(f_)
-            if i == i_old:
-                continue
-            i_old = i
-            f_old = f
-            if f < low or f > high:
-                continue
-            yield (i,f)
+        Low = int(np.ceil((low-floor)/step))
+        if low <= floor + step*(Low-1): Low -= 1
+        if floor + step*Low < low: Low += 1
+                
+        High = int(np.ceil((high-floor)/step))
+        if floor + step*High <= high: High += 1
+        if high < floor + step*(High-1): High -= 1
+                
+        return Low,High
+
     def s_bounds(
             self,          # LO instance
             i,             # index of state in self.state_list
@@ -172,7 +168,9 @@ class LO(scipy.sparse.linalg.LinearOperator):
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
-        for G_1,g_1 in self.fi_range(L_g, U_g, self.g_step, self.g2G):
+        G_i, G_f = self.fi_range(L_g, U_g, self.g_step, self.g_min)
+        for G_1 in range(G_i, G_f):
+            g_1 = self.g_min + G_1*self.g_step
             if G_1 >= len(self.G2state):
                 break
             L_h = (g_1 - g_0)/self.dy - 6 * self.dy
@@ -209,25 +207,23 @@ class LO(scipy.sparse.linalg.LinearOperator):
             G_old = G
             h_max = self.h_lim(g)
             h_min = -h_max
-            list_ = list(self.fi_range(h_min, h_max, self.h_step, self.h2H))
-            if len(list_) == 0:
+            H_i, H_f = self.fi_range(h_min, h_max, self.h_step, self.h_min)
+            if H_i >= H_f:
                 continue        # No alowed states for this value of g
-            bottom = list_[0]
-            top = list_[-1]
-            h_list_G = []
-            state_list_G = []
-            for i in range(len(list_)):
-                H,h = list_[i]
+            h_list_G = np.empty(2, dtype=np.float64)
+            state_list_G = np.empty(2, dtype=np.int32)
+            for H in range(H_i, H_f):
+                h = self.h_min + H*self.h_step
                 self.state_dict[(G,H)] = (g,h,len(self.state_list))
-                if i == 0:
-                    h_list_G.append(h)
-                    state_list_G.append(len(self.state_list))
-                if i == (len(list_))-1:
-                    h_list_G.append(h)
-                    state_list_G.append(len(self.state_list))
+                if H == H_i:
+                    h_list_G[0] = h
+                    state_list_G[0] = len(self.state_list)
+                if H == H_f-1:
+                    h_list_G[1] = h
+                    state_list_G[1] = len(self.state_list)
                 self.state_list.append((g,h,G,H))
-            self.G2h_list.append(np.array(h_list_G))
-            self.G2state.append(np.array(state_list_G))
+            self.G2h_list.append(h_list_G)
+            self.G2state.append(state_list_G)
         self.n_states = len(self.state_list)
         return
     def pairs(self):
