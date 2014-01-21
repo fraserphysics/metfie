@@ -407,6 +407,39 @@ Analyze error of quadratic approximation for finite $u$.
   eigenvector on $dy$ as $dy \rightarrow 0$.
 \end{enumerate}
 
+\subsection{Code Performance}
+\label{sec:code}
+
+\begin{tabular}{|l|l|l|l|l|l|l|l|l|l|}
+  \hline
+  $u\cdot 10^5$ & $dy\cdot 10^4$ & $n_g$ & $n_h$ & build & eig & $n_{\text{states}}$ & 
+  $n_{\text{pairs}}$ & no suc & mem \\
+  \hline
+  2.0 & 0.8 &  250 &  250 & 2.9 &   4.0& 41.8K & 33M  & .0273 &  80M \\
+  2.0 & 0.8 &  500 &  500 & 11  &   44 & 167K  & 523M & .0135 & 273M \\
+  2.0 & 0.8 & 1000 & 1000 & 48  & 1283 & 667K  & 8.4G & .0068 & 1.1G \\
+  2.0 & 0.8 & 2000 & 2000 & 204 &      & 2.67M & 134G & .0034 & 5.4G \\
+  2.0 & 0.8 & 3000 & 3000 &     &      & 6.00M & 676G & .0023 & 14G  \\
+      &     &      &      &     &      &       &      &       &      \\
+  2.0 & 1.6 & 250  & 250  & 2.9 & 9.3  & 42K   &  66M & .0146 &  84M \\
+  2.0 & 1.6 & 500  & 500  & 12  & 66   & 167K  & 1.1G & .0074 & 303M \\
+  2.0 & 1.6 & 1000 & 1000 & 51  & 694  & 667K  &  17G & .0037 & 1.3G \\
+  2.0 & 1.6 & 2000 & 2000 & 228 &      & 2.67M & 270G & .0018 & 7.2G \\
+      &     &      &      &     &      &       &      &       &      \\
+  2.0 & 3.2 & 250  & 250  & 3.0 & 3.1  & 41K   & 135M & .0082 &  91M \\
+  2.0 & 3.2 & 500  & 500  & 13  & 39   & 167K  & 2.1G & .0041 & 358M \\
+  2.0 & 3.2 & 1000 & 1000 & 57  & 619  & 667K  & 34G  & .0021 & 1.8G \\
+  2.0 & 3.2 & 1500 & 1500 & 140 & 3109 & 1.50M & 174G & .0014 & 5.1G \\
+  %u    dy    ng     nh     build eig    states  pairs  suc     mem
+  \hline
+\end{tabular}
+The \emph{mem} numbers come from the \emph{RES} column.  The runs with
+$3.2\times 10^{-4}$ converge with about 100 interations Initially
+those with smaller values of $dy$ terminated after 149 iterations
+without converging.  I erased those times and increased the maximum
+number of iterations to 1000 which was enough for the runs with times
+entered.
+
 \subsection{Introduction}
   \label{sec:introduction}
 

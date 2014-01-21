@@ -62,7 +62,7 @@ def main(argv=None):
     import pickle
     
     tol = 5e-6
-    maxiter = 150
+    maxiter = 1000
     error = {}
     text = ''
 
@@ -136,8 +136,8 @@ def plot(file_name='result_converge'):
                                              #for "projection='3d'".
     from matplotlib import cm
     from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    fig = plt.figure(figsize=(24,12))
-    ax = fig.add_subplot(1,1,1, projection='3d', elev=5, azim=15)
+    fig = plt.figure(figsize=(16,8))
+    ax = fig.add_subplot(1,1,1, projection='3d', elev=21, azim=-94)
     surf = ax.plot_surface(
             G, H, z, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
             antialiased=False)

@@ -7,8 +7,12 @@ def main(argv=None):
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
-    parser = argparse.ArgumentParser(
-        description='Plot eigenfunction of the integral equation')
+    parser = argparse.ArgumentParser( description=
+        'Time calculation of eigenfunction of the integral equation')
+    parser.add_argument('--python', action='store_true', help=
+                        'build operator without cython')
+    parser.add_argument('--no_power', action='store_true', help=
+                        'skip cython eigenvalue calculation')
     parser.add_argument('--u', type=float, default=(2.0e-5),
                        help='log fractional deviation')
     parser.add_argument('--dy', type=float, default=3.2e-4,
@@ -29,28 +33,34 @@ def main(argv=None):
     d_h = 2*h_lim/args.n_h
     
     tol = 5e-6
-    maxiter = 150
+    maxiter = 1000
 
+    print('\n')
     t0 = time()
+
     LO_cython = first_c.LO_step( args.u, args.dy, d_g, d_h)
     print('cython: n_states=%d, n_pairs=%d'%(
         LO_cython.n_states,LO_cython.n_pairs))
-
     t1 = time()
-    LO_cython.power(n_iter=maxiter, small=tol, verbose=True)
     
-    t2 = time()
-    LO_python = first.LO_step( args.u, args.dy, d_g, d_h)
-    print('python: n_states=%d, n_pairs=%d'%(
-        LO_python.n_states,LO_python.n_pairs))
-    
-    t3 = time()
+    if args.no_power:
+        t2 = t1
+    else:
+        LO_cython.power(n_iter=maxiter, small=tol, verbose=True)
+        t2 = time()
+
+    if args.python:
+        LO_python = first.LO_step( args.u, args.dy, d_g, d_h)
+        print('python: n_states=%d, n_pairs=%d'%(
+            LO_python.n_states,LO_python.n_pairs))
+        t3 = time()
     print('''
     Time in seconds    Task
     %5.1f              cython build operator
-    %5.1f              python build operator
-    %5.1f              cython power iterations
-    '''%((t1-t0), (t3-t2), (t2-t1)))
+    %5.1f              cython power iterations'''%((t1-t0), (t2-t1)))
+    if args.python:
+        print('''
+    %5.1f              python build operator'''%(t3-t2))
     return 0
 
 if __name__ == "__main__":

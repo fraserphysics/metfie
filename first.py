@@ -227,7 +227,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.n_states = len(self.state_list)
         return
     def pairs(self):
-        # Calculate allowed sequential pairs of states
+        '''Calculate allowed sequential pairs of states'''
+        '''FixMe: Eliminate states without successors.'''
         n_states = self.n_states
         self.shape = (n_states, n_states)
         n_pairs = 0
