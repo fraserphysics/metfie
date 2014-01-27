@@ -47,9 +47,13 @@ def main(argv=None):
         help="where to write result")
     args = parser.parse_args(argv)
 
-    d_g_big = 2*args.u/args.n_g0
     d_g_small = 2*args.u/args.n_g_final
-    dd_g = (d_g_big - d_g_small)/args.n_g_step
+    if args.n_g0 == args.n_g_final or args.n_g_step == 1:
+        d_g_big = 1.1*d_g_small 
+        dd_g = 0.2*d_g_small
+    else:
+        d_g_big = 2*args.u/args.n_g0
+        dd_g = (d_g_big - d_g_small)/args.n_g_step
     d_g_ref = args.ref_frac*d_g_small
 
     h_lim = np.sqrt(48*args.u)
