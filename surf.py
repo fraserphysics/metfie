@@ -34,7 +34,7 @@ class Visualization(TA.HasTraits):
         """
         import numpy as np
         import ideal_eos
-        EOS = ideal_eos.EOS()
+        EOS = ideal_eos.ideal()
         TA.HasTraits.__init__(self)
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T

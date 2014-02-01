@@ -1,11 +1,11 @@
 """
-This file is used/imported by ideal_gas.py
+This file is used/imported by ideal_qt.py
 
 molar volume of water is 18.016 mL or 18.016e-6 M^3
 The CJ pressure for TNT is about 19GPa
 The molar volume of TNT products is about 6.25e-6 M^3/mole
 TNT CJ temp 3712 degrees K
->>> gas = EOS()
+>>> gas = ideal()
 >>> CJP = 19e9
 >>> CJT = 3712
 >>> CJv = gas.PT2v(CJP,CJT)
@@ -18,10 +18,9 @@ TNT CJ temp 3712 degrees K
 
 """
 import numpy as np, scipy.integrate
-class EOS:
-    """This EOS class is designed to be subclassed, but it is filled
-out for theideal gas law (and perhaps hydrogen if molar mass
-necessary).
+class ideal:
+    """This class is designed to be subclassed, but it is filled out for
+the ideal gas law (and perhaps hydrogen if molar mass necessary).
 
 T Temperature in degrees K
 v Specific volume, volume of one mol
@@ -60,7 +59,8 @@ v_0 = 1e-6 Cubic meters/mole
 
 S_min = 0
 S_max = 69.16 Joules/degree
-"""
+
+    """
     R = 8.3144621    #Joules/(degree mol) = (Meters^3 Pascal)/(degrees mol)
     cv = 2.5         # 5/2 for diatomic gas
     v_0 = 1.0e-6     # Molar volume in cubic meters that gives zero entropy
