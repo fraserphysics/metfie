@@ -33,8 +33,8 @@ class Visualization(TA.HasTraits):
         surface and put the surface into self.scene
         """
         import numpy as np
-        import ideal_eos
-        EOS = ideal_eos.ideal()
+        import eos
+        EOS = eos.ideal()
         TA.HasTraits.__init__(self)
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T

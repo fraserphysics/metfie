@@ -129,8 +129,8 @@ class state:
     def __init__(self,     # state instance
                  var_dict, # Dictionary that will hold variable instances
                  vis):     # mayavi visualization instance
-        import ideal_eos
-        self.EOS = ideal_eos.ideal()       # Methods for EOS constraints
+        import eos
+        self.EOS = eos.ideal()       # Methods for EOS constraints
         self.var_dict = var_dict
         self.vis = vis
         self.vis.curve = None
@@ -282,7 +282,7 @@ class PVE_widget(QWidget, PVE_control):
         self.state.initial_values() # Set up state information from var_dict
 
 import surf
-from ui_ideal_qt import Ui_MainWindow
+from ui_eos_qt import Ui_MainWindow
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         '''Mandatory initialisation of a class.'''

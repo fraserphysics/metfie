@@ -132,9 +132,9 @@ notes.Command(
 
 qt = Environment()
 qt.Command(
-    ('ui_ideal_qt.py',),
-    ('ideal_qt.ui', 'patch_ideal'),
-    'pyside-uic ideal_qt.ui > ui_ideal_qt.py; patch ui_ideal_qt.py patch_ideal'
+    ('ui_eos_qt.py',),
+    ('eos_qt.ui', 'patch_ideal'),
+    'pyside-uic eos_qt.ui > ui_eos_qt.py; patch ui_eos_qt.py patch_ideal'
     )
 qt.Command(
     ('ui_PVE_control.py',),
