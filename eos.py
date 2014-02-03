@@ -4,13 +4,14 @@ This file is used/imported by ideal_qt.py
 molar volume of water is 18.016 mL or 18.016e-6 M^3
 The CJ pressure for TNT is about 19GPa
 The molar volume of TNT products is about 6.25e-6 M^3/mole
+  # Fix me: moles or grams?
 TNT CJ temp 3712 degrees K
 >>> gas = ideal()
 >>> CJP = 19e9
 >>> CJT = 3712
 >>> CJv = gas.PT2v(CJP,CJT)
->>> print('%8.2e M^3/mole'%CJv)
-1.62e-06 M^3/mole
+>>> print('%8.2e M^3/mole'%CJv) # Fix me: moles or grams?
+1.62e-06 M^3/mole # Fix me: moles or grams?
 >>> print('%6.1f'%gas.Pv2T(CJP,CJv))
 3712.0
 >>> print('%8.2e'%gas.Tv2P(CJT,CJv))
@@ -47,15 +48,15 @@ Below, I list chosen parameters and some consequences
 
 P_min = 1e10 Pascals
 P_max = 4e10 Pascals
-v_min = 1e-6 Cubic meters/mole
-v_max = 4e-6 Cubic meters/mole
+v_min = 1e-6 Cubic meters/mole # Fix me: moles or grams?
+v_max = 4e-6 Cubic meters/mole # Fix me: moles or grams?
 
-E_min = 25e3 Joules/mole
-E_max = 400e3 Joules/mole
+E_min = 25e3 Joules/mole # Fix me: moles or grams?
+E_max = 400e3 Joules/mole # Fix me: moles or grams?
 
-E_0 = 2.5*R*T_0 = 25e3 Joules/mole
+E_0 = 2.5*R*T_0 = 25e3 Joules/mole # Fix me: moles or grams?
 T_0 = 1.20272e3 Degrees K
-v_0 = 1e-6 Cubic meters/mole
+v_0 = 1e-6 Cubic meters/mole # Fix me: moles or grams?
 
 S_min = 0
 S_max = 69.16 Joules/degree
@@ -70,7 +71,7 @@ S_max = 69.16 Joules/degree
         pass
     def Pv2T(self, P, v):
         """Return Temprature given pressure and specific volume
-        (volume of 1 mole)"""
+        (volume of 1 gram)"""
         return P*v/self.R
     def PT2v(self, P,T):
         return self.R*T/P
@@ -136,6 +137,138 @@ S_max = 69.16 Joules/degree
         E_i = self.Pv2E(P_i,v_i)
         E_f = E_i*(v_i/v_f)**.4
         return (_KE[-1],Dt,E_i-E_f)
+class shaw(ideal):
+    '''
+    Equations 4.6 to 4.9 of Hixson et al JAP 2000:
+
+    P(\rho,E) = \rho^3 * (\rho) + g(\rho) * (E - E_CJ(\rho))
+    E_CJ(\rho) = E_CJ - \int_{V_CJ}^V P_CJ(\rho) dV
+
+    g(x) = 1.1520 - 1.149*x + 4.2382*x^2 - 2.2234*x^3
+    f(x) = 2.4287 + 0.0378*x + 0.1005*x^2 - 0.7166*x^3 + 0.4537*x^4 +
+           0.8062*x^5 - 0.8473*x^6
+
+    x(\rho) = \rho - 2.4403
+    '''
+    a = np.array([2.4287, 0.0378, 0.1005, -0.7166, 0.4537, 0.8062, -0.8473, 0])
+    b = np.array([1.1520, -1.149, 4.2382, -2.2234])
+
+    E_0 = 2e5      # Fraser's hack to keep E positive
+    cv = 2.5       # Joules/degree.  A hack
+    S_0 = 1000     # FixMe: Get a plausible value
+    ''' 
+    dE = cv *dT
+    At v_CJ, let T = E/cv
+    dS = dE/T      For heating at constant volume
+    S = S_0 + cv*ln(T/T_0) = S_0 + cv*ln(E/E_0) at v_CJ
+    
+    '''
+
+    P_0 = 3.58e10  # CJ value from Hixson
+    rhoCJ = 2.4403 # CJ value from Hixson
+
+    n_a = len(a)
+    I = np.arange(n_a, dtype=np.int32)
+
+    def P_CJ(self, # A shaw instance
+             r     # Density in g/cm^3
+    ):
+        ''' Calculate pressure on the CJ isentrope for density r
+        '''
+        P = np.dot(r**(self.I+3), self.a)
+        return P
+    def E_CJ(self, # A shaw instance
+             r     # Density in g/cm^3
+    ):
+        ''' Calculate energy on the CJ isentrope for density r
+        '''
+        c = (self.a[:-1] - self.rhoCJ*self.a[1:])/self.I[1:]
+        E = np.dot(c, (r - self.rhoCJ)**(self.I[:-1] + 2))
+        E += self.E_0 + self.a[0]*self.rhoCJ*(r - self.rhoCJ)
+        return E
+    # The next 4 methods work with energy E instead of T
+    def Ev2P(self, E, v):
+        '''Implements Eqn. 4.6 of Hixson
+        '''
+        r = 1/v
+        P_f = self.P_CJ(r)
+        P_g = np.dot(r**self.I[:4], self.b)*(E - self.E_CJ(r))
+        return P_f + P_g
+    def Ev2S(self, E, v):
+        '''Return entropy given energy and specific volume.  A correct
+        calculation is:
+
+        1. Integrate isentrope ODE from (E,v) to (E_1, v_CJ)
+        2. S = S_CJ + c_v log(E_1/E_CJ)
+
+        This method uses the approximation D = E_CJ(v)-E_0
+
+        '''
+        r = 1/v
+        D = self.E_CJ(r) - self.E_0
+        return self.S_0 + self.cv*np.log((E - D)/self.E_0)
+        d_E = E - E_CJ
+        return self.R*(self.cv*np.log(E/self.E_0) + np.log(v/self.v_0))
+    def Pv2E(self, P, v):
+        from scipy.optimize import brentq
+        def f(E,v):
+            return P - self.Ev2P(E,v)
+        rv = brentq(f, self.E_min, self.E_max, args=(v,))
+        assert rv == float(rv)
+        return rv
+    def PE2v(self, P, v):
+        from scipy.optimize import brentq
+        def f(v,E):
+            return P - self.Ev2P(E,v)
+        rv = brentq(f, self.v_min, self.v_max, args=(E,))
+        assert rv == float(rv)
+        return rv
+
+    '''The next 3 methods calculate 2 state variables from entropy and the
+    third state variable.  Each could be done by using an ODE
+    integrator to build an isentropic trajectory in (E,P) with the
+    independent varible v running from v_min to v_max.
+
+    1. At v = v_CJ move find E_1 by solving
+               S - S_CJ = c_v log(E_1/E_CJ)
+                    E_1 = E_CJ*np.exp((S-S_CJ)/cv)
+
+    2. Calculate P_1 from E_1, v_CJ
+
+    3. Integrate ODE from v_CJ to v_max and from v_CJ to v_min to
+       obtain isentropic trajectory through (E_1,P_1).
+
+    '''
+    def isentrope(self, S):
+        self.S = S
+        E_1 = self.E_0*np.exp((S-self.S_0)/self.cv)
+        v_1 = 1/self.rhoCJ
+        P_1 = self.Ev2P(E_1, v_1)
+        dv = (self.v_max - self.v_min)/1000
+        v_up = np.arange(v_1, self.v_max+2*dv, dv)
+        E_up, P_up = self.ode_int_up(np.array((E_1,P_1)),v_up)
+        v_down = np.arange(v_1, self.v_min-2*dv, -dv)
+        E_down, P_down = self.ode_int_down(np.array((E_1,P_1)),v_down)
+        hard_work
+        return
+    def Sv2PE(self, S, v):
+        if self.S != S:
+            self.isentrope(S)
+        E = self.isentrope_v2E(v) # A spline evaluation
+        P = self.Ev2P(E,v)
+        return P,E
+    def SE2Pv(self, S, E):
+        if self.S != S:
+            self.isentrope(S)
+        v = self.isentrope_E2v(E) # A spline evaluation
+        P = self.Ev2P(E,v)
+        return P,v
+    def SP2vE(self, S, P):
+        if self.S != S:
+            self.isentrope(S)
+        v = self.isentrope_P2v(P) # A spline evaluation
+        E = self.Pv2E(P,v)
+        return v,E
 
 def _test():
     import doctest

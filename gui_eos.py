@@ -130,7 +130,7 @@ class state:
                  var_dict, # Dictionary that will hold variable instances
                  vis):     # mayavi visualization instance
         import eos
-        self.EOS = eos.ideal()       # Methods for EOS constraints
+        self.EOS = eos.shaw()       # Methods for EOS constraints
         self.var_dict = var_dict
         self.vis = vis
         self.vis.curve = None

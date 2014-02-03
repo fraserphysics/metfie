@@ -130,6 +130,7 @@ notes.Command(
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
 
+# From command line "designer-qt4 PVE_control.ui"
 qt = Environment()
 qt.Command(
     ('ui_eos_qt.py',),
