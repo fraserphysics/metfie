@@ -39,7 +39,11 @@ class Visualization(TA.HasTraits):
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T
         v = v.T
-        E = EOS.Pv2E(P,v)
+        E = np.empty(v.shape)
+        n_i,n_j = v.shape
+        for i in range(n_i):
+            for j in range(n_j):
+                E[i,j] = EOS.Pv2E(P[i,j],v[i,j])
         self.ranges = []
         for a in (P,v,E):
             self.ranges += [a.min(),a.max()]

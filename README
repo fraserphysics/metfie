@@ -18,3 +18,9 @@ To do:
 2. Study behavior of \lambdaPF and \vectorPF as dy -> 0
 
 3. Prove or argue that as dy -> 0 limit of measure exists
+
+=====================Helpful hints=====================================
+Write tests for eos.py
+->python -m pdb gui_eos.py
+(Pdb) import pdb
+(Pdb) pdb.pm()

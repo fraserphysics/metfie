@@ -378,6 +378,7 @@ Here are Eqns.\ 4.6-4.9 of Hixson et al.
   g(\rho) &= \sum_{i=0}^3 d_i \left( x(\rho) \right) ^i \\
   f(\rho) &= \sum_{i=0}^6 c_i \left( x(\rho) \right) ^i \\
   P(\rho,E) &= \rho^3 f(\rho) + g(\rho)(E - E\CJ (\rho) ) \\
+  &= (x+\rho\CJ)^3f(\rho) + g(\rho)(E - E\CJ (\rho) ) \\
   \label{eq:ecj}
   E\CJ (\rho) &= E_0 - \int_{V\CJ}^{V(\rho)} \rho^3 f (\rho(V)) dV .
 \end{align}
@@ -387,6 +388,12 @@ Following Eqn.\ 4.9, Hixson et al.\ write
   \gamma_S &= 3.038 \\
   P\CJ &= 35.3 \text{ GPa} .
 \end{align*}
+Differentiating polynomials yields
+\begin{align*}
+  g'(\rho) &= \sum_{i=1}^3 i d_i \left( x(\rho) \right) ^{i-1} \\
+  f'(\rho) &= \sum_{i=1}^6 i c_i \left( x(\rho) \right) ^{i-1}.
+\end{align*}
+
 Changing variable, I write \eqref{eq:ecj} as
 \begin{align*}
    E\CJ (\rho) &= E_0 - \int_{\rho\CJ}^\rho \rho^3 f(\rho) \frac{dV}
@@ -405,7 +412,27 @@ Changing variable, I write \eqref{eq:ecj} as
    \text{ where } c_7 = 0\\
    &= E_0 + c_0 \rho\CJ (\rho - \rho\CJ) +
    \sum_{i=0}^6 \frac{ c_i - c_{i+1} \rho\CJ}{i+1} \left( \rho -
-     \rho\CJ \right)^{i+2}
+     \rho\CJ \right)^{i+2}\\
+   &= E_0 + c_0 \rho\CJ x +
+   \sum_{i=0}^6 \frac{ c_i - c_{i+1} \rho\CJ}{i+1} x^{i+2}
+\end{align*}
+Note
+\begin{align*}
+  \frac{d}{dx} E\CJ(\rho(x)) &= E'\CJ \frac{d \rho}{dx} \\
+  E'\CJ &= \rho f(\rho) \\
+  \frac{d \rho}{dx} &= 1 \\
+  \frac{d}{dx} E\CJ(\rho(x)) &= (x+\rho\CJ)f(\rho)
+\end{align*}
+
+
+For the script \emph{eos.py} I need
+\begin{align*}
+  \partialfixed{P}{v}{S} &= \partialfixed{P}{x}{S} \frac{d x}{d v} \\
+  \frac{d x}{d v} &= -\rho^2 = -(x+\rho\CJ)^2\\
+  \partialfixed{P}{x}{S} &= 3\rho^2 f(\rho) + \rho^3 f'(\rho) +
+  g'(\rho) \left( E - E\CJ(\rho) \right) + g(\rho)E'\CJ(\rho) \\
+  &= 3\rho^2 f(\rho) + \rho^3 f'(\rho) +
+  g'(\rho) \left( E - E\CJ(\rho) \right) + \rho f(\rho)g(\rho)
 \end{align*}
 
 \section{First Order}
