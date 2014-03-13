@@ -650,13 +650,24 @@ and $L_g$.
   \frac{d U_g}{d y} &= -12(y-b) \\
   \label{eq:dug}
   \left. \frac{d U_g}{d y} \right|_{y_0} &= 12\sqrt{\frac{u-g_0}{6}} \\
-  U_g(y_1) &= g_0 + (y_1-y_0)\Rad{-g_0} - 6 (y_1-y_1)^2
-  \nonumber \\
-  &= \UgQ \nonumber
+  U_g(y) &= g_0 + (y-y_0)\Rad{-g_0} - 6 (y-y_0)^2 \nonumber
+%  &= \UgQ \nonumber
 \end{align}
-Note: Perhaps modification of definition necessary to ensure $U_(g)
-\leq u$ at $g_0$ near $u$.  I think $\tilde g = \min(g,u-6\Delta_y^2)$
-might work. %
+Note: If $U_g(y)$ is tangent to $y=u$ for some $y$ between $y_0$ and
+$y_1$, then the only upper bound on $g(y_1)$ is $g(y_1)\leq u$.  Also
+such a tangency exists iff
+\begin{equation*}
+  \sqrt{\frac{u-g_0}{6}} \leq \Delta_y.
+\end{equation*}
+Thus
+\begin{equation*}
+  U_g(y_1) =
+  \begin{cases}
+    u & \text{ if } \sqrt{\frac{u-g_0}{6}} \leq \Delta_y\\
+    \UgQ & \text{ otherwise}
+  \end{cases}
+\end{equation*}
+Similarly, for the lower bound:
 \newcommand{\LgQ}{g_0 + h_0\Delta_y - 6\Delta_y^2}
 \begin{align*}
   L_g(y) &= a - 6(y-b)^2 &&\text{Premise} \nonumber \\
@@ -669,10 +680,13 @@ might work. %
   \\
   &= \LgQ \nonumber
 \end{align*}
-Substituting these values into \eqref{eq:boundsA} yields
+Substituting these values into \eqref{eq:boundsA} yields\footnote{The
+  upper bound in Eqn.\ \eqref{eq:UL_g} is simply $u$ if $g_0 \geq u -
+  6 \Delta_y^2$, and the lower bound in Eqn.\ \eqref{eq:DG_DY} is only
+  valid if $\sqrt{\frac{u-g_0}{6}} \geq \Delta_y$.}
 \begin{align}
   \label{eq:UL_g}
-  \UgQ &\geq g_1 \geq \LgQ \\
+  \UgQ &\geq g_1 \geq U_g(y_1) \\
   \label{eq:DG_DY}
   \Rad{-g_0} - 6\Delta_y &\geq \frac{\Delta_g}{\Delta_y} \geq h_0
   - 6 \Delta_y
@@ -723,10 +737,11 @@ Following \eqref{eq:dug}, the upper bound is
 \begin{equation*}
   U_h(g_1) = \Uh,
 \end{equation*}
-and
+and\footnote{The \emph{maximum} function and the term $-\Uh$ treat the
+case of $U_g(y)$ being tangent to $u$ between $y_0$ and $y_1$.}
 \begin{equation}
   \label{eq:UL_h}
-  \Uh \geq h_1 \geq \LhQ.
+  \Uh \geq h_1 \geq \text{max}\left( \LhQ,~ -\Uh \right).
 \end{equation}
 
 Figure~\ref{fig:boundsC} illustrates those constraints.

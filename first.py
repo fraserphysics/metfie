@@ -1,8 +1,16 @@
 """first.py: Code for eigenfunctions of integral operators for first
 order Markov process with 2-d states.  A state is an ordered pair
 (g,h).  g is the position and h is the derivative.  An allowed
-sequential pair of states satisfies:
+sequential pair of states ((g_0,h_0),(g_1,h_1)) satisfies:
 
+\sqrt{24(u-g_0)} \geq \frac{\Delta_g}{\Delta_y} + 6\Delta_y \geq h_0
+
+\sqrt{24(u-g_1)} \geq h_1 \geq \frac{\Delta_g}{\Delta_y} - 6\Delta_y
+
+The first pair of inequalities constrains g_1 via g_1 - g_0 = \Delta_g,
+and the second pair of inequalities constrains h_1.  See equations
+UL_g and UL_h in notes.tex for the more complicated bounds that hold
+when (u-g_0) \leq 36 \Delta_y^2.
 """
 import numpy as np
 import numpy.linalg as LA
@@ -19,10 +27,10 @@ class LO(scipy.sparse.linalg.LinearOperator):
 
     Note: Cython code for this class in first_c.pyx
     
-    >>> u = .0001; dy = .01; n_g = 10; n_h = 20
+    >>> u = .0001; dy = .002; n_g = 20; n_h = 40
     >>> A = LO( u, dy, n_g, n_h)
     >>> print('n_states=%d'%(A.n_states,))
-    n_states=120
+    n_states=527
     >>> n_max = 6; step = 0.5; _min = -1.0; _max = 1.0
     >>> f2i = lambda f: A.f2I(f, n_max, step, _min, _max)
     >>> for x in np.arange(-1,1.1,.3):
@@ -35,22 +43,22 @@ class LO(scipy.sparse.linalg.LinearOperator):
      0.5 3  0.50
      0.8 4  1.00
      1.1 4  1.00
-    >>> for fi in A.fi_range(-1.1, 2, .1, f2i):
-    ...    print('%d  %5.2f'%fi)
+    >>> for i in range(*A.fi_range(-1.1, 2, .5, -1.0)):
+    ...    print('%d  %5.2f'%(i,i*.5-1.0))
     0  -1.00
     1  -0.50
     2   0.00
     3   0.50
     4   1.00
     5   1.50
-    6   2.00
-    >>> val,v = A.power(small=1e-6)
-    >>> u = A.symmetry(v)
-    >>> w = A.symmetry(u)
-    >>> print('norm(v)=%f norm(v-S^2(v))=%f'%(LA.norm(v), LA.norm(v-w)))
+    
+    ### val,v = A.power(small=1e-6) FixMe: Restore test of symmetry
+    ### u = A.symmetry(v)
+    ### w = A.symmetry(u)
+    ### print('norm(v)=%f norm(v-S^2(v))=%f'%(LA.norm(v), LA.norm(v-w)))
     norm(v)=1.000000 norm(v-S^2(v))=0.000000
-    >>> wal, w = A.power(small=1e-6, op=A.rmatvec)
-    >>> print('delta val=%f delta v=%f'%(abs(val-wal), LA.norm(u-w)))
+    ### wal, w = A.power(small=1e-6, op=A.rmatvec)
+    ### print('delta val=%f delta v=%f'%(abs(val-wal), LA.norm(u-w)))
     delta val=0.000000 delta v=0.000000
 
     '''
@@ -91,6 +99,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         return self.I2f(G, self.n_g, self.g_step, self.g_min, self.g_max)
     
     def h_lim(self, g):
+        '''Calculates the maximum possible slope h at position g.
+        '''
         return np.sqrt(24*(self.g_max - g))
     def ab(self, # LO instance
            low,  # Lower limit of h range
@@ -107,8 +117,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
                 return s_i, s_i+1           # Single state in image
             else:
                 return -1, -2               # No states allowed
-        Ds = s_f-s_i
-        dh_ds = (h_f-h_i)/Ds
+        dh_ds = (h_f-h_i)/(s_f-s_i)
         if low <= h_i:
             a = s_i
         else:
@@ -127,40 +136,34 @@ class LO(scipy.sparse.linalg.LinearOperator):
     def fi_range(self, # LO instance
                  low, high, step, floor):
         '''Return pair of integers Low, High that satisfy:
-        step*(Low-1) < low-floor <= step*Low
-        setp*(High-1) <= high-floor < step*High
+        Low <= (low-floor)/step < Low+1
+        High-1 < (high-floor)/step <= High
+
+        Used in self.s_bounds and self.allowed to provide integer ranges of
+        G and H.
         '''
-        Low = int(np.ceil((low-floor)/step))
-        if low <= floor + step*(Low-1): Low -= 1
-        if floor + step*Low < low: Low += 1
-                
+        if high < floor or high < low:
+            return 0,0 # No allowed range
+        Low = max(0,int(np.floor((low-floor)/step)))
         High = int(np.ceil((high-floor)/step))
-        if floor + step*High <= high: High += 1
-        if high < floor + step*(High-1): High -= 1
-                
+        assert Low <= High
+        if Low == High:
+            High = Low + 1 # Special case low=high and (low-floor)/step is int
         return Low,High
 
     def s_bounds(
             self,          # LO instance
             i,             # index of state in self.state_list
-            backward=False):
+            ):
         '''Find legal successors of state i and save representations
-        of them in the self.*bounds* arrays.  Only state points that are
-        within the continuous region that is the image of state i are
-        considered.
+        of them in the self.*bounds* arrays.
         '''
-        if backward:
-            ab = lambda L, U, G: self.ab(-U, -L, G)
-        else:
-            ab = lambda L, U, G: self.ab(L, U, G)
-        
         g_0, h_0, G_0, H_0 = self.state_list[i]
         # Calculate float range of allowed g values
         if g_0 > self.g_max - 6*self.dy**2:
             U_g = self.g_max
         else:
-            U_g = min(self.g_max,
-                g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
+            U_g = min(self.g_max, g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
         L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
         if L_g > U_g:
             return 0
@@ -169,29 +172,34 @@ class LO(scipy.sparse.linalg.LinearOperator):
         len_bounds = 0
         n_pairs = 0
         G_i, G_f = self.fi_range(L_g, U_g, self.g_step, self.g_min)
-        for G_1 in range(G_i, G_f):
+        for G_1 in range(G_i, G_f+1): # +1 because f(G_0) <= g_0 < f(G_0+1)
             g_1 = self.g_min + G_1*self.g_step
             if G_1 >= len(self.G2state):
                 break
-            L_h = (g_1 - g_0)/self.dy - 6 * self.dy
             U_h = self.h_lim(g_1)
-            if g_0 > self.g_max - 6*self.dy:
-                L_h = max( L_h, -U_h )
-            a,b = ab(L_h, U_h, G_1)
-            if b > a:
+            L_h = max( (g_1 - g_0)/self.dy - 6 * self.dy, -U_h)
+            a,b = self.ab(L_h, U_h, G_1)
+            if b >= a:
                 bounds_a[len_bounds] = a
-                bounds_b[len_bounds] = b
+                bounds_b[len_bounds] = b+1
                 len_bounds += 1
-                n_pairs += b - a
+                n_pairs += b+1 - a
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
+        if n_pairs == 0:
+            print(
+'''No successors:
+ g_frac=%5.3f, h_frac=%5.3f L_g=%9.2e U_g=%9.2e, G_i=%2d G_f=%2d'''%
+(g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f))
+            raise RuntimeError
         return n_pairs
     def allowed(self):
-        # Calculate the allowed states
+        '''Calculate the allowed states.
+        '''
         self.state_list = []
         self.state_dict = {}
-        self.G2h_list = []   # G2h_list[G] is sorted list of h values
-        self.G2state = []    # G2state[i] is state with h value G2h_list[G][i]
+        self.G2h_list = []   # G2h_list[G] is the allowed interval in h FixMe: Review this!
+        self.G2state = []    # G2state[i] are the corresponding pair of states
         First = True
         for _g in np.arange(self.g_min, self.g_max, self.g_step):
             G,g = self.g2G(_g)
@@ -228,7 +236,6 @@ class LO(scipy.sparse.linalg.LinearOperator):
         return
     def pairs(self):
         '''Calculate allowed sequential pairs of states'''
-        '''FixMe: Eliminate states without successors.'''
         n_states = self.n_states
         self.shape = (n_states, n_states)
         n_pairs = 0
@@ -240,10 +247,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
             # (n_g=500, n_h=500) from 9.8 seconds to 0.3 seconds.
             n_successors = self.s_bounds(i)
             n_pairs += n_successors
-            if n_successors == 0: childless += 1
+            assert n_successors > 0
         self.n_pairs = n_pairs
-        print('%d states without successors, fraction=%g'%(
-            childless, float(childless)/n_states))
         return
     def __init__(self,              # LO instance
                  u,                 # Upper bound
