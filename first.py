@@ -52,14 +52,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
     4   1.00
     5   1.50
     
-    ### val,v = A.power(small=1e-6) FixMe: Restore test of symmetry
-    ### u = A.symmetry(v)
-    ### w = A.symmetry(u)
-    ### print('norm(v)=%f norm(v-S^2(v))=%f'%(LA.norm(v), LA.norm(v-w)))
+    >>> val,v = A.power(small=1e-6)
+    >>> u = A.symmetry(v)
+    >>> w = A.symmetry(u)
+    >>> print('norm(v)=%8.6f norm(v-S^2(v))=%8.6f'%(LA.norm(v), LA.norm(v-w)))
     norm(v)=1.000000 norm(v-S^2(v))=0.000000
-    ### wal, w = A.power(small=1e-6, op=A.rmatvec)
-    ### print('delta val=%f delta v=%f'%(abs(val-wal), LA.norm(u-w)))
-    delta val=0.000000 delta v=0.000000
+    >>> wal, w = A.power(small=1e-6, op=A.rmatvec)
+    >>> print('delta val=%8.6f delta vec=%8.6f'%(abs(val-wal), LA.norm(u-w)))
+    delta val=0.000000 delta vec=0.000000
 
     '''
     def f2I(self,  # LO instance
@@ -105,15 +105,16 @@ class LO(scipy.sparse.linalg.LinearOperator):
     def ab(self, # LO instance
            low,  # Lower limit of h range
            high, # Upper limit of h range
-           G     # Combining G with each H in retuned range must be allowed
+           G     # Index of g, ie column number
            ):
         '''Return range of allowed state indices for given G and
         low <= h <= high
         '''
-        s_i, s_f = self.G2state[G]
-        h_i, h_f = self.G2h_list[G]
+        s_i, s_f = self.G2state[G]  # Index of first and last states for G
+        h_i, h_f = self.G2h_list[G] # Corresponding h values
         if s_i == s_f:
-            if low <= h_i and h_i <= high:
+            assert h_i == h_f
+            if low <= h_i and h_f <= high:
                 return s_i, s_i+1           # Single state in image
             else:
                 return -1, -2               # No states allowed
@@ -121,17 +122,11 @@ class LO(scipy.sparse.linalg.LinearOperator):
         if low <= h_i:
             a = s_i
         else:
-            i = int((low-h_i)/dh_ds)
-            a = s_i + i
-            if h_i+dh_ds*i < low:
-                a += 1
+            a = s_i + int((low-h_i)/dh_ds)
         if high >= h_f:
             b = s_f + 1
         else:
-            i = int((h_f - high)/dh_ds)
-            b = s_i + i
-            if h_i+dh_ds*i < high:
-                b += 1
+            b = s_i + int((h_f - high)/dh_ds) + 1
         return a,b
     def fi_range(self, # LO instance
                  low, high, step, floor):
@@ -148,7 +143,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         High = int(np.ceil((high-floor)/step))
         assert Low <= High
         if Low == High:
-            High = Low + 1 # Special case low=high and (low-floor)/step is int
+            High += 1 # Special case low=high and (low-floor)/step is int
         return Low,High
 
     def s_bounds(
@@ -181,25 +176,22 @@ class LO(scipy.sparse.linalg.LinearOperator):
             a,b = self.ab(L_h, U_h, G_1)
             if b >= a:
                 bounds_a[len_bounds] = a
-                bounds_b[len_bounds] = b+1
+                bounds_b[len_bounds] = b
                 len_bounds += 1
-                n_pairs += b+1 - a
+                n_pairs += b - a
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
-        if n_pairs == 0:
-            print(
-'''No successors:
- g_frac=%5.3f, h_frac=%5.3f L_g=%9.2e U_g=%9.2e, G_i=%2d G_f=%2d'''%
-(g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f))
-            raise RuntimeError
+        assert n_pairs >0,'''No successors:
+ g_frac=%5.3f, h_frac=%5.3f L_g=%9.2e U_g=%9.2e, G_i=%2d G_f=%2d'''%(
+g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         return n_pairs
     def allowed(self):
         '''Calculate the allowed states.
         '''
         self.state_list = []
         self.state_dict = {}
-        self.G2h_list = []   # G2h_list[G] is the allowed interval in h FixMe: Review this!
-        self.G2state = []    # G2state[i] are the corresponding pair of states
+        self.G2h_list = []  # G2h_list[G] is the allowed interval in h
+        self.G2state = []   # G2state[G] is the corresponding pair of states
         First = True
         for _g in np.arange(self.g_min, self.g_max, self.g_step):
             G,g = self.g2G(_g)
@@ -218,20 +210,15 @@ class LO(scipy.sparse.linalg.LinearOperator):
             H_i, H_f = self.fi_range(h_min, h_max, self.h_step, self.h_min)
             if H_i >= H_f:
                 continue        # No alowed states for this value of g
-            h_list_G = np.empty(2, dtype=np.float64)
-            state_list_G = np.empty(2, dtype=np.int32)
+            s_i = len(self.state_list)+1 # First allowed state for this g
             for H in range(H_i, H_f):
                 h = self.h_min + H*self.h_step
                 self.state_dict[(G,H)] = (g,h,len(self.state_list))
-                if H == H_i:
-                    h_list_G[0] = h
-                    state_list_G[0] = len(self.state_list)
-                if H == H_f-1:
-                    h_list_G[1] = h
-                    state_list_G[1] = len(self.state_list)
                 self.state_list.append((g,h,G,H))
-            self.G2h_list.append(h_list_G)
-            self.G2state.append(state_list_G)
+            s_f = len(self.state_list) # Last allowed state for this g
+            h_i,h_f = (self.h_min + H*self.h_step for H in (H_i,H_f-1))
+            self.G2h_list.append(np.array((h_i, h_f), dtype=np.float64))
+            self.G2state.append(np.array((s_i, s_f), dtype=np.int32))
         self.n_states = len(self.state_list)
         return
     def pairs(self):
@@ -284,6 +271,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         for i in range(self.n_states):
             g,h,G,H = self.state_list[i]
             H,h = self.h2H(-h)
+            H -= 1
             g,h,j = self.state_dict[(G,H)]
             w[j] = v[i]
         return w
