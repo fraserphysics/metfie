@@ -12,7 +12,7 @@
 
 import sys
 def main(argv=None):
-    import argparse, math, numpy as np, numpy.random as nr, matplotlib as mpl
+    import math, numpy as np, numpy.random as nr, matplotlib as mpl
     import matplotlib.pyplot as plt, numpy.linalg as LA
 
     def test(z,CI,r=1.0):

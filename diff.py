@@ -9,7 +9,7 @@ Default arguments have n_g and n_h take values (200,200) and
 import numpy as np
 import mayavi.mlab as ML
 import sys
-from first_c import LO
+from first_c import LO_step as LO
 def main(argv=None):
     import argparse
     if argv is None:                    # Usual case

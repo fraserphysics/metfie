@@ -68,10 +68,13 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
                                              #for "projection='3d'".
     from matplotlib import cm
     from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    from first_c import LO
-    #from first import LO   # Factor of 9 slower
-    
-    A = LO( args.u, args.dy, args.n_g, args.n_h)
+    from first_c import LO_step
+    #from first import LO_step   # Factor of 9 slower
+
+    g_step = 2*args.u/(args.n_g-1)
+    h_max = (24*args.u)**.5
+    h_step = 2*h_max/(args.n_h-1)
+    A = LO_step( args.u, args.dy, g_step, h_step)
     if args.eigenvalue:
         from scipy.sparse.linalg import eigs as sparse_eigs
         from numpy.linalg import norm
@@ -97,8 +100,8 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
             g = A.g_max * g_
             h_max = np.sqrt(24*(A.g_max-g))
             h = h_max * h_
-            G = A.g2G(g)[0]
-            H = A.h2H(h)[0]
+            G = int(np.floor((g-A.g_min)/A.g_step + .5))
+            H = int(np.floor((h-A.h_min)/A.h_step + .5))
             i_sources.append((G, H))
             k = A.state_dict[(G,H)][-1] # get 1-d index of state vector
             v[k] = 1                    # Set component for (g, h) to 1.0
@@ -140,8 +143,8 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
         A.power(small=tol, n_iter=maxiter, verbose=True)
         floor = 1e-20*max(A.eigenvector).max()
         fig = plt.figure(figsize=(24,12))
-        ax1 = fig.add_subplot(1,2,1, projection='3d', elev=15, azim=-45)
-        ax2 = fig.add_subplot(1,2,2, projection='3d', elev=15, azim=-135)
+        ax1 = fig.add_subplot(1,2,1, projection='3d', elev=15, azim=135)
+        ax2 = fig.add_subplot(1,2,2, projection='3d', elev=15, azim=45)
         plot_eig(A, floor, ax1, args)
         plot_eig(A, floor, ax2, args)
         if not DEBUG:

@@ -62,42 +62,6 @@ class LO(scipy.sparse.linalg.LinearOperator):
     delta val=0.000000 delta vec=0.000000
 
     '''
-    def f2I(self,  # LO instance
-            f,     # float
-            n_max,
-            step,
-            _min,
-            _max):
-        ''' Map float to integer index of closest fiducial float
-        '''
-        rv = int(round((f-_min)/step)) # Simply round in python3
-        return rv,self.I2f(rv,n_max,step,_min,_max)
-    def h2H(self, # LO instance
-            h,    # float
-            ):
-        return self.f2I(h, self.n_h, self.h_step, self.h_min, self.h_max)
-    def g2G(self, g  # float
-            ):
-        return self.f2I(g, self.n_g, self.g_step, self.g_min, self.g_max)
-    def I2f(self,  # LO instance
-            I,     # int
-            n_max,
-            step,
-            _min,
-            _max):
-        ''' Map integer index to float
-        '''
-        rv = _min + I * step
-        return rv
-    def H2h(self,  # LO instance
-            H,     # Int
-            ):
-        return self.I2f(H, self.n_h, self.h_step, self.h_min, self.h_max)
-    def G2g(self,  # LO instance
-            G,     # Int
-            ):
-        return self.I2f(G, self.n_g, self.g_step, self.g_min, self.g_max)
-    
     def h_lim(self, g):
         '''Calculates the maximum possible slope h at position g.
         '''
@@ -193,30 +157,26 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         self.G2h_list = []  # G2h_list[G] is the allowed interval in h
         self.G2state = []   # G2state[G] is the corresponding pair of states
         First = True
-        for _g in np.arange(self.g_min, self.g_max, self.g_step):
-            G,g = self.g2G(_g)
-            T,t = self.g2G(g)
-            assert T == G
-            assert t == g
-            assert abs(g-_g) < self.g_step
-            if First:
-                First = False
-            else:
-                if G_old == G:
-                    continue    # Round off lead to repeated G
-            G_old = G
+        for G in range(self.n_g):
+            g = self.g_min + G*self.g_step
+            assert g >= self.g_min
+            assert g <= self.g_max
             h_max = self.h_lim(g)
             h_min = -h_max
             H_i, H_f = self.fi_range(h_min, h_max, self.h_step, self.h_min)
+            if H_i == 0:
+                H_i = 1                # Zero measure special case
             if H_i >= H_f:
-                continue        # No alowed states for this value of g
-            s_i = len(self.state_list)+1 # First allowed state for this g
+                continue               # No alowed states for this g
+            s_i = len(self.state_list) # First allowed state for this g
             for H in range(H_i, H_f):
                 h = self.h_min + H*self.h_step
                 self.state_dict[(G,H)] = (g,h,len(self.state_list))
                 self.state_list.append((g,h,G,H))
-            s_f = len(self.state_list) # Last allowed state for this g
+            s_f = len(self.state_list) - 1 # Last allowed state for this g
             h_i,h_f = (self.h_min + H*self.h_step for H in (H_i,H_f-1))
+            assert h_i <= h_min and h_min <= h_i + self.h_step
+            assert h_f <= h_max and h_max <=  h_f + self.h_step
             self.G2h_list.append(np.array((h_i, h_f), dtype=np.float64))
             self.G2state.append(np.array((s_i, s_f), dtype=np.int32))
         self.n_states = len(self.state_list)
@@ -249,13 +209,13 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         self.dtype = np.dtype(np.float64)
         self.dy = dy
         self.n_g = n_g
-        self.n_h = n_h
         self.g_max = u
         self.g_min = -u
         self.g_step = 2*u/(n_g-1)
         self.h_max = self.h_lim(self.g_min)
-        self.h_min = -self.h_max
         self.h_step = 2*self.h_max/(n_h-1)
+        self.h_min = -self.h_max - self.h_step
+        self.n_h = n_h + 1 # Bottom value of h not used
         if self.h_step > 2*dy:
             print('WARNING: h_step=%f, dy=%f'%(self.h_step, dy))
 
@@ -269,9 +229,15 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         if w == None:
             w = np.empty(self.n_states)
         for i in range(self.n_states):
-            g,h,G,H = self.state_list[i]
-            H,h = self.h2H(-h)
-            H -= 1
+            g,h1,G,H1 = self.state_list[i]
+            h_lim = self.h_lim(g)
+            H2 = int(np.floor((-h1-self.h_min)/self.h_step - .5))
+            H = H2
+            h2 = self.h_min + self.h_step*H2
+            if h2+self.h_step <= -h_lim:
+                H = H2 + 1
+            if h2 >= h_lim:
+                H = H2 - 1
             g,h,j = self.state_dict[(G,H)]
             w[j] = v[i]
         return w
@@ -477,7 +443,7 @@ class LO_step(LO):
     '''Variant of LO that uses g_step and h_step rather than n_h and n_g
     as arguments to __init__
     '''
-    def __init__(self,              # LO instance
+    def __init__(self,              # LO_step instance
                  u,                 # Upper bound
                  dy,                # Change in y
                  g_step,            # Size of steps in position g
@@ -495,8 +461,8 @@ class LO_step(LO):
         self.g_step = g_step
         self.h_step = h_step
         self.h_max = self.h_lim(self.g_min)
-        self.h_min = -self.h_max
-        self.n_h = int(1 + 2*self.h_max/h_step)
+        self.h_min = -self.h_max - self.h_step  # Bottom h value not used
+        self.n_h = int(2 + 2*self.h_max/h_step)
         self.n_g = int(1 + 2*self.g_max/g_step)
 
         self.allowed()

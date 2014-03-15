@@ -182,8 +182,8 @@ class LO_step(LO_step):
     @cython.wraparound(False)
     def s_bounds(
             self,         # LO instance
-            int state_n,        # index of state in self.state_list
-            backward=False):
+            int state_n,  # index of state in self.state_list
+            ):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
         them to bounds.
@@ -201,7 +201,6 @@ class LO_step(LO_step):
 
         # "return 1" here reduces LO build time (n_g=500, n_h=500)
         # from 9.8 seconds to 0.4 seconds.
-        assert backward == False
         
         g_0, h_0, G_0, H_0 = self.state_list[state_n]
         # Calculate float range of allowed g values
@@ -225,19 +224,16 @@ class LO_step(LO_step):
         cdef int i, j, s_i, s_f, Ds, a, b, len_bounds = 0
         cdef double h_i, h_f, Dh
         cdef int G_i = G_i_
-        cdef int G_f = min(G_f_,len(self.G2state))
+        cdef int G_f = min(G_f_+1,self.n_g) # +1 cause f(G_0) <= g_0 < f(G_0+1)
         cdef double g_step = self.g_step, g_min = self.g_min
         cdef ITYPE_t *I_pointer
         cdef DTYPE_t *D_pointer
-        
         # This loop compiles as pure c
         for G_1 in range(G_i, G_f):
             g_1 = g_min + G_1 * g_step
-            L_h = (g_1 - g_0)/dy - 6 * dy
             U_h = (24*(g_max - g_1))**.5
-            if g_0 > g_max - 6*dy:
-                L_h = max( L_h, -U_h )
-            # start code segment that is self.ab() in first.py
+            L_h = max( (g_1 - g_0)/dy - 6 * dy, -U_h)
+            # Begin code segment that is self.ab() in first.py
             I_pointer = <ITYPE_t *>(G2state[G_1])
             D_pointer = <DTYPE_t *>(G2h_list[G_1])
             s_i = I_pointer[0]
@@ -245,7 +241,7 @@ class LO_step(LO_step):
             h_i = D_pointer[0]
             h_f = D_pointer[1]
             if s_i == s_f and not (L_h <= h_i and h_f <= U_h):
-                continue               # No states allowed
+                continue               # No successors for G_1
             Ds = s_f-s_i
             Dh = h_f-h_i
             if L_h <= h_i:
@@ -253,18 +249,14 @@ class LO_step(LO_step):
             else:
                 i = int((L_h-h_i)/(Dh/Ds))
                 a = s_i + i
-                if h_i+(Dh/Ds)*i < L_h:
-                    a += 1
             if U_h >= h_f:
                 b = s_f + 1
             else:
                 i = int((h_f - U_h)/(Dh/Ds))
-                b = s_i + i
-                if h_i+(Dh/Ds)*i < U_h:
-                    b += 1
-            # finish code segment that is self.ab() in first.py
+                b = s_i + i + 1
+            # End code segment that is self.ab() in first.py
             if b <= a:
-                continue
+                continue              # No successors for G_1
             bounds_a[len_bounds] = a
             bounds_b[len_bounds] = b
             len_bounds += 1
