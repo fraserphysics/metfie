@@ -103,8 +103,7 @@ def main(argv=None):
         else:
             fig = plot_dict[key](gun, plt)
         if not DEBUG:
-            #fig.savefig(getattr(args, key), format='pdf')
-            fig.savefig(args.__dict__[key], format='pdf')
+            fig.savefig(getattr(args, key), format='pdf')
     return 0
 
 magic = {     # Values that I invoke magically throughout module

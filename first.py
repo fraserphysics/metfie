@@ -52,6 +52,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
     4   1.00
     5   1.50
     
+    These tests of symmetry are vacuous for the way I do rmatvec().
     >>> val,v = A.power(small=1e-6)
     >>> u = A.symmetry(v)
     >>> w = A.symmetry(u)
@@ -159,8 +160,7 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         First = True
         for G in range(self.n_g):
             g = self.g_min + G*self.g_step
-            assert g >= self.g_min
-            assert g <= self.g_max
+            assert self.g_max >= g and g >= self.g_min
             h_max = self.h_lim(g)
             h_min = -h_max
             H_i, H_f = self.fi_range(h_min, h_max, self.h_step, self.h_min)
@@ -185,17 +185,14 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         '''Calculate allowed sequential pairs of states'''
         n_states = self.n_states
         self.shape = (n_states, n_states)
-        n_pairs = 0
+        self.n_pairs = 0
         self.bounds_a = np.empty((n_states), np.object)
         self.bounds_b = np.empty((n_states), np.object)
         childless = 0
         for i in range(n_states):
             # Commenting out the following call reduces LO build time
             # (n_g=500, n_h=500) from 9.8 seconds to 0.3 seconds.
-            n_successors = self.s_bounds(i)
-            n_pairs += n_successors
-            assert n_successors > 0
-        self.n_pairs = n_pairs
+            self.n_pairs += self.s_bounds(i) # n_successors
         return
     def __init__(self,              # LO instance
                  u,                 # Upper bound
