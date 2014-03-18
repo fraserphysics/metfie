@@ -153,7 +153,8 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
     def allowed(self):
         '''Calculate the allowed states.
         '''
-        epsilon = self.h_step*1e-10 # Fudge for assertions in loop
+        # epsilon fudge for assertions in loop.  1e-13 not enough, 1e-12 is
+        epsilon = self.h_step*1.0e-10
         self.state_list = []
         self.state_dict = {}
         self.G2h_list = []  # G2h_list[G] is the allowed interval in h

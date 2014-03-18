@@ -2,8 +2,15 @@
 Frobenius function, v_{PF}, ie, the eigenfunction corresponding to the
 largest eigenvector of the first order Markov integral operator.
 
-Default arguments have n_g and n_h take values (200,200) and
-(225,225).
+Default arguments yields:
+
+    For small, n_g=226 and n_h=227
+
+    For big, n_g=201 and n_h=202
+
+    user	0m31.618s
+
+
 
 '''
 import numpy as np
