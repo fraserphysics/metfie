@@ -153,6 +153,7 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
     def allowed(self):
         '''Calculate the allowed states.
         '''
+        epsilon = self.h_step*1e-10 # Fudge for assertions in loop
         self.state_list = []
         self.state_dict = {}
         self.G2h_list = []  # G2h_list[G] is the allowed interval in h
@@ -175,8 +176,12 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
                 self.state_list.append((g,h,G,H))
             s_f = len(self.state_list) - 1 # Last allowed state for this g
             h_i,h_f = (self.h_min + H*self.h_step for H in (H_i,H_f-1))
-            assert h_i <= h_min and h_min <= h_i + self.h_step
-            assert h_f <= h_max and h_max <=  h_f + self.h_step
+            assert (
+                h_i < h_min+epsilon
+                and h_min-epsilon <= h_i + self.h_step)
+            assert (
+                h_f < h_max+epsilon
+                and h_max-epsilon < h_f + self.h_step)
             self.G2h_list.append(np.array((h_i, h_f), dtype=np.float64))
             self.G2state.append(np.array((s_i, s_f), dtype=np.int32))
         self.n_states = len(self.state_list)
