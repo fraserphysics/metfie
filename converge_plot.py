@@ -23,10 +23,13 @@ from mpl_toolkits.mplot3d import Axes3D  # Mysteriously necessary
 from matplotlib import cm
 from matplotlib.ticker import LinearLocator, FormatStrFormatter
 
+import numpy as np
+magnitude = lambda A: int(np.log10(np.abs(A).max()))-1
+
 def main(argv=None):
     import argparse
-    import numpy as np
     from converge import read_study
+    from plot import axis
     
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
@@ -45,24 +48,50 @@ def main(argv=None):
             for i in range(len(h)):
                 print('d_h=%8.2e, d_g=%8.2e, frac_error=%6.4f, e_val=%9.3e'%
                       (h[i],g[j],error[i,j],eigenvalue[i,j]))
-    plot(g,h,error)
-    plot(g,h,eigenvalue)
+    
+    g_data = np.array(g)
+    g_mag = magnitude(g_data)
+    g_scale = g_data/10**g_mag
+    g_ax = axis(data=g_scale, label='d_g', magnitude=g_mag, ticks=g_scale)
+    
+    h_data = np.array(h)
+    h_mag = magnitude(h_data)
+    h_scale = h_data/10**h_mag
+    h_ax = axis(data=h_scale, label='d_h', magnitude=h_mag, ticks=h_scale)
+    
+    plot(g_ax,h_ax,error,'(|v - v_{ref}|/|v_{ref}|)')
+    plot(g_ax,h_ax,eigenvalue,'\lambda')
 
     plt.show()
     return 0
 
-def plot(g,h,z):
+def plot(g_ax,h_ax,z,z_label):
     '''Function to plot result of main.
     '''
     import numpy as np
-    G,H = np.meshgrid(g, h)
+    from plot import axis
+    
+    G,H = np.meshgrid(g_ax.data, h_ax.data)
     fig = plt.figure(figsize=(16,8))
     ax = fig.add_subplot(1,1,1, projection='3d', elev=21, azim=-94)
-    surf = ax.plot_surface(
-            G, H, z, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
-            antialiased=False)
-    ax.set_xlabel(r'$d_g$')
-    ax.set_ylabel(r'$d_h$')
+    g_ax.set_label(ax.set_xlabel)
+    g_ax.set_ticks(ax.set_xticks, ax.set_xticklabels)
+    h_ax.set_label(ax.set_ylabel)
+    h_ax.set_ticks(ax.set_yticks, ax.set_yticklabels)
+
+    z_min = z.min()
+    z_max = z.max()
+    z_data = np.array((z_min,z_max))
+    z_mag = magnitude(z_data)
+    z_scale = z_data/10**z_mag
+    z_ax = axis(data=z_scale, magnitude=z_mag, label=z_label)
+    
+    z_ax.set_label(ax.set_zlabel)
+    z_ax.set_ticks(ax.set_zticks, ax.set_zticklabels)
+    
+    surf = ax.plot_surface(G, H, z/10**z_mag, rstride=1, cstride=1,
+                           cmap=mpl.cm.jet, linewidth=1,
+                antialiased=False)
     
 if __name__ == "__main__":
     rv = main()
