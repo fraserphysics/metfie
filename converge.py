@@ -2,9 +2,7 @@
 eigenfunction corresponding to the largest eigenvector of the first
 order Markov integral operator.
 
-After calculating errors, look at them with:
-
-->python3 -c "from converge import plot; plot('result_converge')"
+After calculating errors, look at them with converge_plot.py
 
 Default arguments have n_g and n_h take values 200 and 225.  With the
 default arguments, script calls LO.power() 5 times and on watcher, the
@@ -16,19 +14,18 @@ sys     0m0.820s
 
 '''
 import sys
-#from first import LO_step as LO
 from first_c import LO_step as LO
 def main(argv=None):
     import argparse
     import numpy as np
     import time
-    global DEBUG
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
     t_start = time.time()
-    parser = argparse.ArgumentParser(
-        description='Plot eigenfunction of the integral equation')
+    parser = argparse.ArgumentParser(description=
+    '''Calculate eigenvalues and eigenfuction errors for ranges of resolution
+in g and h''')
     parser.add_argument('--u', type=float, default=(2.0e-5),
                        help='log fractional deviation')
     parser.add_argument('--dy', type=float, default=3.2e-4,
@@ -90,83 +87,38 @@ def main(argv=None):
     elapsed = time.time() - t_start
     pickle.dump((args,text,error,elapsed), open( args.out_file, "wb" ) )
     return 0
-def read_ghz(file_name):
-    '''Get arrays g (1-d array of n_g values), h (1-d array of n_h values)
-    and z (2-d array of error values from pickled dict.
-
+def read_study(file_name, verbose=1):
+    '''Get data from pickled dict.
     '''
     import pickle
     import numpy as np
-    stuff = pickle.load( open( file_name, "rb" ) )
-    if len(stuff) == 3:
-        args,text,error = pickle.load( open( file_name, "rb" ) )
-        print('args=\n%s\ntext=%s\n'%(args,text))
-    if len(stuff) == 4:
-        from datetime import timedelta
-        args,text,error,elapsed = pickle.load( open( file_name, "rb" ) )
+    from datetime import timedelta
+    
+    args,text,dict_,elapsed = pickle.load( open( file_name, "rb" ) )
+    if verbose>0:
         print('time=%s'%(timedelta(seconds=elapsed)))
         for key,value in vars(args).items():
             print('%s=%s'%(key,value))
+    if verbose>1:
         print('%s'%(text,))
-    #error = pickle.load( open( file_name, "rb" ) )
     gs = set([])
     hs = set([])
-    for key in error:
+    for key in dict_:
         d_g,d_h = (s.split('=')[-1] for s in key.split())
         gs.add((float(d_g),d_g))
         hs.add((float(d_h),d_h))
     gs = sorted(set(gs)) # Sort on floats and keep strings for keys
     hs = sorted(set(hs))
-    z = np.empty((len(hs), len(gs)))
+    error = np.empty((len(hs), len(gs)))
+    eigenvalue = np.empty((len(hs), len(gs)))
     for i in range(len(hs)):
         for j in range(len(gs)):
             key = 'd_g=%s d_h=%s'%(gs[j][1], hs[i][1])
-            d = error[key]
-            if type(d) == np.float_:
-                z[i,j] = d
-            else:
-                z[i,j] = d[1]
+            error[i,j], eigenvalue[i,j] = dict_[key]
     h = [x[0] for x in hs]
     g = [x[0] for x in gs]
-    return g,h,z
+    return g,h,error,eigenvalue
 
-def plot(file_name='result_converge'):
-    '''Function to plot result of main.  Invoke with
-    python3 -c "from converge import plot; plot('result_converge')"
-    '''
-    import numpy as np
-    import matplotlib as mpl
-    g,h,z = read_ghz(file_name)
-    for j in range(len(g)):
-        for i in range(len(h)):
-            print('d_h=%8.2e, d_g=%8.2e,  %6.4f'%(h[i],g[j],z[i,j]))
-    G,H = np.meshgrid(g, h)
-    params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
-              'legend.fontsize': 15,
-              'text.usetex': True,
-              'xtick.labelsize': 15,
-              'ytick.labelsize': 15}
-    mpl.rcParams.update(params)
-    if True:
-        DEBUG = True
-        mpl.rcParams['text.usetex'] = False
-    else:
-        mpl.use('PDF')
-    import matplotlib.pyplot as plt  # must be after mpl.use
-    from mpl_toolkits.mplot3d import Axes3D  # Mysteriously necessary
-                                             #for "projection='3d'".
-    from matplotlib import cm
-    from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    fig = plt.figure(figsize=(16,8))
-    ax = fig.add_subplot(1,1,1, projection='3d', elev=21, azim=-94)
-    surf = ax.plot_surface(
-            G, H, z, rstride=1, cstride=1, cmap=mpl.cm.jet, linewidth=1,
-            antialiased=False)
-    ax.set_xlabel(r'$d_g$')
-    ax.set_ylabel(r'$d_h$')
-    plt.show()
-    
 if __name__ == "__main__":
     rv = main()
     sys.exit(rv)
