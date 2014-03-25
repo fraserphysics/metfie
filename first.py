@@ -66,7 +66,11 @@ class LO(scipy.sparse.linalg.LinearOperator):
     def h_lim(self, g):
         '''Calculates the maximum possible slope h at position g.
         '''
-        return np.sqrt(24*(self.g_max - g))
+        d_g = self.g_max - g
+        if d_g < 0:
+            assert (-d_g)/self.g_max < 1e-10
+            return 0.0
+        return np.sqrt(24*(d_g))
     def ab(self, # LO instance
            low,  # Lower limit of h range
            high, # Upper limit of h range
@@ -153,7 +157,8 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
     def allowed(self):
         '''Calculate the allowed states.
         '''
-        epsilon = self.h_step*1e-10 # Fudge for assertions in loop
+        ep_h = self.h_step*1e-10 # Fudge for h assertions in loop
+        ep_g = self.g_step*1e-10 # Fudge for g
         self.state_list = []
         self.state_dict = {}
         self.G2h_list = []  # G2h_list[G] is the allowed interval in h
@@ -161,7 +166,7 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         First = True
         for G in range(self.n_g):
             g = self.g_min + G*self.g_step
-            assert self.g_max >= g and g >= self.g_min
+            assert self.g_max + ep_g >= g and g + ep_g >= self.g_min
             h_max = self.h_lim(g)
             h_min = -h_max
             H_i, H_f = self.fi_range(h_min, h_max, self.h_step, self.h_min)
@@ -177,11 +182,11 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
             s_f = len(self.state_list) - 1 # Last allowed state for this g
             h_i,h_f = (self.h_min + H*self.h_step for H in (H_i,H_f-1))
             assert (
-                h_i < h_min+epsilon
-                and h_min-epsilon <= h_i + self.h_step)
+                h_i < h_min+ep_h
+                and h_min-ep_h <= h_i + self.h_step)
             assert (
-                h_f < h_max+epsilon
-                and h_max-epsilon < h_f + self.h_step)
+                h_f < h_max+ep_h
+                and h_max-ep_h < h_f + self.h_step)
             self.G2h_list.append(np.array((h_i, h_f), dtype=np.float64))
             self.G2state.append(np.array((s_i, s_f), dtype=np.int32))
         self.n_states = len(self.state_list)

@@ -21,10 +21,12 @@ from first_c import LO_step as LO
 def main(argv=None):
     import argparse
     import numpy as np
+    import time
     global DEBUG
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
+    t_start = time.time()
     parser = argparse.ArgumentParser(
         description='Plot eigenfunction of the integral equation')
     parser.add_argument('--u', type=float, default=(2.0e-5),
@@ -71,8 +73,9 @@ def main(argv=None):
     text = ''
 
     ref_LO = LO( args.u, args.dy, d_g_ref, d_h_ref)
-    text += 'For ref, n_g=%d and n_h=%d\n'%(ref_LO.n_g,ref_LO.n_h)
     ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
+    text += 'For ref, n_g=%d, n_h=%d and e_val=%9.3e\n'%(
+        ref_LO.n_g,ref_LO.n_h, ref_LO.eigenvalue)
     for d_g in np.arange(d_g_small, d_g_big, dd_g):
         for d_h in np.arange(d_h_small, d_h_big, dd_h):
             key = 'd_g=%g d_h=%g'%(d_g, d_h)
@@ -80,10 +83,12 @@ def main(argv=None):
             A = LO( args.u, args.dy, d_g, d_h)
             A.power(small=tol, n_iter=maxiter,verbose=True)
             d = sym_diff(A,ref_LO)
-            error[key] = d
-            text += 'n_g=%d and n_h=%d, error=%g\n'%(A.n_g,A.n_h,d)
+            error[key] = (d,A.eigenvalue)
+            text += 'n_g=%5d and n_h=%4d, error=%6.4f, e_val=%9.3e\n'%(
+                A.n_g,A.n_h,d, A.eigenvalue)
 
-    pickle.dump((args,text,error), open( args.out_file, "wb" ) )
+    elapsed = time.time() - t_start
+    pickle.dump((args,text,error,elapsed), open( args.out_file, "wb" ) )
     return 0
 def read_ghz(file_name):
     '''Get arrays g (1-d array of n_g values), h (1-d array of n_h values)
@@ -92,12 +97,21 @@ def read_ghz(file_name):
     '''
     import pickle
     import numpy as np
-    args,text,error = pickle.load( open( file_name, "rb" ) )
-    print('args=\n%s\ntext=%s\n'%(args,text))
+    stuff = pickle.load( open( file_name, "rb" ) )
+    if len(stuff) == 3:
+        args,text,error = pickle.load( open( file_name, "rb" ) )
+        print('args=\n%s\ntext=%s\n'%(args,text))
+    if len(stuff) == 4:
+        from datetime import timedelta
+        args,text,error,elapsed = pickle.load( open( file_name, "rb" ) )
+        print('time=%s'%(timedelta(seconds=elapsed)))
+        for key,value in vars(args).items():
+            print('%s=%s'%(key,value))
+        print('%s'%(text,))
     #error = pickle.load( open( file_name, "rb" ) )
     gs = set([])
     hs = set([])
-    for key,d in error.items():
+    for key in error:
         d_g,d_h = (s.split('=')[-1] for s in key.split())
         gs.add((float(d_g),d_g))
         hs.add((float(d_h),d_h))
@@ -107,7 +121,11 @@ def read_ghz(file_name):
     for i in range(len(hs)):
         for j in range(len(gs)):
             key = 'd_g=%s d_h=%s'%(gs[j][1], hs[i][1])
-            z[i,j] = error[key]
+            d = error[key]
+            if type(d) == np.float_:
+                z[i,j] = d
+            else:
+                z[i,j] = d[1]
     h = [x[0] for x in hs]
     g = [x[0] for x in gs]
     return g,h,z
@@ -121,7 +139,7 @@ def plot(file_name='result_converge'):
     g,h,z = read_ghz(file_name)
     for j in range(len(g)):
         for i in range(len(h)):
-            print('d_h=%g, d_g=%g,  %f'%(h[i],g[j],z[i,j]))
+            print('d_h=%8.2e, d_g=%8.2e,  %6.4f'%(h[i],g[j],z[i,j]))
     G,H = np.meshgrid(g, h)
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
               'text.fontsize': 15,

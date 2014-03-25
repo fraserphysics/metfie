@@ -84,7 +84,12 @@ class LO_step(LO_step):
         cdef float dgdh = self.g_step*self.h_step
         cdef float t
 
-        '''See http://docs.cython.org/src/userguide/parallelism.html.  Work on matvec()'''
+        '''See http://docs.cython.org/src/userguide/parallelism.html.  Here
+        prange() over i is fast because rv_[i] gets written.  That is,
+        the writes to rv_[i] are local and the reads from v_[j]
+        aren't.  Prange() is bad for matvec because the reads are
+        local and the writes aren't.
+        '''
         v_ = &(v__[0])
         for i in prange(n_states, nogil=True):
             temp = 0.0
