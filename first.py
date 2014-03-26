@@ -428,6 +428,18 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         from scipy.interpolate import RectBivariateSpline
         self.bs = RectBivariateSpline(g, h, z, kx=3, ky=3)
         return
+    def set_eigenvector(self, # LO instance
+             A,):         # Other LO instance
+
+        ''' Use eigenvector of A for self
+        '''
+        x = np.empty((2,self.n_states))
+        for i in range(self.n_states):
+            x[0,i],x[1,i] = self.state_list[i][:2] # x[0] = g, x[1] = h
+        A.spline()
+        self.eigenvector = A.bs.ev(x[0],x[1])
+        self.eigenvector /= LA.norm(self.eigenvector)
+        self.spline() # Fit to new self.eigenvector
     def diff(self,     #LO instance
              g,        #List(like) of g values
              h,        #List(like) of h values
@@ -439,7 +451,8 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         '''
 
         # Fit a spline and evaluate
-        self.spline()          # Build spline of self
+        if not 'bs' in vars(self):
+            self.spline()      # Build spline of self
         w = self.bs.ev(g,h)    # Evaluate spline at points of v
         w /= LA.norm(w)        # Make w a unit vector
         u = v-w

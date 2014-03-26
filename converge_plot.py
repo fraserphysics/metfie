@@ -38,6 +38,10 @@ def main(argv=None):
     parser.add_argument('--in_file', type=str, default='result_converge', 
         help="file of results")
     parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--azim', type=float, default=-140, help=
+                        'view angle for plots')
+    parser.add_argument('--elev', type=float, default=25, help=
+                        'view angle for plots')
     parser.add_argument('--verbose', type=int, default=0, help=
                         '0:silent, 1:args, 2:pickle_text, 3:all')
     args = parser.parse_args(argv)
@@ -59,13 +63,20 @@ def main(argv=None):
     h_scale = h_data/10**h_mag
     h_ax = axis(data=h_scale, label='d_h', magnitude=h_mag, ticks=h_scale)
     
-    plot(g_ax,h_ax,error,'(|v - v_{ref}|/|v_{ref}|)')
-    plot(g_ax,h_ax,eigenvalue,'\lambda')
+    def de_f(e,f):
+        de_df = (e[1]-e[0])/(f[1]-f[0])
+        return de_df*f[0]
+    ev_zero = (eigenvalue[0,0]
+               - de_f(eigenvalue[:,0],h_data)
+               - de_f(eigenvalue[0,:],g_data))
+    print('eigenvalue(0,0)=%e'%(ev_zero,))
+    plot(g_ax,h_ax,error,'(|v - v_{ref}|/|v_{ref}|)',args)
+    plot(g_ax,h_ax,eigenvalue,'\lambda',args)
 
     plt.show()
     return 0
 
-def plot(g_ax,h_ax,z,z_label):
+def plot(g_ax,h_ax,z,z_label,args):
     '''Function to plot result of main.
     '''
     import numpy as np
@@ -73,7 +84,7 @@ def plot(g_ax,h_ax,z,z_label):
     
     G,H = np.meshgrid(g_ax.data, h_ax.data)
     fig = plt.figure(figsize=(16,8))
-    ax = fig.add_subplot(1,1,1, projection='3d', elev=21, azim=-94)
+    ax = fig.add_subplot(1,1,1, projection='3d', elev=args.elev, azim=args.azim)
     g_ax.set_label(ax.set_xlabel)
     g_ax.set_ticks(ax.set_xticks, ax.set_xticklabels)
     h_ax.set_label(ax.set_ylabel)
