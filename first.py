@@ -428,11 +428,19 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         from scipy.interpolate import RectBivariateSpline
         self.bs = RectBivariateSpline(g, h, z, kx=3, ky=3)
         return
-    def set_eigenvector(self, # LO instance
-             A,):         # Other LO instance
+    def set_eigenvector(
+            self,        # LO instance
+            A,           # Other LO instance or np array
+            exact=False  # Use np array A without interpolation
+    ):
+        '''For self.eigenvector, use eigenvector of other LO instance or use
+        array.
 
-        ''' Use eigenvector of A for self
         '''
+        if exact:
+            assert A.shape == (self.n_states,)
+            self.eigenvector = A
+            return
         x = np.empty((2,self.n_states))
         for i in range(self.n_states):
             x[0,i],x[1,i] = self.state_list[i][:2] # x[0] = g, x[1] = h
@@ -459,6 +467,15 @@ g_0/self.g_max, h_0/self.h_lim(g_0), L_g, U_g, G_i, G_f)
         d = LA.norm(u)
         if rv: return d, u
         else: return d
+def read_LO_step(filename, dirname='archive'):
+    '''From an archive build an LO_step instance and read its eigenvector
+    from disk.
+    '''
+    import pickle, os.path
+    archive = pickle.load(open(os.path.join(dirname,filename),'rb'))
+    A = LO_step(*archive['args'])
+    A.set_eigenvector(np.fromfile(archive['vec_filename']),exact=True)
+    return A
 class LO_step(LO):
     '''Variant of LO that uses g_step and h_step rather than n_h and n_g
     as arguments to __init__
@@ -487,6 +504,19 @@ class LO_step(LO):
 
         self.allowed()
         if not skip_pairs: self.pairs()
+        return
+    def archive(self, filename, dirname='archive'):
+        import tempfile
+        import pickle
+        import os.path
+
+        vec_file = tempfile.NamedTemporaryFile(
+            prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
+        self.eigenvector.tofile(vec_file)
+        dict_ = {
+            'args':(self.g_max, self.dy, self.g_step, self.h_step,True),
+            'vec_filename':vec_file.name}
+        pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ) )
         return
 def sym_diff(A, B):
         '''

@@ -21,6 +21,8 @@ def main(argv=None):
                        help='number of integration elements in value')
     parser.add_argument('--n_h', type=int, default=200, help=
 'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
+    parser.add_argument('--archive', type=str, default='test', help=
+'File for storing LO_step instance.  Use "no" to skip.')
     args = parser.parse_args(argv)
 
     import numpy as np
@@ -35,6 +37,11 @@ def main(argv=None):
     tol = 5e-6
     maxiter = 1000
 
+    if args.archive != 'no':
+        try:
+            old_LO = first.read_LO_step(args.archive)
+        except:
+            print('Failed to read %s'%args.archive)
     print('\n')
     t0 = time()
 
@@ -48,6 +55,8 @@ def main(argv=None):
     else:
         LO_cython.power(n_iter=maxiter, small=tol, verbose=True)
         t2 = time()
+        if args.archive != 'no':
+            LO_cython.archive(args.archive)
 
     if args.python:
         LO_python = first.LO_step( args.u, args.dy, d_g, d_h)
@@ -61,6 +70,11 @@ def main(argv=None):
     if args.python:
         print('''
     %5.1f              python build operator'''%(t3-t2))
+
+    if 'old_LO' in vars():
+        from numpy.linalg import norm
+        print('norm(old-new)=%e'%(norm(
+            old_LO.eigenvector-LO_cython.eigenvector)))
     return 0
 
 if __name__ == "__main__":
