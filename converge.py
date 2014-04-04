@@ -83,7 +83,10 @@ in g and h''')
             error[key] = (d,A.eigenvalue)
             text += 'n_g=%5d and n_h=%4d, error=%6.4f, e_val=%9.3e\n'%(
                 A.n_g,A.n_h,d, A.eigenvalue)
-
+    A.set_eigenvector(ref_LO)
+    x = A.xyz()
+    print('''interpolate error = %e
+Next, calculate stationary density.'''%(A.diff(x[0],x[1],x[2]),))
     elapsed = time.time() - t_start
     pickle.dump((args,text,error,elapsed), open( args.out_file, "wb" ) )
     return 0
@@ -110,11 +113,14 @@ def read_study(file_name, verbose=1):
     gs = sorted(set(gs)) # Sort on floats and keep strings for keys
     hs = sorted(set(hs))
     error = np.empty((len(hs), len(gs)))
-    eigenvalue = np.empty((len(hs), len(gs)))
+    eigenvalue = np.zeros((len(hs), len(gs)))
     for i in range(len(hs)):
         for j in range(len(gs)):
-            key = 'd_g=%s d_h=%s'%(gs[j][1], hs[i][1])
-            error[i,j], eigenvalue[i,j] = dict_[key]
+            val = dict_['d_g=%s d_h=%s'%(gs[j][1], hs[i][1])]
+            if type(val) == type((1,2)): # Test handles old files wo eigenvalues
+                error[i,j], eigenvalue[i,j] = val
+            else:
+                error[i,j] = val
     h = [x[0] for x in hs]
     g = [x[0] for x in gs]
     return g,h,error,eigenvalue

@@ -71,7 +71,8 @@ def main(argv=None):
                - de_f(eigenvalue[0,:],g_data))
     print('eigenvalue(0,0)=%e'%(ev_zero,))
     plot(g_ax,h_ax,error,'(|v - v_{ref}|/|v_{ref}|)',args)
-    plot(g_ax,h_ax,eigenvalue,'\lambda',args)
+    if eigenvalue.max() > 0: # Test for handling old files wo eigenvalues
+        plot(g_ax,h_ax,eigenvalue,'\lambda',args)
 
     plt.show()
     return 0
