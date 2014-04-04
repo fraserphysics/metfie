@@ -19,7 +19,34 @@ To do:
 
 3. Prove or argue that as dy -> 0 limit of measure exists
 
-=====================Helpful hints=====================================
+
+=====================Files=====================================
+File             Comment                      Imported by
+MaxH.py          P(2|1) from dense A          calc.py pq_calc.py
+calc.py          GUN class for juq.pdf        plot.py recursive.py   
+recursive.py     Plots for bounds             SConstruct
+pq_calc.py       calc.py 2-d states          
+plot_allowed.py  No known use	             
+integral.py      figs for notes.pdf           SConstruct
+qt_embedding.py  Example from net            
+ui_P_control.py  ui_* derived from           
+ui_ideal_qt.py   *.ui		             
+ui_PVE_control.py		             
+setup.py         Build C.so first_c.so        SConstruct
+gui_eos.py       main for gui	             
+level.py         plots level sets. Unused		             
+surf.py          mayavi surface plot          gui_eos.py
+eos.py           ideal and shaw eos           surf.py and gui_eos.py
+explore.py       mpl plot of eigenvec        
+plot.py          figs for juq and notes       SConstruct converge.py
+diff.py          mayavi for 2 eigenvecs      
+test.py          compare first first_c
+first.py         2-d operator 1st order       first_c
+first_c.pyc      cython first                 converge diff explore test
+converge.py      study val and vec           
+converge_plot.py plot study	             
+
+=====================Helpful hints=============================
 Write tests for eos.py
 ->python -m pdb gui_eos.py
 (Pdb) import pdb
