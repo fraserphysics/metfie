@@ -11,12 +11,13 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(
         description='''Display specified data using mayavi ''')
-    parser.add_argument('--archive', type=str, default='test', help=
-                        'Read LO_step instance from this file.')
+    parser.add_argument('--archive', type=str,
+                        default='200_g_200_h_32_y',
+                        help='Read LO_step instance from this file.')
     args = parser.parse_args(argv)
 
     LO = first.read_LO_step(args.archive)
-    L0.calc_marginal()
+    LO.calc_marginal()
 
     plots = [] # to keep safe from garbage collection
     plots.append(plot(LO, LO.marginal))
@@ -54,11 +55,11 @@ def plot(op, # Linear operator
     z = op.vec2z(b, g, h, np.log10(floor))
     fig_0 = ML.figure()
     X,Y,Z,ranges = scale(G,H,z.T)
-    ranges[-2:] = [floor, v.max()] # Make plot show max before log
+    ranges[-2:] = [floor, z.max()] # Make plot show max before log
     s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot
     ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='v', figure=fig_0)
 
-    return fig0
+    return fig_0
 
 if __name__ == "__main__":
     rv = main()

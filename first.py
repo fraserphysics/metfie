@@ -410,7 +410,8 @@ def read_LO_step(filename, dirname='archive'):
     '''
     import pickle, os.path
     archive = pickle.load(open(os.path.join(dirname,filename),'rb'))
-    A = LO_step(*archive['args'])
+    g_max, dy, g_step, h_step = archive['args']
+    A = LO_step(g_max, dy, g_step, h_step, skip_pairs=True)
     A.set_eigenvector(np.fromfile(archive['vec_filename']),exact=True)
     return A
 class LO_step(LO):
@@ -449,7 +450,8 @@ class LO_step(LO):
             prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
         self.eigenvector.tofile(vec_file)
         dict_ = {
-            'args':(self.g_max, self.dy, self.g_step, self.h_step, True),
+            'args':(float(self.g_max), float(self.dy), float(self.g_step),
+                     float(self.h_step)),
             'vec_filename':vec_file.name}
         pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )
         return
