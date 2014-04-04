@@ -21,6 +21,8 @@ def main(argv=None):
 
     plots = [] # to keep safe from garbage collection
     plots.append(plot(LO, LO.marginal))
+    plots.append(plot(LO, LO.eigenvector))
+    plots.append(plot(LO, LO.symmetry(LO.eigenvector)))
     ML.show()
     return 0
     
@@ -55,6 +57,9 @@ def plot(op, # Linear operator
     z = op.vec2z(b, g, h, np.log10(floor))
     fig_0 = ML.figure()
     X,Y,Z,ranges = scale(G,H,z.T)
+    print('b[0]=%e, b.max=%s'%(b[0],b.max()))
+    print('z[0,0]=%e, z.max=%s'%(z[0,0],z.max()))
+    print('Z[0,0]=%e, Z.max=%s\n'%(Z[0,0],Z.max()))
     ranges[-2:] = [floor, z.max()] # Make plot show max before log
     s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot
     ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='v', figure=fig_0)

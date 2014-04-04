@@ -1,5 +1,7 @@
 import sys
-from first_c import LO_step as LO
+                                  # Clock time, default parameters on watcher
+from first_c import LO_step as LO #   4.3 sec
+#from first import LO_step as LO  # 689.3 sec
 def main(argv=None):
     import argparse
     import numpy as np
@@ -32,9 +34,9 @@ archive directory''')
     tol = 5e-6
     maxiter = 1000
 
-    ref_LO = LO( args.u, args.dy, d_g, d_h )
-    ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
-    ref_LO.archive(args.out_file)
+    op = LO( args.u, args.dy, d_g, d_h )
+    op.power(small=tol, n_iter=maxiter,verbose=True)
+    op.archive(args.out_file)
     # FixMe: Modify archive method to accept comments and pass text
     # like converge.py
    

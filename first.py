@@ -107,7 +107,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
     def allowed(self):
         '''Calculate the allowed states.
         '''
-        self.state_list = []
+        self.state_list = []# state_list[i] = (g,h,G,H)
         self.state_dict = {}# state_dict[(G,H)] = index of state_list
         G2h_list = []       # G2h_list[G] = number of h_steps from zero to edge
         self.G2state = []   # G2state[G] is the corresponding pair of states
@@ -275,7 +275,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         else:
             raise ValueError('expected x.shape = (n,) or (n,1)')
     def power(self, n_iter=1000, small=1.0e-5, v=None, op=None, verbose=False):
-        '''Calculate largest eigevalue and corresponding eigenvector of op.
+        '''Calculate self.eigevalue and self.eigenvector for the
+        largest eigenvalue of op.
         '''
         if op == None: op = self.matvec
         if v != None:
