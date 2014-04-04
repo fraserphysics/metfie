@@ -20,6 +20,8 @@ ctypedef np.int64_t PTYPE_t
 from first import LO_step
 from cython.parallel import prange
 
+cdef extern from "math.h":
+    double floor(double x)
 
 class LO_step(LO_step):
     ''' 
@@ -166,22 +168,18 @@ class LO_step(LO_step):
         return s,v_new
     
     def pointerize_G2(self):
-        '''Get arrays of pointers to np.arrays in self.G2state and
-        self.G2h_list.  In the main loop in s_bounds, those pointers are
-        accessed as c objects for speed.
+        '''Get array of pointers to np.arrays in self.G2state.  In the main
+        loop in s_bounds, those pointers are accessed as c objects for
+        speed.
+
         '''
         cdef int i, n = len(self.G2state)
         cdef PTYPE_t [:] G2state = np.empty(n, dtype=np.int64)
-        cdef PTYPE_t [:] G2h_list = np.empty(n, dtype=np.int64)
         cdef ITYPE_t [:] i_view
-        cdef DTYPE_t [:] d_view
         for i in range(n):
             i_view = self.G2state[i]
             G2state[i] = <PTYPE_t>(&(i_view[0]))
-            d_view = self.G2h_list[i]
-            G2h_list[i] = <PTYPE_t>(&(d_view[0]))
         self.G2state_ = G2state
-        self.G2h_list_ = G2h_list
 
     @cython.boundscheck(False)
     @cython.wraparound(False)
@@ -198,7 +196,7 @@ class LO_step(LO_step):
         if not 'G2state_' in self.__dict__:
             self.pointerize_G2()
         cdef PTYPE_t [:] G2state = self.G2state_
-        cdef PTYPE_t [:] G2h_list = self.G2h_list_
+        cdef ITYPE_t [:] G2h_list = self.G2h_list
         cdef double g_max = self.g_max
         cdef double dy = self.dy
         cdef double g_0, h_0, g_1, L_h, U_h, U_g, L_g
@@ -215,14 +213,12 @@ class LO_step(LO_step):
             U_g = min(g_max,
                 g_0 + dy*self.h_lim(g_0) - 6*dy**2)
         L_g = max(self.g_min,g_0 + h_0*dy - 6*dy**2)
-        if L_g > U_g:
-            self.bounds_a[state_n] = np.zeros(0, dtype=np.int32)
-            self.bounds_b[state_n] = self.bounds_a[state_n]
-            return 0
-        
+        assert L_g <= U_g
+        # Calculate image in G
+        G_i_ = max(0, int(np.floor( (L_g-self.g_min)/self.g_step )))
+        G_f_ = min(self.n_g, 1+int(np.floor( (U_g-self.g_min)/self.g_step )))
         # Prepare for loop over g values in image.  Have no python
         # objects in the loop.
-        G_i_, G_f_ = self.fi_range(L_g, U_g, self.g_step, self.g_min)
         cdef int n_pairs = 0
         cdef ITYPE_t [:] bounds_a = np.zeros(self.n_g, dtype=np.int32)
         cdef ITYPE_t [:] bounds_b = np.zeros(self.n_g, dtype=np.int32)
@@ -230,7 +226,7 @@ class LO_step(LO_step):
         cdef double h_i, h_f, Dh
         cdef int G_i = G_i_
         cdef int G_f = min(G_f_+1,self.n_g) # +1 cause f(G_0) <= g_0 < f(G_0+1)
-        cdef double g_step = self.g_step, g_min = self.g_min
+        cdef double g_step=self.g_step, g_min=self.g_min, h_step=self.h_step
         cdef ITYPE_t *I_pointer
         cdef DTYPE_t *D_pointer
         # This loop compiles as pure c
@@ -238,28 +234,21 @@ class LO_step(LO_step):
             g_1 = g_min + G_1 * g_step
             U_h = (24*(g_max - g_1))**.5
             L_h = max( (g_1 - g_0)/dy - 6 * dy, -U_h)
+            # Float h of image given g is [L_h,U_h)
+
             # Begin code segment that is self.ab() in first.py
             I_pointer = <ITYPE_t *>(G2state[G_1])
-            D_pointer = <DTYPE_t *>(G2h_list[G_1])
             s_i = I_pointer[0]
             s_f = I_pointer[1]
-            h_i = D_pointer[0]
-            h_f = D_pointer[1]
-            if s_i == s_f and not (L_h <= h_i and h_f <= U_h):
-                continue               # No successors for G_1
-            Ds = s_f-s_i
-            Dh = h_f-h_i
-            if L_h <= h_i:
+            H_lim = G2h_list[G_1]
+            a = s_i + H_lim + <ITYPE_t>(floor(L_h/h_step))
+            b = s_i + H_lim + <ITYPE_t>(floor(U_h/h_step)) + 1
+            if s_i > a:
                 a = s_i
-            else:
-                i = int((L_h-h_i)/(Dh/Ds))
-                a = s_i + i
-            if U_h >= h_f:
-                b = s_f + 1
-            else:
-                i = int((h_f - U_h)/(Dh/Ds))
-                b = s_i + i + 1
+            if s_f < b:
+                b = s_f
             # End code segment that is self.ab() in first.py
+
             if b <= a:
                 continue              # No successors for G_1
             bounds_a[len_bounds] = a
