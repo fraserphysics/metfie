@@ -193,9 +193,9 @@ class LO(scipy.sparse.linalg.LinearOperator):
             m_g = self.n_g
         if m_h == None:
             m_h = self.n_h
-        vector = lambda _min, step, n:np.arange(_min, _min+(n-0.5)*step, step)
-        return (vector(self.g_min, (self.g_step*self.n_g)/m_g, m_g),
-                vector(self.h_min, (self.h_step*self.n_h)/m_h, m_h))
+        vector = lambda _min, _max, n: np.arange(_min, _max, (_max-_min)/n)
+        return (vector(self.g_min, self.g_max, m_g),
+                vector(self.h_min, self.h_max, m_h))
     def vec2z(self,      # LO instance
                 v,       # vector  len(v.reshape(-1)) = self.n_states
                 g=None,  # 1-d array of g values at sample points
@@ -214,7 +214,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             rv = np.zeros((self.n_g, self.n_h)) + floor
             for i in range(self.n_states):
                 g,h,G,H = self.state_list[i]
-                rv[G,H] = max(v[i],floor)
+                rv[G,H+self.n_h/2] = max(v[i],floor)
             return rv
         self.spline(v)
         G, H = np.meshgrid(g, h)
@@ -337,14 +337,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
         extrapolation makes the splines smoother in the legal region
         than they would be if the illegal region were set to zero.
         '''
-        z = np.ones((self.n_g, self.n_h))*(-1)
+        z = np.empty((self.n_g, self.n_h))
         g,h = self.gh()
         last_z = 0
         last_z_ = 0
         H_0 = int(self.n_h/2)
         for G in range(self.n_g):
             for H in range(H_0):
-                # Block for 0 <= h = H*h_step
+                # Block for 0 <= h = H*h_step, H_0 <= H_i < 2*H_0
                 H_i = H_0 + H  # Index
                 if (G,H) in self.state_dict:
                     i = self.state_dict[(G,H)]
@@ -353,9 +353,9 @@ class LO(scipy.sparse.linalg.LinearOperator):
                     last_z = z[G,H_i]
                 else:
                     z[G,H_i] = last_z - dzdh
-                # Block for 0 > h = -(H+1)*h_step
+                # Block for 0 > h = -(H+1)*h_step, 0 <= H_i < H_0
                 H_ = -(H+1)
-                H_i = H_0 + H_ + 1
+                H_i = H_0 + H_
                 if (G,H_) in self.state_dict:
                     i = self.state_dict[(G,H_)]
                     z[G,H_i] = v[i]

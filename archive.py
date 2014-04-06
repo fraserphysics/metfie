@@ -1,5 +1,5 @@
 import sys
-                                  # Clock time, default parameters on watcher
+                                  # Clock time, 200x200 on watcher
 from first_c import LO_step as LO #   4.3 sec
 #from first import LO_step as LO  # 689.3 sec
 def main(argv=None):
@@ -17,9 +17,9 @@ archive directory''')
                        help='log fractional deviation')
     parser.add_argument('--dy', type=float, default=3.2e-4,
                        help='y_1-y_0 = log(x_1/x_0)')
-    parser.add_argument('--n_g', type=int, default=200,
+    parser.add_argument('--n_g', type=int, default=400,
                        help='number of integration elements in value')
-    parser.add_argument('--n_h', type=int, default=200, help=
+    parser.add_argument('--n_h', type=int, default=400, help=
 'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     parser.add_argument('--out_file', type=str, default=None,
         help="Name of result file.  Default derived from other args.")

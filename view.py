@@ -1,4 +1,4 @@
-'''view.py displays marginal densities or eigenfunctions using mayavi.
+'''view.py displays marginal densities and eigenfunctions using mayavi.
 '''
 import numpy as np
 import mayavi.mlab as ML
@@ -12,33 +12,37 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         description='''Display specified data using mayavi ''')
     parser.add_argument('--archive', type=str,
-                        default='200_g_200_h_32_y',
+                        default='400_g_400_h_32_y',
                         help='Read LO_step instance from this file.')
+    parser.add_argument('--log_floor', type=float, default=(1e-20),
+                       help='log fractional deviation')
     args = parser.parse_args(argv)
 
     LO = first.read_LO_step(args.archive)
     LO.calc_marginal()
 
     plots = [] # to keep safe from garbage collection
-    plots.append(plot(LO, LO.marginal))
-    plots.append(plot(LO, LO.eigenvector))
-    plots.append(plot(LO, LO.symmetry(LO.eigenvector)))
+    for f in (LO.eigenvector,LO.marginal):
+        plots.append(plot(LO, f, log=True, log_floor=args.log_floor))
+        plots.append(plot(LO, f, log=False))
     ML.show()
     return 0
     
 def plot(op, # Linear operator
-         f   # data to plot
+         f,  # data to plot
+         log=True,
+         log_floor=1e-20
     ):
-    '''Function to plot a result of main.  
+    '''Make a surface plot of f(op_g,op_h)
     '''
     assert len(f) == op.n_states
 
     def scale(*xyz):
         '''This is a ultility function to prepare data for mayavi surface plots.
         xyz should be a list of three numpy arrays each with the same
-        shape.  This function calculates applies a scalar affine
+        shape.  This function calculates and applies a scalar affine
         transformation to each so that the results range from 0 to 1.
-        It returns those 3 arrays and the oringinal bounds.
+        It returns those 3 arrays and the original bounds.
         '''
         rv = []
         ranges = []
@@ -52,15 +56,16 @@ def plot(op, # Linear operator
     g,h = op.gh()           # Get arrays of g and h values that occur
     G,H = np.meshgrid(g, h) # Make 2d arrays
     
-    floor=1e-30             # Need positive floor because I use logs
-    b = np.log10(np.fmax(f, floor))
-    z = op.vec2z(b, g, h, np.log10(floor))
-    fig_0 = ML.figure()
+    if log:
+        f = np.log10(np.fmax(f, log_floor))
+        floor=np.log10(log_floor)
+    else:
+        floor=0.0
+    #z = op.vec2z(f, g, h, floor=floor) # Uses/tests spline
+    z = op.vec2z(f, floor=floor)
     X,Y,Z,ranges = scale(G,H,z.T)
-    print('b[0]=%e, b.max=%s'%(b[0],b.max()))
-    print('z[0,0]=%e, z.max=%s'%(z[0,0],z.max()))
-    print('Z[0,0]=%e, Z.max=%s\n'%(Z[0,0],Z.max()))
     ranges[-2:] = [floor, z.max()] # Make plot show max before log
+    fig_0 = ML.figure()
     s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot
     ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='v', figure=fig_0)
 
