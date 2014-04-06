@@ -16,22 +16,32 @@ def main(argv=None):
                         help='Read LO_step instance from this file.')
     parser.add_argument('--log_floor', type=float, default=(1e-20),
                        help='log fractional deviation')
+    parser.add_argument('--fig_files', type=str, default=None,
+                       help='Write results rather than display to screen')
     args = parser.parse_args(argv)
 
     LO = first.read_LO_step(args.archive)
     LO.calc_marginal()
 
     plots = [] # to keep safe from garbage collection
-    for f in (LO.eigenvector,LO.marginal):
-        plots.append(plot(LO, f, log=True, log_floor=args.log_floor))
-        plots.append(plot(LO, f, log=False))
-    ML.show()
+    for f,name in ((LO.eigenvector,'vec'),(LO.marginal,'marg')):
+        if args.fig_files == None:
+            plots.append(plot(LO, f, log=True, log_floor=args.log_floor))
+            plots.append(plot(LO, f, log=False))
+        else:
+            plot(LO, f, log=False)
+            ML.savefig('%s_%s.png'%(args.fig_files,name))
+            plot(LO, f, log=True, log_floor=args.log_floor)
+            ML.savefig('%s_%s_log.png'%(args.fig_files,name))
+    if args.fig_files == None:
+        ML.show()
     return 0
     
-def plot(op, # Linear operator
-         f,  # data to plot
-         log=True,
-         log_floor=1e-20
+def plot(op,               # Linear operator
+         f,                # data to plot
+         log=True,         # Plot log(f)
+         log_floor=1e-20,  # Small f values and zeros beyond (g,h) range
+         m=None            # Interpolate (g,h) values
     ):
     '''Make a surface plot of f(op_g,op_h)
     '''
@@ -53,7 +63,7 @@ def plot(op, # Linear operator
         rv.append(ranges)
         return rv
     
-    g,h = op.gh()           # Get arrays of g and h values that occur
+    g,h = op.gh(m,m)        # Get arrays of g and h values that occur
     G,H = np.meshgrid(g, h) # Make 2d arrays
     
     if log:
@@ -61,11 +71,10 @@ def plot(op, # Linear operator
         floor=np.log10(log_floor)
     else:
         floor=0.0
-    #z = op.vec2z(f, g, h, floor=floor) # Uses/tests spline
-    z = op.vec2z(f, floor=floor)
+    z = op.vec2z(f, g, h, floor=floor)
     X,Y,Z,ranges = scale(G,H,z.T)
     ranges[-2:] = [floor, z.max()] # Make plot show max before log
-    fig_0 = ML.figure()
+    fig_0 = ML.figure(size=(800,700))
     s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot
     ML.axes(ranges=ranges,xlabel='G',ylabel='H',zlabel='v', figure=fig_0)
 
