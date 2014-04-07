@@ -130,6 +130,30 @@ notes.Command(
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
 
+n_g = 800
+n_h = 400
+target_ = 'study_%d_%d_%s'
+command_ = 'python3 converge.py --out_file %s --n_g0 200 --n_g_step 5 --n_g_final %d --n_h0 200 --n_h_step 4 --n_h_final %d --ref_frac .8 --dy 0.000%s'
+for dy in ('64', '32', '16', '08'):
+    target = target_%(n_g, n_h, dy)
+    notes.Command(
+        (target,),
+        ('converge.py',),
+        command_%(target, n_g, n_h, dy)
+    )
+
+import os.path
+n_g = 5000
+n_h = 1250
+target_ = '%d_g_%d_h_%s_y'
+command_ = 'python3 archive.py --out_file %s --n_g %d --n_h %d  --dy 0.000%s --out_dir reference'
+for dy in ('64', '32', '16', '08'):
+    target = target_%(n_g, n_h, dy)
+    notes.Command(
+        (os.path.join('reference',target),),
+        ('first_c.cpython-33m.so',),
+        command_%(target, n_g, n_h, dy)
+    )
 # From command line "designer-qt4 PVE_control.ui"
 qt = Environment()
 qt.Command(

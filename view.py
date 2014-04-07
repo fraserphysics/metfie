@@ -11,8 +11,11 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(
         description='''Display specified data using mayavi ''')
-    parser.add_argument('--archive', type=str,
+    parser.add_argument('--file', type=str,
                         default='400_g_400_h_32_y',
+                        help='Read LO_step instance from this file.')
+    parser.add_argument('--dir', type=str,
+                        default='archive',
                         help='Read LO_step instance from this file.')
     parser.add_argument('--log_floor', type=float, default=(1e-20),
                        help='log fractional deviation')
@@ -20,7 +23,19 @@ def main(argv=None):
                        help='Write results rather than display to screen')
     args = parser.parse_args(argv)
 
-    LO = first.read_LO_step(args.archive)
+    import pickle, os.path
+    from datetime import timedelta
+    _dict = pickle.load(open(os.path.join(args.dir,args.file),'rb'))
+    g_max, dy, g_step, h_step = _dict['args']
+    _dict.update({'g_max':g_max, 'dy':dy, 'g_step':g_step, 'h_step':h_step})
+    keys = list(_dict.keys())
+    keys.sort()
+    for key in keys:
+        if key == 'time':
+            print('%-16s= %s'%('time',timedelta(seconds=_dict[key])))
+        else:
+            print('%-16s= %s'%(key,_dict[key]))
+    LO = first.read_LO_step(args.file, args.dir)
     LO.calc_marginal()
 
     plots = [] # to keep safe from garbage collection

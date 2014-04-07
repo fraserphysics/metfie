@@ -65,7 +65,7 @@ in g and h''')
     import pickle
     
     tol = 5e-6
-    maxiter = 1000
+    maxiter = 2000
     error = {}
     text = ''
 
@@ -99,9 +99,12 @@ def read_study(file_name, verbose=1):
     
     args,text,dict_,elapsed = pickle.load( open( file_name, "rb" ) )
     if verbose>0:
-        print('time=%s'%(timedelta(seconds=elapsed)))
-        for key,value in vars(args).items():
-            print('%s=%s'%(key,value))
+        print('%-16s= %s'%('time',timedelta(seconds=elapsed)))
+        arg_dict = vars(args)
+        keys = list(arg_dict.keys())
+        keys.sort()
+        for key in keys:
+            print('%-16s= %s'%(key,arg_dict[key]))
     if verbose>1:
         print('%s'%(text,))
     gs = set([])

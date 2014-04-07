@@ -193,9 +193,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
             m_g = self.n_g
         if m_h == None:
             m_h = self.n_h
-        vector = lambda _min, _max, n: np.arange(_min, _max, (_max-_min)/n)
-        return (vector(self.g_min, self.g_max, m_g),
-                vector(self.h_min, self.h_max, m_h))
+        return (np.linspace(self.g_min, self.g_max, m_g, endpoint=False),
+                np.linspace(self.h_min, self.h_max, m_h, endpoint=False))
     def vec2z(self,      # LO instance
                 v,       # vector  len(v.reshape(-1)) = self.n_states
                 g=None,  # 1-d array of g values at sample points
@@ -300,6 +299,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         if verbose: print(
 '''With n_states=%d and n_pairs=%d, finished power() at iteration %d
     ds=%g, dv=%g'''%(self.n_states, self.n_pairs, i, ds, dv))
+        self.iterations = i
         self.eigenvalue = s
         self.eigenvector = v_old
         return s,v_old
@@ -442,7 +442,7 @@ class LO_step(LO):
         self.allowed()
         if not skip_pairs: self.pairs()
         return
-    def archive(self, filename, dirname='archive'):
+    def archive(self, filename, more={}, dirname='archive'):
         import tempfile
         import pickle
         import os.path
@@ -454,6 +454,7 @@ class LO_step(LO):
             'args':(float(self.g_max), float(self.dy), float(self.g_step),
                      float(self.h_step)),
             'vec_filename':vec_file.name}
+        dict_.update(more)
         pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )
         return
 def sym_diff(A, B):

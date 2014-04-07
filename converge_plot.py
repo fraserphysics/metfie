@@ -69,7 +69,7 @@ def main(argv=None):
     ev_zero = (eigenvalue[0,0]
                - de_f(eigenvalue[:,0],h_data)
                - de_f(eigenvalue[0,:],g_data))
-    print('eigenvalue(0,0)=%e'%(ev_zero,))
+    print('%-16s= %e'%('eigenvalue(0,0)',ev_zero,))
     plot(g_ax,h_ax,error,'(|v - v_{ref}|/|v_{ref}|)',args)
     if eigenvalue.max() > 0: # Test for handling old files wo eigenvalues
         plot(g_ax,h_ax,eigenvalue,'\lambda',args)

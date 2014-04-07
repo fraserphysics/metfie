@@ -163,6 +163,7 @@ class LO_step(LO_step):
         if verbose: print(
 '''With n_states=%d and n_pairs=%d, finished power() at iteration %d
     ds=%g, dv=%g'''%(self.n_states, self.n_pairs, i, ds, dv))
+        self.iterations = i
         self.eigenvalue = s
         self.eigenvector = v_new
         return s,v_new

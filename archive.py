@@ -9,7 +9,6 @@ def main(argv=None):
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
-    t_start = time.time()
     parser = argparse.ArgumentParser(description=
     '''Initialize LO_step instance, calculate eigenfuction and store in
 archive directory''')
@@ -21,8 +20,14 @@ archive directory''')
                        help='number of integration elements in value')
     parser.add_argument('--n_h', type=int, default=400, help=
 'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
+    parser.add_argument('--max_iter', type=int, default=2000,
+                       help='Maximum number power iterations')
+    parser.add_argument('--tol', type=float, default=(5.0e-6),
+                       help='Stopping criterion for power')
     parser.add_argument('--out_file', type=str, default=None,
         help="Name of result file.  Default derived from other args.")
+    parser.add_argument('--out_dir', type=str, default='archive',
+        help="Directory for result")
     args = parser.parse_args(argv)
     
     if args.out_file == None:
@@ -31,14 +36,12 @@ archive directory''')
     h_lim = np.sqrt(48*args.u)
     d_h = 2*h_lim/args.n_h
     
-    tol = 5e-6
-    maxiter = 1000
-
+    t_start = time.time()
     op = LO( args.u, args.dy, d_g, d_h )
-    op.power(small=tol, n_iter=maxiter,verbose=True)
-    op.archive(args.out_file)
-    # FixMe: Modify archive method to accept comments and pass text
-    # like converge.py
+    op.power(small=args.tol, n_iter=args.max_iter, verbose=True)
+    t_stop = time.time()
+    more = {'iterations':op.iterations, 'time':(t_stop-t_start)}
+    op.archive(args.out_file, more, args.out_dir)
    
 if __name__ == "__main__":
     rv = main()
