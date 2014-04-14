@@ -181,7 +181,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         ''' Derive self.marginal from self.eigenvector.
         '''
         self.marginal = self.symmetry(self.eigenvector) * self.eigenvector
-        self.marginal /= self.marginal.sum()
+        self.marginal /= self.marginal.sum()*self.g_step*self.h_step
     def gh(self,      # LO instance
            m_g=None,  # Number of sample points in g
            m_h=None   # Number of sample points in h
@@ -436,7 +436,8 @@ class LO_step(LO):
         self.h_min = -self.h_max
         self.n_h = 2 * int(self.h_max/h_step) # Ensure that self.n_h is even
         self.h_step = 2*self.h_max/self.n_h
-        self.n_g = int(2*self.g_max/g_step)
+        self.n_g = int(2*self.g_max/g_step + .5)
+        # + .5 makes marginal rough.  Resonance?
         self.g_step = 2*u/self.n_g
 
         self.allowed()

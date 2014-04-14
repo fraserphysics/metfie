@@ -1,0 +1,799 @@
+\documentclass[twocolumn]{article}
+\usepackage{amsmath,amsfonts,afterpage}
+%\usepackage{showlabels}
+\usepackage[pdftex]{graphicx,color}
+\newcommand{\normal}[2]{{\cal N}(#1,#2)} \newcommand{\La}{{\cal L}}
+\newcommand{\nomf}{\tilde f} \newcommand{\COST}{\cal C}
+\newcommand{\LL}{{\cal L}} \newcommand{\Prob}{\text{Prob}}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand\REAL{\field{R}}
+\newcommand\Z{\field{Z}}
+\newcommand\Polytope[1]{\field{P}_{#1}}
+\newcommand\PolytopeN{\Polytope{N}}
+\newcommand\PolytopeInf{\Polytope{\infty}}
+\newcommand{\EV}[2]{\field{E}_{#1}\left[#2\right]}
+\newcommand{\partialfixed}[3]{\left. \frac{\partial #1}{\partial
+      #2}\right|_#3}
+\newcommand{\dhot}{=_{\text{dhot}}}
+\newcommand{\argmin}{\operatorname*{argmin}}
+\newcommand{\argmax}{\operatorname*{argmax}}
+\newcommand{\set}[1]{{\cal #1}}
+\newcommand\inner[2]{\left<#1,#2\right>}
+\newcommand\norm[1]{\left|#1\right|}
+\newcommand\bv{\mathbf{v}}
+\newcommand\bw{\mathbf{w}}
+\newcommand\dum{\xi}
+\newcommand\Ddum{d\dum}
+\newcommand\lambdaPF{\lambda_{\rm{PF}}} % Peron Frobenius eigenvalue
+\newcommand\rhoPF{\rho_{\rm{PF}}} % Peron Frobenius eigenvector
+
+\title{Quadratic Approximation to First Order Integral Operator}
+
+\author{Andrew M.\ Fraser}
+\begin{document}
+\maketitle
+\begin{abstract}
+  Derived via \emph{notes} from \emph{Propagating Uncertainty About
+    Gas EOS to Performance Bounds for an Ideal Gun} LA-UR-12-22731.
+  I describe simulations and calculations on an approximation to an
+  integral operator.
+\end{abstract}
+\section{Introduction}
+  \label{sec:introduction}
+
+Here I consider a first order Markov process on 2-d states consisting
+of function values $g(y)$ and derivatives $h(y) \equiv \left. \frac{d
+    g }{d t} \right|_{t=y}$.  I consider sequential samples at $y_0$
+and $y_1$, and I suppose that the upper bound is $u$ and the lower
+bound is $l=-u$.
+
+In $(f,x)$ coordinates, I describe the nominal function, $\tilde f$ by
+\begin{align*}
+  x_0 &= 1\\
+  f_0 &= f(x_0) \\
+  \tilde f(x) &= \frac{\tilde f_0}{x^3}.
+\end{align*}
+The coordinates $g$ and $y$ are functions of coordinates $f$ and $x$ with
+\begin{align*}
+  x(y) &= e^y \\
+  f(g) &= \frac{\tilde f_0 e^{g}}{x^3} \\
+  g(f) &= \log(f) + 3y - \log(\tilde f_0).
+\end{align*}
+The straight line in $(g,y)$, $g(y) = 0$, corresponds to
+\begin{equation*}
+  \tilde f(x) = \frac{\tilde f_0}{x^3}.
+\end{equation*}
+
+In the $(f,x)$ coordinates a line that is tangent to $\tilde f(x)$ at
+$x=1$ satisfies
+\begin{equation*}
+  f(x) = f_0(4-3x),
+\end{equation*}
+which in the $(g,y)$ coordinates is
+\begin{equation*}
+  g(y) = \log \left( 4 - 3e^y \right) + 3y.
+\end{equation*}
+At $y=0$, that $g$ has the following derivatives
+\begin{align*}
+  g(0) & = g_0 \\
+  g'(y) &= 3 - \frac{3e^y}{4-3e^y} \\
+  g'(0) &= 0 \\
+  g'' &= -\frac{\frac{4}{3}e^y}{\left( e^y - \frac{4}{3} \right)^2}\\
+  g''(0) &= -12 \\
+  g''' &= -\frac{4\left( \frac{4}{3} + e^y \right) e^y}{
+    3\left( \frac{4}{3} - e^y \right) ^3} \\
+  g'''(0) &= -84.
+\end{align*}
+Thus the second order Taylor series approximation to the function in
+$(g,y)$ that corresponds to a tangent to $\frac{\tilde f_0
+  e^{g_0}}{x^3}$ at $x_0 = 1$ is
+\begin{equation}
+  \label{eq:tangent}
+  g(y) = a - 6(y-b)^2.
+\end{equation}
+I will use the Taylor series approximation \eqref{eq:tangent} to
+tangents in $(f,x)$ from now on.  Figure~\ref{fig:taylor} illustrates
+that approximation.
+
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{taylor.pdf}}  
+    \caption{Second order Taylor series approximation to $g(y)$
+      compared to actual $g(y)$ when $f = e^g = \alpha - \beta x$,
+      $y=\log(x)$, and $f$ is tangent to $\frac{1}{x^3}$ at $x=1$.
+      The indicated bounds, $\pm 0.0005 = 5\times10^{-4}$ correspond
+      to a factor of $1.0005$ which is one tenth the value quoted by
+      Shaw.}
+  \label{fig:taylor}
+\end{figure}
+%\end{document}
+Now I describe quadratic approximations to constraints on the values
+of $g_1 \equiv g(y_1)$ and $h_1 \equiv h(y_1)$ that are determined by
+$g_0 \equiv g(y_0)$ and $h_0 \equiv h(y_0)$.  I use $U_g$, $L_g$,
+$U_h$, and $L_h$ to denote (upper/lower) bounds on ($g_1/h_1$)
+respectively.  A trajectory $g$ that goes through $g_0$ at $y_0$ must
+lie between the two lines $U_g(g_0,y_0,y)$ and $\bar U_g(g_0,y_0,y)$
+that in $(f,x)$ coordinates go through $f_0$ and are tangent to the
+upper bound $u$ to the right and left of $y_0$ respectively.  If $h_0$
+is the derivative of $g$ at $y_0$, the value of $g$ at $y_1$, ie,
+$g_1$ must lie above $L_g(g_0,h_0,y_0, y_1)$, the image in $(g,y)$ of
+the tangent to $f$ at $x_0$ in $(f,x)$.  Thus
+\begin{equation}
+  \label{eq:boundsA}
+  U_g(g_0,y_0, y_1) \geq g_1 \geq L_g(g_0,h_0,y_0, y_1).
+\end{equation}
+The following calculations fit quadratic approximations to both $U_g$
+and $L_g$.
+\newcommand{\Rad}[1]{\sqrt{24\left(u#1\right)}}
+\newcommand{\UgQ}{ g_0 + \Delta_y\Rad{-g_0} - 6 \Delta_y^2}
+\begin{align}
+  U_g(y) &= u - 6(y-b)^2 &&\text{Premise} \nonumber \\
+  U_g(y_0) &= g_0 &&\text{Premise} \nonumber \\
+  \label{eq:premise}
+  U'_g(y_0) &\geq 0 &&\text{Premise} \\
+  g_0 &= u - 6(y_0-b)^2 \nonumber \\
+  b &= y_0 \pm \sqrt{\frac{u-g_0}{6}} && \text{Positive root to satisfy
+    \eqref{eq:premise} \& \eqref{eq:dugb}}  \nonumber \\
+  \label{eq:dugb}
+  \frac{d U_g}{d y} &= -12(y-b) \\
+  \label{eq:dug}
+  \left. \frac{d U_g}{d y} \right|_{y_0} &= 12\sqrt{\frac{u-g_0}{6}}
+\end{align}
+\begin{equation*}
+  U_g(y) = g_0 + (y-y_0)\Rad{-g_0} - 6 (y-y_0)^2
+\end{equation*}
+
+Note: If $U_g(y)$ is tangent to $y=u$ for some $y$ between $y_0$ and
+$y_1$, then the only upper bound on $g(y_1)$ is $g(y_1)\leq u$.  Also
+such a tangency exists iff
+\begin{equation*}
+  \sqrt{\frac{u-g_0}{6}} \leq \Delta_y.
+\end{equation*}
+Thus
+\begin{equation}
+  \label{eq:ug}
+  U_g(y_1) =
+  \begin{cases}
+    u & \sqrt{\frac{u-g_0}{6}} \leq \Delta_y\\
+    \UgQ & \text{ otherwise}
+  \end{cases}
+\end{equation}
+Similarly, for the lower bound:
+\newcommand{\LgQ}{g_0 + h_0\Delta_y - 6\Delta_y^2}
+\begin{align}
+  L_g(y) &= a - 6(y-b)^2 &&\text{Premise} \nonumber \\
+  L'_g(y) &= -12(y-b) \nonumber \\
+  g_0 &= a - 6(y_0-b)^2 &&\text{Premise} \nonumber \\
+  h_0 &= -12(y_0-b) &&\text{Premise} \nonumber \\
+  b &= y_0 + \frac{h_0}{12} \nonumber \\
+  a &= g_0 + \frac{h^2_0}{24} \\
+  \label{eq:lg}
+  L_g(y_1) &= \max \left( u,~\LgQ \right)
+\end{align}
+Substituting these values into \eqref{eq:boundsA} yields\footnote{The
+  upper bound in Eqn.\ \eqref{eq:UL_g} is simply $u$ if $g_0 \geq u -
+  6 \Delta_y^2$, and the lower bound in Eqn.\ \eqref{eq:DG_DY} is only
+  valid if $\sqrt{\frac{u-g_0}{6}} \geq \Delta_y$.}
+\begin{align}
+  \label{eq:UL_g}
+  \UgQ &\geq g_1 \geq U_g(y_1) \\
+  \label{eq:DG_DY}
+  \Rad{-g_0} - 6\Delta_y &\geq \frac{\Delta_g}{\Delta_y} \geq h_0
+  - 6 \Delta_y
+\end{align}
+Figure~\ref{fig:boundsA} illustrates the bounds
+\eqref{eq:boundsA}.  In Fig.~\ref{fig:boundsB}, I have simply reduced
+the extent in $y$.
+
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{bounds_04.pdf}}  
+  \caption{Bounds on $g_1$ given $g_0$ and $h_0$}
+  \label{fig:boundsA}
+\end{figure}
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{bounds_005.pdf}}  
+  \caption{Bounds on $g_1$ given $g_0$ and $h_0$}
+  \label{fig:boundsB}
+\end{figure}
+
+Given $g_0$ and a $g_1$ that satisfies the constraints
+\eqref{eq:boundsA}, the constraints on $h_1$ are that it must be less
+than the slope $\left. \frac{d U_g(g_1,y_1,y)}{dy} \right|_{y=y_1}$
+and it must be greater than the slope at $y_1$ of the image in $(g,y)$
+of the line in $(f,x)$ that connects the images of $(g_0,y_0)$ and
+$(g_1,y_1)$.  The following calculation finds the quadratic
+approximation for that curve:
+\begin{align*}
+  g(y) &= a -6(b-y)^2 \\
+  g_0 &= a -6(b-y_0)^2 & g_1 &= a -6(b-y_1)^2 \\
+  a &= g_0 + 6(b-y_0)^2 =  g_1 + 6(b-y_1)^2 \\
+  g_0 -g_1 &= 12b(y_0-y_1) + 6(y_1-y_0)(y_1+y_0) \\
+  b &= \frac{g_1-g_0 + 6 (y_1^2-y_0^2)}{12(y_1-y_0)} = \frac{g_1 -
+    g_0}{12 (y_1 - y_0)} + \frac{y_1 + y_0}{2}\\
+  a &= \frac{\Delta_g^2}{24 \Delta y ^2} + \frac{g_1 + g_2}{2} +
+  \frac{ 3 \Delta_y^2}{2}.
+\end{align*}
+At $y_1$, the derivative of $a-6(y-b)^2$ is
+\newcommand{\LhQ}{\frac{\Delta_g}{\Delta_y} - 6 \Delta_y}
+\begin{align*}
+  L_h(g_1, g_0, y_0, y_1) &= -12(y_1-b) \\
+  &= \frac{g_1 - g_0 -6(y_1 - y_0)^2} {y_1-y_0} \\
+  & \equiv \LhQ
+\end{align*}
+Following \eqref{eq:dug}, the upper bound is
+\newcommand{\Uh}{\Rad{-g_1}}
+\begin{equation*}
+  U_h(g_1) = \Uh,
+\end{equation*}
+and\footnote{The \emph{maximum} function and the term $-\Uh$ treat the
+case of $U_g(y)$ being tangent to $u$ between $y_0$ and $y_1$.}
+\begin{equation}
+  \label{eq:UL_h}
+  \Uh \geq h_1 \geq \text{max}\left( \LhQ,~ -\Uh \right).
+\end{equation}
+
+Figure~\ref{fig:boundsC} illustrates those constraints.
+
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{bounds_dg.pdf}}  
+    \caption{Curves $U_h(g_1)$ and $L_h(g_1, g_0)$ whose tangents give
+      bounds on $h_1$ given $g_0$ and $g_1$}
+  \label{fig:boundsC}
+\end{figure}
+
+\section{Integral Equations}
+\label{sec:integral-equations}
+
+I will use the following notation:
+\begin{description}
+\item[$y$] The independent variable, $y = \log(x)$
+\item[$z(y)$] A state consisting of $g(y)$, the value of the function
+  and $h(y) \equiv \left. \frac{d g(t)}{d t} \right|_y$, its derivative.
+\item[$I_\Delta$] The indicator function:
+  \begin{equation}
+    \label{eq:indicator}
+    I_\Delta(z_0, z_1) =
+    \begin{cases}
+      1 & \text{if } \left( z(0) = z_0,~z(\Delta)=z_1
+      \right) \text{ is allowed} \\
+      0 & \text{otherwise}
+    \end{cases}
+  \end{equation}
+  The subscript of $I_\Delta$ is a distance in $y$.  I will drop it
+  unless I need it.
+\item[$\Phi_\Delta$] The linear operator consisting of integration
+  over $I_\Delta$
+\item[${\lambdaPF}_\Delta$] The eigenvalue of $\Phi_\Delta$ with the largest
+  magnitude.  The Peron-Frobenius theorem promises that
+  ${\lambdaPF}_\Delta$ is isolated and positive and that there is a
+  corresponding eigenfunction that is strictly positive.
+\item[${\rhoPF}_\Delta$] The positive unit norm eigenfunction that
+  corresponds to ${\lambdaPF}_\Delta$; defined by
+  \begin{equation}
+    \label{eq:integralI}
+    \int I(z_0, z_1) {\rhoPF}_\Delta(z_1) d z_1 \equiv {\lambdaPF}_\Delta
+    {\rhoPF}_\Delta(z_0).
+  \end{equation}
+  I will drop the subscripts of ${\lambdaPF}_\Delta$ and
+  ${\rhoPF}_\Delta$ when I can without creating ambiguity.
+\item[$\psi, \phi$] A decomposition of $\rho$ with
+  \begin{equation*}
+    \rho(g,h) = \psi(g) \phi(h,g).
+  \end{equation*}
+  I think of $\phi$ as a family of functions of $h$ with $g$ as a
+  parameter.
+\item[$U_g,~L_g,~U_h,~L_h$] Functions that provide integration limits
+  that express \eqref{eq:integralI} as
+  \begin{equation}
+    \label{eq:integralUL_}
+    \int_{L_g(g_0,h_0)}^{U_g(g_0)} dg_1
+    \int_{L_h(g_1,g_0)}^{U_h(g_1)} dh_1~ \rho(g_1, h_1) = \lambda
+    \rho(g_0, h_0)
+  \end{equation}
+\end{description}
+
+From the quadratic approximations \eqref{eq:UL_g} and \eqref{eq:UL_h}
+I write the bounds in \eqref{eq:integralUL_} as follows:
+\begin{equation*}
+  L_g(g_0, h_0) = \max \left( -u, g_0 + h_0 \Delta_y - 6 \Delta_y^2
+  \right)  
+\end{equation*}
+\begin{align*}
+  &U_g(g_0) = \\
+  &\begin{cases}
+    u & g_0 > u - 6 \Delta_y^2 \\
+    g_0 + \Delta_y\Rad{-g_0} - 6 \Delta_y^2 & \text{otherwise}
+  \end{cases}
+\end{align*}
+\begin{align*}
+  L_h(g_0, g_1) &= \max \left( \frac{\Delta_g}{\Delta_y} - 6
+    \Delta_y, - \Rad{-g_1} \right) \\
+  U_h(g_1) &= \Rad{-g_1} ,
+\end{align*}
+and then
+\newcommand{\Ug}{ g_0 + \Delta_y\Rad{-g_0}}
+\newcommand{\Lg}{g_0 + h_0\Delta_y}
+\newcommand{\Lh}{\frac{\Delta_g}{\Delta_y}}
+\begin{align}
+  \lambda \rho(z_0) &= \int I(z_0, z_1) \rho(z_1) d
+  z_1 \nonumber \\
+  &\equiv \lambda \psi(g_0) \phi(h_0,g_0) \text{ Definition of } \psi,
+  \phi \nonumber \\
+  \label{eq:integralULq}
+    &= \int_{L_g(g_0, h_0)}^{U_g(g_0)} \psi(g_1)
+    \int_{L_h(g_0,g_1)}^{U_h(g_1)}~ \phi(h_1,g_1) ~dh_1 dg_1.
+\end{align}
+Note:
+\begin{itemize}
+ \item I define $y_T(y_0,g_0) = \sqrt{\frac{u - g_0}{6}}$ as the point
+   where the parabola that goes through $(y_0,g_0)$ with nonnegative
+   slope is tangent to the upper bound $u$.  If $g_0 > u -
+   6\Delta_y^2$ then $y_T < y_0 + \Delta_y$ and the appropriate bound on the
+   integrals are different.  In particular, the upper limit on the
+   integral over $g_1$ is
+   \begin{equation*}
+     U_g(g_0,h_0) = u,
+   \end{equation*}
+   and the lower limit on the integral over $h_1$ is
+   \begin{equation*}
+     L_h(g_0, g_1) = \max \left( \frac{\Delta_g}{\Delta_y} - 6
+       \Delta_y, - \Rad{-g_1} \right).
+   \end{equation*}
+\end{itemize}
+
+\section{Discrete Approximation}
+\label{sec:approximate}
+
+
+\subsection{2-d Illustrations}
+\label{sec:ill}
+
+Figures\ \ref{fig:Av1}-\ref{fig:Av3} illustrate the action
+\begin{figure*}
+  \centering
+    \resizebox{1.2\textwidth}{!}{\includegraphics{Av1.pdf}}
+  \caption{Caption}
+  \label{fig:Av1}
+\end{figure*}
+
+\begin{figure*}
+  \centering
+    \resizebox{1.2\textwidth}{!}{\includegraphics{Av2.pdf}}
+  \caption{Caption}
+  \label{fig:Av2}
+\end{figure*}
+
+\begin{figure*}
+  \centering
+    \resizebox{1.2\textwidth}{!}{\includegraphics{Av3.pdf}}
+  \caption{Caption}
+  \label{fig:Av3}
+\end{figure*}
+
+Let $A$ denote a discrete approximation of the integral operator, and
+let $A(g,h)$ denote the set of components in the image of the single
+component $(g,h)$.  $A$ maps states $(g,h)$ at $y$ to states $(g',h')$
+at $y+\Delta_y$, and while $A^T$ maps from $y$ to $y-\Delta_y$, it is
+not the inverse of $A$.  If
+\begin{equation*}
+  (g',h') \in A(g,h),
+\end{equation*}
+then
+\begin{equation*}
+  (g', -h') \in A^T(g,-h).
+\end{equation*}
+Thus, if $S$ denotes the interchange of $h$ and $-h$
+\begin{align*}
+  SS &= I \\
+  SA^TS &= A,
+\end{align*}
+which ought to be worth something.
+\onecolumn
+\section{Attempts to Solve the Integral Equation}
+\label{sec:solve}
+
+Differentiating
+\eqref{eq:integralULq} once with respect to $h_0$ eliminates the
+integral over $dg_1$, requires the substitution
+\begin{equation*}
+  g_1 = \LgQ,
+\end{equation*}
+and yields
+\begin{equation*}
+  \psi(g_0) \frac{\partial}{\partial h_0} \phi(h_0,g_0) =
+  -\frac{\Delta_y} {\lambda} \psi(g_0+h_0 \Delta_y -6 \Delta_y^2)
+  \int_{h_0 - 12 \Delta_y}^{\sqrt{24(u-g_0-h_0 \Delta_y + 6
+      \Delta_y^2)}}~ \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1. 
+\end{equation*}
+Note that the lower limit of the remaining integral is $h_0 - 12
+\Delta_y$.  Thus the integral operator at $(g_0, h_0)$ has a domain in
+$(g_1, h_1)$ that extends $6 \Delta_y$ below $h_0$.  Differentiating
+again with respect to $h_0$ eliminates the integral over $dh_1$ and
+yields
+\begin{align*}
+  \frac{\partial^2}{\partial h_0^2} \phi(h_0, g_0) &= \frac{-\Delta_y}
+  { \lambda \psi(g_0)} \Bigl( \\
+  &\quad \Delta_y \psi'(g_0+h_0 \Delta_y -6 \Delta_y^2)
+  \int_{h_0 - 12 \Delta_y}^{\Rad{-g_0-h_0 \Delta_y + 6 \Delta_y^2}}~
+  \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1\\
+  &\quad + \Delta_y \psi(g_0+h_0 \Delta_y -6 \Delta_y^2) \int_{h_0 - 12 \Delta_y}
+  ^{\Rad{-g_0-h_0\Delta_y + 6\Delta_y^2 }}~ \frac{\partial}{\partial g}
+  \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1\\ 
+  &\quad - \frac{12 \Delta_y \psi(g_0+h_0 \Delta_y -6 \Delta_y^2)} { \Rad{ -g_0
+      -h_0\Delta_y + 6\Delta_y^2} } \phi \left( \Rad{-g_0-h_0\Delta_y
+      + 6\Delta_y^2},g_0 + h_0 \Delta_y -6\Delta_y^2\right) \\
+  &\quad - \psi(g_0+h_0 \Delta_y -6 \Delta_y^2) \phi(h_0 - 12\Delta_y,
+  g_0 + h_0 \Delta_y - 6\Delta_y^2) \Bigr)
+  \\
+  &\dhot \frac{\Delta_y}{\lambda} \phi(h_0,g_0)
+\end{align*}
+
+The solution to the second order linear differential equation is
+\begin{equation*}
+  \phi(h) = a e^{\gamma h} + b e^{-\gamma h},
+\end{equation*}
+where
+\begin{equation*}
+  \gamma \equiv \sqrt{\frac{\Delta_y}{\lambda}}.
+\end{equation*}
+Since at $h = \Rad{-g_0}$, $\phi(h) = 0$,
+\begin{align*}
+  0 &= a e^{\gamma \Rad{-g_0}} + b e^{-\gamma \Rad{-g_0}} \\
+  b &= a e^{2\gamma \Rad{-g_0}} \\
+  \phi(h) &= -a e^{\gamma \Rad{-g_0}} \left(
+    e^{\gamma \left( \Rad{-g_0} - h \right) } -
+    e^{\gamma \left(\Rad{-g_0} - h \right) } \right) \\
+  &= -2 a e^{\gamma \Rad{-g_0}} \sinh \left( \gamma \left( \Rad{-g_0}
+      - h \right) \right),
+\end{align*}
+and I can write the solution as
+\newcommand{\phiHG}[2]{\sinh \left( \gamma \left( \sqrt{24(u-#2)} - #1
+    \right) \right)}
+\begin{equation}
+  \label{eq:sol_h}
+  \rho(g,h) \equiv \psi(g) \phi(h,g) \equiv \psi(g) \phiHG{h}{g}.
+\end{equation}
+\newcommand{\altphiHG}[2]{e^{-6\gamma^2 \Delta_y h} \sinh \left( \gamma
+    \left( \sqrt{24(u-#2)} - #1 \right) \right)} I've obtained an
+alternate solution by assuming the form $\phi(h,g) = f(h) \sinh\left(
+  \gamma \left( \sqrt{24(u-g)} - h \right) \right)$, expanding
+$\phi(h)'' = \gamma^2 \phi(h - 12\Delta_y)$ and solving for $f$ after
+dropping terms that are second order in $\Delta_y$.  The alternative
+solution is
+\begin{equation}
+  \label{eq:sol_h_}
+  \rho(g,h) \equiv \psi(g) \phi(h,g) \equiv \psi(g) \altphiHG{h}{g}.  
+\end{equation}
+
+\subsection{ODE for $\psi$}
+\label{sec:ODE}
+
+Next I use \eqref{eq:sol_h} in \eqref{eq:integralULq} and
+differentiate to see if a solution for $\psi(g)$ is possible.  Noting
+\begin{equation*}
+  \int \phi(h,g) = \frac{-1}{\gamma} \cosh \left( \gamma \left(
+      \Rad{-g} - h \right) \right) + C,
+\end{equation*}
+I write
+\begin{align}
+  & \lambda \psi(g_0)\phi(h_0,g_0) \nonumber\\
+  & \quad =\int_{\LgQ}^{\UgQ} \frac{-\psi(g_1) }{\gamma} \left[
+    \cosh\left( \gamma \left( \Rad{-g_1} - h \right)\right) \right]_{
+    \frac {\Delta_g} {\Delta_y} - 6 \Delta_y}^{\Rad{-g1}} dg_1
+  \nonumber \\
+  \label{eq:star}
+  & \sqrt{\lambda \Delta_y} \psi(g_0) \phiHG{h_0}{g_0} \nonumber \\
+  &\quad \dhot - \int_{\Lg}^{\Ug} \psi(g_1) \left[ 1 - \cosh \left(
+      \gamma \left( \sqrt{24(u-g_1)} - \frac{g_1 - g_0}{ \Delta_y}
+      \right) \right) \right] dg_1.
+\end{align}
+Differentiating \eqref{eq:star}  wrt $g_0$ yields
+\begin{align}
+  & \sqrt{\lambda \Delta_y} \left[ \psi'(g_0) \phiHG{h_0}{g_0} -
+   \psi(g_0)  \frac{12 \gamma}{\sqrt{24(u-g_0)}} \cosh\left( \gamma
+      \left(\sqrt{24(u-g_0)} -h_0 \right) \right) \right]  \nonumber\\
+  \label{eq:d_star_dg}
+  & \quad \equiv D = A + B + C \text{ where} \\
+  A &= -\left( 1 - \frac{12 \Delta_y}{\sqrt{24(u-g_0)}} \right)
+  \left[ \psi(g_0) + \Delta_y\sqrt{24(u-g_0)} \psi'(g_0) \right]  \nonumber\\
+  & \times \left[ 1 - \cosh\left( \gamma \left(\sqrt{24(u-g_0 -
+          \Delta_y \sqrt{24(u-g_0)})} - \sqrt{24(u-g_0)} \right)
+    \right) \right]  \nonumber\\
+  B &= \left[ \psi(g_0) + \Delta_y h_0 \psi'(g_0) \right] \left[ 1 -
+    \cosh\left( \gamma \left(\sqrt{24(u-g_0 - \Delta_y h_0)} - h_0
+      \right) \right) \right]  \nonumber\\
+  C &= \int_{\Lg}^{\Ug} \psi(g_1) \frac{\gamma}{\Delta_y}
+  \sinh \left( \gamma \left(
+      \sqrt{24(u-g_1)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right) dg_1. \nonumber
+\end{align}
+If $g_0 > u - 24 \Delta_y^2$ the argument of $\cosh$ in $A$ is
+complex, but if
+\begin{equation}
+  \label{eq:little_g}
+  u-g_0 >> \Delta_y,
+\end{equation}
+then $A = 0 + O(\Delta_y^2)$.  I will drop $A$ assuming
+\eqref{eq:little_g} and note that any solutions that I find will not
+be valid for large $g$.  If $ u-g $ is large compared to $\Delta_y$,
+then replacing $g_1$ with $g_0$ under the square root in $C$ might be
+OK too.\marginpar{maybe not}
+
+Integrating the approximation by parts, I find
+\begin{align*}
+  C &\dhot \int_{\Lg}^{\Ug} \psi(g_1) \frac{\gamma}{\Delta_y}
+  \sinh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right) dg_1 \\
+  &= -\left[ \psi(g_1) \cosh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right)\right]_{\Lg}^{\Ug} \\
+& \quad + \int_{\Lg}^{\Ug} \psi'(g_1) \cosh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right) dg_1.
+\end{align*}
+The surface terms approximately cancel $B$ and thus
+\begin{equation*}
+  D \dhot \int_{\Lg}^{\Ug} \psi'(g_1) \cosh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right) dg_1.
+\end{equation*}
+Integrating $D$ by parts two more times yields (note
+$\frac{\Delta_y}{\gamma} = \sqrt{\lambda \Delta_y}$)
+\begin{align}
+  D &\dhot -\sqrt{\lambda \Delta_y} \left[ \psi'(g_1) \sinh \left(
+      \gamma \left( \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+      \right) \right)\right]_{\Lg}^{\Ug} \nonumber \\
+& \quad +\lambda \Delta_y \left[ \psi''(g_1) \cosh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+    \right) \right)\right]_{\Lg}^{\Ug} \nonumber \\
+& \quad - \lambda \Delta_y \int_{\Lg}^{\Ug} \psi'''(g_1) \cosh \left(
+  \gamma \left( \sqrt{24(u-g_0)} - \frac{g_1 - g_0 }{ \Delta_y}
+  \right) \right) dg_1 \nonumber \\
+\label{eq:D_end}
+&\dhot \sqrt{\lambda \Delta_y} \psi'(g_0) \sinh \left( \gamma
+  \left( \sqrt{24(u-g_0)} - h_0 \right) \right) \\
+& \quad +\lambda \Delta_y \psi''(g_0) \left( 1 - \cosh \left( \gamma \left(
+      \sqrt{24(u-g_0)} - h_o \right) \right) \right) + O\left(
+  \left( \frac{\Delta_y}{\gamma} \right)^3 \right). \nonumber
+\end{align}
+Substituting \eqref{eq:D_end} into \eqref{eq:d_star_dg} yields
+\begin{equation}
+  \label{eq:hope}
+  \lambda \Delta_y \psi''(g_0) \left( 1 - \cosh \left( \gamma \left(
+        \sqrt{24(u-g_0)} - h_o \right) \right) \right) = -\psi(g_0)
+  \frac{12 \gamma}{\sqrt{24(u-g_0)}} \cosh\left( \gamma
+    \left(\sqrt{24(u-g_0)} -h_0 \right) \right),
+\end{equation}
+which would be a nice equation if I could find an extra
+$\psi(g_0)\frac{12\gamma}{\sqrt{24(u-g_0}}$ for the right hand side.
+
+\newpage
+
+Differentiating \eqref{eq:star}  wrt $h_0$ yields
+\newcommand{\temp}{g_0 + h_0 \Delta_y - 6 \Delta_y^2}
+\newcommand{\mtemp}{-g_0 - h_0 \Delta_y + 6 \Delta_y^2}
+\begin{align}
+  & \frac{\lambda \gamma}{\Delta_y} \psi(g_0) \cosh \left( \gamma
+    \left( \Rad{-g_0} - h_0 \right) \right) \nonumber \\
+  &= - \psi\left( \temp \right)
+  \left[ \cosh
+    \left( \gamma
+      \left( \Rad{\mtemp} - h \right)
+    \right)
+  \right]^{\Rad{\mtemp}}_ {\frac{h_0 \Delta_y - 6
+      \Delta_y^2}{\Delta_y}} \nonumber \\
+  \label{eq:DEG}
+  &= \psi\left( \temp \right)
+  \left[ \cosh
+    \left( \gamma
+      \left( \Rad{\mtemp} - h_0 + 6 \Delta_y \right)
+    \right) -1
+  \right].
+\end{align}
+The result seems implausible for two reasons that I will explain.  My
+explanations assume that $\lim_{\Delta_y \rightarrow 0}
+\lambda(\Delta_y) = 1$ and consequently that $\lim_{\Delta_y
+  \rightarrow 0} \gamma(\Delta_y) = \sqrt{\Delta_y}$.
+\begin{enumerate}
+\item The ways that the variable $h_0$ appear seem to require that
+  $\psi$ must depend on $h_0$, contradicting the assumption behind its
+  definition.  I will assume that $h_0=0$ and later ensure that
+  nonzero values are consistent with any solution that satisfies the
+  second objection.
+\item To lowest order in $\Delta_y$, the equation is roughly
+  \begin{equation*}
+    \frac{1}{\sqrt{\Delta_y}} \psi(g_0) = \psi(g_0 - 6\Delta_y^2)
+    24(u-g_0) \Delta_y,
+  \end{equation*}
+  which suggests
+  \begin{align*}
+    \psi(g) &= \left( \psi(g) - 6\Delta_y^2 \psi'(g) \right) 24(u-g)
+    \Delta_y^{\frac{3}{2}} \\
+    \psi'(g_0) &= \frac{\Delta_y^{\frac{3}{2}} 24 (u-g_0) - 1} {144
+      \Delta_y^{\frac{7}{2}} (u-g_0)} \psi(g_0) \\
+    \psi'(g_0) &= \frac{- 1} {144 \Delta_y^{\frac{7}{2}} (u-g_0)} \psi(g_0)
+  \end{align*}
+  and solutions for $\psi(g)$ that decay with an exponent of order
+  $\Delta_y^{ - \frac{7}{2}}$.  I had hoped for convergence of
+  eigenfunctions as $\Delta_y \rightarrow 0$.
+\end{enumerate}
+
+I will proceed in the following two steps:
+\begin{enumerate}
+\item Assume $h_0=0$ and derive an ODE for $\psi$ from \eqref{eq:DEG}
+  that is accurate to second order in $\Delta_y$ and fourth order
+  $\gamma$.
+\item Solve that ODE and with luck find $\lambda$.
+\item Substitute the solution for $\psi$ into \eqref{eq:DEG} and
+  ensure that at least values and first two derivatives wrt to $h_0$
+  are equal.
+\end{enumerate}
+
+If $h_0 = 0$, then \eqref{eq:DEG} becomes
+\renewcommand{\temp}{g_0 - 6\Delta_y^2}
+\renewcommand{\mtemp}{-g_0 +6\Delta_y^2}
+\begin{align*}
+  & \frac{\lambda \gamma}{\Delta_y} \psi(g_0) \cosh \left( \gamma
+    \left( \Rad{-g_0} \right) \right) \\
+  &= \psi\left( \temp \right)
+  \left[ \cosh
+    \left( \gamma
+      \left( \Rad{\mtemp} + 6 \Delta_y \right)
+    \right) -1
+  \right].
+\end{align*}
+To lowest order in $\Delta_y$ I find,
+\newcommand{\coshg}{\cosh\left(\gamma \Rad{-g_0} \right)}
+\begin{align*}
+  & \frac{1}{\gamma} \psi(g_0)
+  \cosh \left( \gamma \left( \Rad{-g_0} \right) \right) \\
+  &= \left[\psi(g_0) - 6\Delta_y^2\psi'(g_0) \right]
+  \left[ \cosh \left( \gamma \left( \Rad{-g_0} \right) \right) - 1
+  \right] \\
+  \psi'(g_0) &= \frac{(\gamma-1)\coshg - \gamma }{\gamma 6 \Delta_y^2
+  \left( \coshg - 1 \right)} \psi(g_0).
+\end{align*}
+In the next sequence, I drop all but the lowest order terms in
+$\gamma$ and use the first two terms in the Taylor series for
+$\cosh$:
+\begin{align*}
+  \psi'(g_0) &\dhot -\frac{\coshg}{6\Delta_y^2 \gamma \left( \coshg -
+      1 \right)} \psi(g_0) \\
+  &\dhot -\frac{1}{3 \Delta_y^2 \gamma^3 24(u-g_0)} \psi(g_0) \\
+  &= -\frac{1}{72 \Delta_y^2 \gamma^3 (u-g_0)} \psi(g_0).
+\end{align*}
+Then using the following form for solving the ODE
+\begin{align*}
+  y' &= \frac{by}{a-x} \text{ ODE} \\
+  y(x) &= c_1 (a-x)^b \text{ solution},
+\end{align*}
+I find
+\begin{equation}
+  \label{eq:1}
+  \psi(g_0) = (u - g_0)^{-\frac{1}{72 \Delta_y^2 \gamma^3}} =
+  \left( \frac{1}{u - g_0} \right)^{\frac{\lambda \sqrt{\lambda}}{72
+      \Delta_y^3 \sqrt{\Delta_y}}}
+\end{equation}
+The result is unsatisfactory because it is undefined at $g_0 = u$.
+
+I start again.  Let $h_0=0$ and $\phi(h,g)=\phiHG{h}{g}$, then from
+\eqref{eq:integralULq}
+\renewcommand{\LgQ}{g_0 - 6\Delta_y^2}
+\begin{align}
+  & \lambda \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)} \right) \nonumber \\
+  &= \int_{\LgQ}^{\UgQ} \psi(g_1) \int_{\LhQ}^{\Uh}~ \phiHG{h_1}{g_1}
+  ~dh_1 dg_1 \nonumber \\
+  & \lambda \gamma \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)}
+  \right) \nonumber \\
+  \label{eq:Ione}
+  &= \int_{\LgQ}^{\UgQ} \psi(g_1) \left[ \cosh \left(
+      \gamma \left( \sqrt{24(u-g_1)} - \frac{g_1 - g_0}{\Delta_y} + 6
+        \Delta_y \right) \right) -1 \right] dg_1 \\
+  &\equiv I_1 \nonumber
+\end{align}
+From the following change of variable
+\begin{align*}
+   t(g) &= \gamma \left( \sqrt{24(u-g)} - \frac{g - g_0}{\Delta_y} +
+     6 \Delta_y \right)\\
+   g(t) &= g_0 - 6 \Delta_y^2 - \frac{\Delta_y t}{\gamma} +
+   \Delta_y \sqrt{24 \left( u-g_0 + \frac{t\Delta_y}{\gamma} \right)} \\
+   \frac{d g}{ dt} &= \frac{\Delta_y}{\gamma} \left( \frac{12 \Delta_y} {
+       \sqrt{ 24 \left( u - g_0 + \frac{t \Delta_y}{\gamma} \right) }}
+     - 1 \right) \\
+   \frac{d^2 g}{ dt^2} &= -\frac{144 \Delta_y^3}{\gamma^2}
+   \left( 24
+     \left( u - g_0 + \frac{t \Delta_y}{\gamma} \right)
+   \right)^{-\frac{3}{2}},
+\end{align*}
+I calculate
+\begin{align*}
+  t \left( \UgQ \right) &= 0 \\
+  t \left( \LgQ \right) &= \gamma \left(
+    \sqrt{24\left( u - g_0 + 6 \Delta_y^2 \right) } + 12 \Delta_y \right),
+\end{align*}
+and write
+\newcommand{\LOW}{{\gamma \left( \sqrt{24(u- g_0 + 6\Delta_y^2 )} +
+      12\Delta_y \right)}}
+\newcommand{\RANGE}{_\LOW ^0}
+\newcommand{\INT}{\int\RANGE}
+\begin{align*}
+  I_1 &= \INT \psi(g(t)) \frac{d g}{d t} [\cosh(t) -1] dt \\
+  &\dhot \INT \left[ \psi(g(0)) + t \psi'(g(0)) \right]
+  \left[ \left. \frac{d g}{d t} \right|_{t=0}
+    + t \left. \frac{d^2g}{d t^2} \right|_{t=0}
+  \right]
+  [\cosh(t) -1] dt \\
+  &\equiv I_{A} +  I_{B} +  I_{C}
+\end{align*}
+\newcommand{\loit}{=_\text{loit}}
+\newcommand{\DG}{\frac{\Delta_y}{\gamma} \left( \frac{12 \Delta_y}
+    { \sqrt{24(u-g_0)} } - 1 \right) }
+\newcommand{\DDG}{\frac{144 \Delta^2_y}{\gamma^2} \left(24(u-g_0)
+  \right)^{-\frac{3}{2}} }
+where (using the notation $\loit$ for \emph{low order in $t$})
+\begin{align*}
+  I_{A} &= \psi(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  \INT [\cosh(t) - 1] dt \\
+  &= \psi(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  [\sinh(t) - t]\RANGE \\
+  &\loit \psi(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  \left[\frac{t^3}{6} \right]\RANGE\\
+  &= -\psi(g(0)) \DG \frac{ \left( \LOW \right)^3 }{6} \equiv \tilde
+  I_A \\
+  I_{B} &=  \left(
+    \psi(g(0)) \left. \frac{d^2 g}{d t^2} \right|_{t=0}
+    + \psi'(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  \right)
+  \INT t [\cosh(t) - 1] dt \\
+  &=  \left(
+    \psi(g(0)) \left. \frac{d^2 g}{d t^2} \right|_{t=0}
+    + \psi'(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  \right)
+  \left[ t\sinh(t) - \cosh(t) - \frac{t^2}{2} \right] \RANGE \\
+  &\loit  \left(
+    \psi(g(0)) \left. \frac{d^2 g}{d t^2} \right|_{t=0}
+    + \psi'(g(0)) \left. \frac{d g}{d t} \right|_{t=0}
+  \right)
+  \left[ \frac{t^4}{8} -1 \right]\RANGE \\
+  &= \left( \psi(g(0)) \DDG + \psi'(g(0)) \DG \right) \\
+  &\quad \times \frac{ \left( \LOW \right)^4 }{8} \equiv \tilde I_B\\
+  I_{C} &= \psi'(g(0)) \left. \frac{d^2 g}{d t^2} \right|_{t=0}
+  \INT t^2 [\cosh(t) - 1 ]dt \\
+  &\loit \psi'(g(0)) \left. \frac{d^2 g}{d t^2} \right|_{t=0} \left[
+    \frac{ t^5 }{ 8 } \right]\RANGE
+\end{align*}
+
+The equations
+\begin{align*}
+  \lambda \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)} \right) &= I_A
+  + I_B \\
+  \lambda \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)} \right) &=
+  \tilde I_A + \tilde I_B
+\end{align*}
+are each linear first order ODEs for $\psi$ which a better man than I
+might solve.
+
+I used the following integrals copied from Wikipedia
+\begin{align*}
+  \int \sinh (ax)\,dx &= a^{-1} \cosh (ax) + C \\
+  \int \cosh (ax)\,dx &= a^{-1} \sinh (ax) + C \\
+  \int x\cosh ax\,dx &= \frac{1}{a} x\sinh ax - \frac{1}{a^2}\cosh
+  ax+C,
+\end{align*} 
+and this from alpha
+\begin{align*}
+  & \int e^{ax} \sinh(b(x+c)) \\
+  &= e^{ax} \frac{a \sinh(b(c+x)) - b \cosh(b(c+x))}{(a-b)(a+b)}
+\end{align*}
+
+\end{document}
+
+%%%---------------
+%%% Local Variables:
+%%% eval: (TeX-PDF-mode)
+%%% eval: (setq ispell-personal-dictionary "./localdict")
+%%% End:

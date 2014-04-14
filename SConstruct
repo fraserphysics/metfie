@@ -129,6 +129,36 @@ notes.Command(
     ('explore.py', 'first_c.cpython-33m.so'),
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
+u = 48.0
+dy = 0.3
+points_ = (
+          -0.9 , 0.25,
+           -0.4, -0.8,
+              0, 0,
+             .5, 0.9,
+          0.995, 0.0)
+points = (len(points_)*'%.3f ')%points_
+notes.Command(
+    ('Av1.pdf'),
+    ('map2d.py', 'first_c.cpython-33m.so'),
+    'python3 map2d.py --u %f --dy %f --out Av1.pdf --points %s'%(
+        u, dy, points)
+    )
+m,b = 1/dy, u/dy - 6*dy
+notes.Command(
+    ('Av2.pdf'),
+    ('map2d.py', 'first_c.cpython-33m.so'),
+    'python3 map2d.py --u %f --dy %f --out Av2.pdf --backward --line %f %f --points %s'%(u, dy, m,b,points)
+    )
+dy = .05
+m,b = 1/dy, u/dy - 6*dy
+points_ = points_[2:] + (-.92, 0.99, -.995, 0.99)
+points = (len(points_)*'%.3f ')%points_
+notes.Command(
+    ('Av3.pdf'),
+    ('map2d.py', 'first_c.cpython-33m.so'),
+    'python3 map2d.py --u %f --dy %f --out Av3.pdf --backward --line %f %f --points %s'%(u, dy, m,b,points)
+    )
 
 n_g = 800
 n_h = 400
@@ -144,6 +174,17 @@ for dy in ('64', '32', '16', '08'):
 
 import os.path
 n_g = 5000
+n_h = 1200
+target_ = '%d_g_%d_h_%s_y_tol_1'
+command_ = 'python3 archive.py --out_file %s --n_g %d --n_h %d  --dy 0.000%s --out_dir reference  --tol 1e-6'
+for dy in ('64', '32', '16', '08', '04'):
+    target = target_%(n_g, n_h, dy)
+    notes.Command(
+        (os.path.join('reference',target),),
+        ('first_c.cpython-33m.so',),
+        command_%(target, n_g, n_h, dy)
+    )
+n_g = 5000
 n_h = 1250
 target_ = '%d_g_%d_h_%s_y'
 command_ = 'python3 archive.py --out_file %s --n_g %d --n_h %d  --dy 0.000%s --out_dir reference'
@@ -154,6 +195,8 @@ for dy in ('64', '32', '16', '08'):
         ('first_c.cpython-33m.so',),
         command_%(target, n_g, n_h, dy)
     )
+quadfirst = notes.Clone()
+quadfirst.PDF('quadfirst.tex')
 # From command line "designer-qt4 PVE_control.ui"
 qt = Environment()
 qt.Command(

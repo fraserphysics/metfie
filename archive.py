@@ -6,14 +6,15 @@ def main(argv=None):
     import argparse
     import numpy as np
     import time
+    import resource
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
     parser = argparse.ArgumentParser(description=
     '''Initialize LO_step instance, calculate eigenfuction and store in
 archive directory''')
-    parser.add_argument('--u', type=float, default=(2.0e-5),
-                       help='log fractional deviation')
+    parser.add_argument('--u', type=float, default=(12.0e-6),  # Change from 20.0e-6 makes marginal rough
+                       help='log fractional deviation. 12.0e-6 => h_lim=.024')
     parser.add_argument('--dy', type=float, default=3.2e-4,
                        help='y_1-y_0 = log(x_1/x_0)')
     parser.add_argument('--n_g', type=int, default=400,
@@ -40,7 +41,10 @@ archive directory''')
     op = LO( args.u, args.dy, d_g, d_h )
     op.power(small=args.tol, n_iter=args.max_iter, verbose=True)
     t_stop = time.time()
-    more = {'iterations':op.iterations, 'time':(t_stop-t_start)}
+    more = {
+        'iterations':op.iterations,
+        'time':(t_stop-t_start),
+        'memory':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}
     op.archive(args.out_file, more, args.out_dir)
    
 if __name__ == "__main__":

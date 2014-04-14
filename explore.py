@@ -85,57 +85,6 @@ help='number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
             print('norm:%e,  %s'%(norm(val), val))
         A.power(small=tol)
         print('From A.power() %e'%(A.eigenvalue,))
-    if args.Av != None:
-        # Illustrate A applied to some points
-        v = np.zeros(A.n_states)
-        f_sources = (             # Will calculate images of these points
-            (-0.98, 0.95),
-            (-0.65, 0.95),
-            (-.35, -0.95),
-            (0,0),
-            (.5, 0.9),
-            (0.995, 0.0))
-        i_sources = []            # For tagging sources in plot
-        for g_,h_ in f_sources:
-            g = A.g_max * g_
-            h_max = np.sqrt(24*(A.g_max-g))
-            h = h_max * h_
-            G = int(np.floor((g-A.g_min)/A.g_step + .5))
-            H = int(np.floor((h-A.h_min)/A.h_step + .5))
-            i_sources.append((G, H))
-            k = A.state_dict[(G,H)][-1] # get 1-d index of state vector
-            v[k] = 1                    # Set component for (g, h) to 1.0
-        f_v = A.matvec(v)               # Map v forward
-        b_v = A.rmatvec(v)              # Map v backward
-        z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
-        def two_d(w):
-            'return 2-d version of state vector suitable for plotting'
-            u = A.vec2z(w.reshape((A.n_states,)))
-            m = u.max()
-            w = u*z + m*z
-            for G,H in i_sources:
-                t = w[G,H]
-                w[G-1:G+2,H-2:H+3] = 0 # Make big markers for source points
-                w[G,H] = t
-            return w
-        fig1 = plt.figure(figsize=(24,12))
-        fig1.suptitle('Integral operator A for dy=%f'%A.dy)
-        h_max = (48*A.g_max)**.5
-        def plotv(fig, location, data, title=''):
-            data = two_d(data)
-            ax = fig.add_subplot(*location)
-            ax.imshow(
-                data.T[-1::-1,:], interpolation="nearest",
-                extent=[-A.g_max,A.g_max,-h_max,h_max], aspect='auto')
-            ax.set_title(title)
-            ax.set_xlabel('$g$')
-            ax.set_ylabel('$h$')
-        plotv(fig1, (2,2,1), np.ones((A.n_states,1)), '$v$')
-        plotv(fig1, (2,2,2), f_v, '$A(v)$')
-        plotv(fig1, (2,2,4), b_v, '$A^T(v)$')
-        if not DEBUG:
-                fig1.savefig( open(args.Av, 'wb'), format='pdf')
-
     if args.eigenfunction != None:
         # Calculate and plot the eigenfunction
         tol = 5e-6
