@@ -132,10 +132,10 @@ and $L_g$.
   \label{eq:premise}
   U'_g(y_0) &\geq 0 &&\text{Premise} \\
   g_0 &= u - 6(y_0-b)^2 \nonumber \\
-  b &= y_0 \pm \sqrt{\frac{u-g_0}{6}} && \text{Positive root to satisfy
-    \eqref{eq:premise} \& \eqref{eq:dugb}}  \nonumber \\
+  \label{eq:root}
+  b &= y_0 \pm \sqrt{\frac{u-g_0}{6}} \\
   \label{eq:dugb}
-  \frac{d U_g}{d y} &= -12(y-b) \\
+  \frac{d U_g}{d y} &= -12(y-b) && \text{Positive root in \eqref{eq:root}} \\
   \label{eq:dug}
   \left. \frac{d U_g}{d y} \right|_{y_0} &= 12\sqrt{\frac{u-g_0}{6}}
 \end{align}
@@ -168,7 +168,7 @@ Similarly, for the lower bound:
   b &= y_0 + \frac{h_0}{12} \nonumber \\
   a &= g_0 + \frac{h^2_0}{24} \\
   \label{eq:lg}
-  L_g(y_1) &= \max \left( u,~\LgQ \right)
+  L_g(y_1) &= \max \left( -u,~\LgQ \right)
 \end{align}
 Substituting these values into \eqref{eq:boundsA} yields\footnote{The
   upper bound in Eqn.\ \eqref{eq:UL_g} is simply $u$ if $g_0 \geq u -
@@ -279,12 +279,6 @@ I will use the following notation:
   \end{equation}
   I will drop the subscripts of ${\lambdaPF}_\Delta$ and
   ${\rhoPF}_\Delta$ when I can without creating ambiguity.
-\item[$\psi, \phi$] A decomposition of $\rho$ with
-  \begin{equation*}
-    \rho(g,h) = \psi(g) \phi(h,g).
-  \end{equation*}
-  I think of $\phi$ as a family of functions of $h$ with $g$ as a
-  parameter.
 \item[$U_g,~L_g,~U_h,~L_h$] Functions that provide integration limits
   that express \eqref{eq:integralI} as
   \begin{equation}
@@ -320,29 +314,10 @@ and then
 \begin{align}
   \lambda \rho(z_0) &= \int I(z_0, z_1) \rho(z_1) d
   z_1 \nonumber \\
-  &\equiv \lambda \psi(g_0) \phi(h_0,g_0) \text{ Definition of } \psi,
-  \phi \nonumber \\
   \label{eq:integralULq}
-    &= \int_{L_g(g_0, h_0)}^{U_g(g_0)} \psi(g_1)
-    \int_{L_h(g_0,g_1)}^{U_h(g_1)}~ \phi(h_1,g_1) ~dh_1 dg_1.
+    &= \int_{L_g(g_0, h_0)}^{U_g(g_0)}
+    \int_{L_h(g_0,g_1)}^{U_h(g_1)}~ \rho(h_1,g_1) ~dh_1 dg_1.
 \end{align}
-Note:
-\begin{itemize}
- \item I define $y_T(y_0,g_0) = \sqrt{\frac{u - g_0}{6}}$ as the point
-   where the parabola that goes through $(y_0,g_0)$ with nonnegative
-   slope is tangent to the upper bound $u$.  If $g_0 > u -
-   6\Delta_y^2$ then $y_T < y_0 + \Delta_y$ and the appropriate bound on the
-   integrals are different.  In particular, the upper limit on the
-   integral over $g_1$ is
-   \begin{equation*}
-     U_g(g_0,h_0) = u,
-   \end{equation*}
-   and the lower limit on the integral over $h_1$ is
-   \begin{equation*}
-     L_h(g_0, g_1) = \max \left( \frac{\Delta_g}{\Delta_y} - 6
-       \Delta_y, - \Rad{-g_1} \right).
-   \end{equation*}
-\end{itemize}
 
 \section{Discrete Approximation}
 \label{sec:approximate}
@@ -351,33 +326,11 @@ Note:
 \subsection{2-d Illustrations}
 \label{sec:ill}
 
-Figures\ \ref{fig:Av1}-\ref{fig:Av3} illustrate the action
-\begin{figure*}
-  \centering
-    \resizebox{1.2\textwidth}{!}{\includegraphics{Av1.pdf}}
-  \caption{Caption}
-  \label{fig:Av1}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-    \resizebox{1.2\textwidth}{!}{\includegraphics{Av2.pdf}}
-  \caption{Caption}
-  \label{fig:Av2}
-\end{figure*}
-
-\begin{figure*}
-  \centering
-    \resizebox{1.2\textwidth}{!}{\includegraphics{Av3.pdf}}
-  \caption{Caption}
-  \label{fig:Av3}
-\end{figure*}
-
-Let $A$ denote a discrete approximation of the integral operator, and
-let $A(g,h)$ denote the set of components in the image of the single
-component $(g,h)$.  $A$ maps states $(g,h)$ at $y$ to states $(g',h')$
-at $y+\Delta_y$, and while $A^T$ maps from $y$ to $y-\Delta_y$, it is
-not the inverse of $A$.  If
+I use $A$ to denote a discrete approximation of the integral operator,
+and let $A(g,h)$ denote the set of components in the image of the
+single component $(g,h)$.  $A$ maps states $(g,h)$ at $y$ to states
+$(g',h')$ at $y+\Delta_y$, and while $A^T$ maps from $y$ to
+$y-\Delta_y$, it is not the inverse of $A$.  If
 \begin{equation*}
   (g',h') \in A(g,h),
 \end{equation*}
@@ -391,6 +344,49 @@ Thus, if $S$ denotes the interchange of $h$ and $-h$
   SA^TS &= A,
 \end{align*}
 which ought to be worth something.
+
+Figures \ref{fig:Av1}-\ref{fig:Av3} illustrate the action of $A$ and
+$A^T$.
+\begin{figure}
+  \centering
+    \resizebox{1.0\columnwidth}{!}{\includegraphics{Av1.pdf}}
+    \caption{Image under $A^T$ of five points.  For each starting
+      point $(g_0,h_0)$, the set of possible image points $\left\{
+        (g_1,h_1) \right\}$ is a wedge with a vertex at
+      $(g_0+h_0\Delta_y - 6\Delta_y^2,h_0 - 12\Delta_y)$.  The right
+      face of each wedge has a slope of $\frac{1}{\Delta_y}$.  For
+      points near the right end of the allowed region with $g_0 > u -
+      6 \Delta_y^2$, the images have special shapes.}
+  \label{fig:Av1}
+\end{figure}
+
+\begin{figure}
+  \centering
+    \resizebox{1.0\columnwidth}{!}{\includegraphics{Av2.pdf}}
+    \caption{Image under $A$ of the same five points as used in
+      Fig.~\ref{fig:Av1}.  For each starting point $(g_0,h_0)$, the
+      set of possible pre-image points $\left\{ (g_{-1},h_{-1})
+      \right\}$ is a wedge with a vertex at $(g_0-h_0\Delta_y +
+      6\Delta_y^2,h_0 + 12\Delta_y)$.  For any point above the
+      diagonal line in the upper left of the plot, the pre-image is
+      truncated by the left edge of the allowed region.  That
+      truncation explains the small values of the eigenfunction in
+      that region.}
+  \label{fig:Av2}
+\end{figure}
+
+\begin{figure}
+  \centering
+    \resizebox{1.0\columnwidth}{!}{\includegraphics{Av3.pdf}}
+    \caption{Image of points under $A$ with a smaller value of
+      $\Delta_y$.  Note that the the region of truncated pre-images is
+      smaller than for Fig.~\ref{fig:Av2}.  However, since the point
+      just to the right of that region has a pre-image that intersects
+      the region, the eigenvalue will be suppressed there in a second
+      order fashion.}
+  \label{fig:Av3}
+\end{figure}
+
 \onecolumn
 \section{Attempts to Solve the Integral Equation}
 \label{sec:solve}

@@ -80,12 +80,10 @@ def main(argv=None):
         v[k] = 1                 # Set component for (g, h) to 1.0
     if args.backward:
         image = A.rmatvec(v)
-        title = '$A^T(v)$'
-        suptitle = 'Points and images under $A^T$ for $dy$=%.2f'%A.dy
+        suptitle = 'Points and images under $A$ for $dy$=%.2f'%A.dy
     else:
         image = A.matvec(v)
-        title='$A(v)$'
-        suptitle = 'Points and images under $A$ for $dy$=%.2f'%A.dy
+        suptitle = 'Points and images under $A^T$ for $dy$=%.2f'%A.dy
     z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
     def two_d(w):
         'return 2-d version of state vector suitable for plotting'
@@ -95,7 +93,7 @@ def main(argv=None):
         m = u.max()
         w = u*z + m*z
         return w
-    fig = plt.figure(figsize=(16,8))
+    fig = plt.figure(figsize=(10,5))
     fig.suptitle(suptitle)
     h_max = (48*A.g_max)**.5 # FixMe?
     ax = fig.add_subplot(1,1,1)
@@ -117,7 +115,6 @@ def main(argv=None):
     ax.imshow(
         data.T[-1::-1,:], interpolation="nearest",
         extent=[-A.g_max,A.g_max,-h_max,h_max], aspect='auto')
-    ax.set_title(title)
     ax.set_xlabel('$g$')
     ax.set_ylabel('$h$')
     if args.out == None:
