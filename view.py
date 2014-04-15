@@ -63,7 +63,7 @@ def main(argv=None):
     return 0
     
 def plot(op,               # Linear operator
-         f_,               # data to plot
+         f,                # data to plot
          log=True,         # Plot log(f)
          log_floor=1e-20,  # Small f values and zeros beyond (g,h) range
          m_g=None,         # Interpolate g values
@@ -71,7 +71,7 @@ def plot(op,               # Linear operator
     ):
     '''Make a surface plot of f(op_g,op_h)
     '''
-    f = op.symmetry(f_)
+    #f = op.symmetry(f_)
     assert len(f) == op.n_states
 
     def scale(*xyz):

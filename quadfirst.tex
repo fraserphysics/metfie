@@ -1,6 +1,6 @@
 \documentclass[twocolumn]{article}
 \usepackage{amsmath,amsfonts,afterpage}
-%\usepackage{showlabels}
+\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
 \newcommand{\normal}[2]{{\cal N}(#1,#2)} \newcommand{\La}{{\cal L}}
 \newcommand{\nomf}{\tilde f} \newcommand{\COST}{\cal C}
@@ -315,8 +315,8 @@ and then
   \lambda \rho(z_0) &= \int I(z_0, z_1) \rho(z_1) d
   z_1 \nonumber \\
   \label{eq:integralULq}
-    &= \int_{L_g(g_0, h_0)}^{U_g(g_0)}
-    \int_{L_h(g_0,g_1)}^{U_h(g_1)}~ \rho(h_1,g_1) ~dh_1 dg_1.
+    &= \int_{L_g(g_0, h_0)}^{U_g(g_0)} dg_1
+    \int_{L_h(g_0,g_1)}^{U_h(g_1)}~ \rho(h_1,g_1) ~dh_1.
 \end{align}
 
 \section{Discrete Approximation}
@@ -346,7 +346,8 @@ Thus, if $S$ denotes the interchange of $h$ and $-h$
 which ought to be worth something.
 
 Figures \ref{fig:Av1}-\ref{fig:Av3} illustrate the action of $A$ and
-$A^T$.
+$A^T$, and a numerically estimated eigenfunction appears in
+Fig.~\ref{fig:eigenfunction}.
 \begin{figure}
   \centering
     \resizebox{1.0\columnwidth}{!}{\includegraphics{Av1.pdf}}
@@ -382,8 +383,17 @@ $A^T$.
       $\Delta_y$.  Note that the the region of truncated pre-images is
       smaller than for Fig.~\ref{fig:Av2}.  However, since the point
       just to the right of that region has a pre-image that intersects
-      the region, the eigenvalue will be suppressed there in a second
+      the region, the eigenfunction will be suppressed there in a second
       order fashion.}
+  \label{fig:Av3}
+\end{figure}
+
+\begin{figure}
+  \centering
+    \resizebox{1.0\columnwidth}{!}{
+      \includegraphics{figs/800_g_800_h_8_y_vec_log.png}}
+    \caption{The $\text{log}_{10}$ of the amplitude of a numerically
+      estimated eigenfunction.}
   \label{fig:Av3}
 \end{figure}
 
@@ -395,73 +405,115 @@ Differentiating
 \eqref{eq:integralULq} once with respect to $h_0$ eliminates the
 integral over $dg_1$, requires the substitution
 \begin{equation*}
-  g_1 = \LgQ,
+  g_1 = L_g(g_0,h_0) = \LgQ \equiv L_g,
 \end{equation*}
-and yields
+and using
 \begin{equation*}
-  \psi(g_0) \frac{\partial}{\partial h_0} \phi(h_0,g_0) =
-  -\frac{\Delta_y} {\lambda} \psi(g_0+h_0 \Delta_y -6 \Delta_y^2)
-  \int_{h_0 - 12 \Delta_y}^{\sqrt{24(u-g_0-h_0 \Delta_y + 6
-      \Delta_y^2)}}~ \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1. 
+  \frac{\partial L_g(g_0,h_0)}{\partial h_0} = \Delta_y
 \end{equation*}
-Note that the lower limit of the remaining integral is $h_0 - 12
-\Delta_y$.  Thus the integral operator at $(g_0, h_0)$ has a domain in
-$(g_1, h_1)$ that extends $6 \Delta_y$ below $h_0$.  Differentiating
-again with respect to $h_0$ eliminates the integral over $dh_1$ and
 yields
 \begin{align*}
-  \frac{\partial^2}{\partial h_0^2} \phi(h_0, g_0) &= \frac{-\Delta_y}
-  { \lambda \psi(g_0)} \Bigl( \\
-  &\quad \Delta_y \psi'(g_0+h_0 \Delta_y -6 \Delta_y^2)
-  \int_{h_0 - 12 \Delta_y}^{\Rad{-g_0-h_0 \Delta_y + 6 \Delta_y^2}}~
-  \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1\\
-  &\quad + \Delta_y \psi(g_0+h_0 \Delta_y -6 \Delta_y^2) \int_{h_0 - 12 \Delta_y}
-  ^{\Rad{-g_0-h_0\Delta_y + 6\Delta_y^2 }}~ \frac{\partial}{\partial g}
-  \phi(h_1,g_0+h_0 \Delta_y -6 \Delta_y^2) ~dh_1\\ 
-  &\quad - \frac{12 \Delta_y \psi(g_0+h_0 \Delta_y -6 \Delta_y^2)} { \Rad{ -g_0
-      -h_0\Delta_y + 6\Delta_y^2} } \phi \left( \Rad{-g_0-h_0\Delta_y
-      + 6\Delta_y^2},g_0 + h_0 \Delta_y -6\Delta_y^2\right) \\
-  &\quad - \psi(g_0+h_0 \Delta_y -6 \Delta_y^2) \phi(h_0 - 12\Delta_y,
-  g_0 + h_0 \Delta_y - 6\Delta_y^2) \Bigr)
-  \\
-  &\dhot \frac{\Delta_y}{\lambda} \phi(h_0,g_0)
+  \lambda \frac{\partial}{\partial h_0} \rho(g_0,h_0) &= -
+  \frac{\partial L_g(g_0,h_0)}{\partial h_0} \int_{L_h(L_g(g_0,h_0),
+    g_0)}^{U_h(L_g(g_0,h_0))} \rho(L_g(g_0,h_0),h_1) d h_1 \\
+  & = -\Delta_y \int_{h_0 - 12\Delta_y}
+  ^{\sqrt{24(u-g_0-h_0\Delta_y + 6\Delta_y^2)}}~ 
+  \rho(g_0+h_0 \Delta_y -6 \Delta_y^2 , h_1) ~dh_1 \\
+  & \equiv - \Delta_y \int_{h_0 - 12\Delta_y}
+  ^{\Rad{-L_g}}~ \rho(L_g , h_1) ~dh_1.
 \end{align*}
-
-The solution to the second order linear differential equation is
+Differentiating again with respect to $h_0$ yields
+\begin{subequations}
+  \label{eq:t}
+\begin{align}
+  \frac{\partial^2}{\partial h_0^2} \rho(g_0, h_0) &=
+  -\frac{\Delta_y}{\lambda} \Bigl( \nonumber \\
+  &\quad \int_{h_0 - 12 \Delta_y}^{\Rad{-L_g}}~ \frac{\partial L_g}{\partial h_0}
+  \frac{\partial}{\partial g} \rho(L_g,h_1) ~dh_1 \nonumber \\
+  &\quad + \frac{ \partial \Rad{-L_g}}{\partial h_0} \rho \left(L_g,
+    \Rad{-L_g} \right) \nonumber \\
+  &\quad - \rho(L_g, h_0 - 12\Delta_y ) \Bigr) \nonumber \\
+%
+  &= -\frac{\Delta_y}{\lambda} \Bigl( \nonumber \\
+  \label{eq:t1}
+  &\quad \Delta_y \int_{h_0 - 12 \Delta_y}^{\Rad{-L_g}}
+  \frac{\partial}{\partial g} \rho(L_g,h_1) ~dh_1  \\
+  \label{eq:t2}
+  &\quad - \frac{12\Delta_y}{\Rad{-L_g}} \rho \left(L_g,
+    \Rad{-L_g} \right) \\
+  \label{eq:t3}
+  &\quad - \rho(g_0, h_0) + O(\Delta_y) \Bigr)
+\end{align}
+\end{subequations}
+Dropping the terms that are second order in $\Delta_y$ yields
 \begin{equation*}
-  \phi(h) = a e^{\gamma h} + b e^{-\gamma h},
+  \frac{\partial^2}{\partial h_0^2} \rho(g_0, h_0) =
+  \frac{\Delta_y}{\lambda} \rho(g_0, h_0),
+\end{equation*}
+which is solved by
+\begin{equation*}
+  \rho(g,h) = \psi(g) \left( a e^{\gamma h} + b e^{-\gamma h}
+  \right),
 \end{equation*}
 where
 \begin{equation*}
   \gamma \equiv \sqrt{\frac{\Delta_y}{\lambda}}.
 \end{equation*}
-Since at $h = \Rad{-g_0}$, $\phi(h) = 0$,
+From \eqref{eq:ug} and \eqref{eq:lg} the bounds $U_g$ and $L_g$ are
+both $g + h\Delta_y -6\Delta_y^2$ at $h = h_{\text{max}}(g) \equiv
+\Rad{-g}$.  Since the integral described in \eqref{eq:integralUL_} and
+\eqref{eq:integralULq} is over an empty interval,
+$\rho(g,h_{\text{max}}(g)) = 0$ and
 \begin{align*}
-  0 &= a e^{\gamma \Rad{-g_0}} + b e^{-\gamma \Rad{-g_0}} \\
-  b &= a e^{2\gamma \Rad{-g_0}} \\
-  \phi(h) &= -a e^{\gamma \Rad{-g_0}} \left(
-    e^{\gamma \left( \Rad{-g_0} - h \right) } -
-    e^{\gamma \left(\Rad{-g_0} - h \right) } \right) \\
-  &= -2 a e^{\gamma \Rad{-g_0}} \sinh \left( \gamma \left( \Rad{-g_0}
-      - h \right) \right),
+  0 &= a e^{\gamma \Rad{-g}} + b e^{-\gamma \Rad{-g}} \\
+  b &= -a e^{2\gamma \Rad{-g}} \\
+  \rho(g,h) &= -\psi(g)a e^{\gamma \Rad{-g}} \left(
+    e^{\gamma \left( \Rad{-g} - h \right) } -
+    e^{-\gamma \left(\Rad{-g} - h \right) } \right) \\
+  &= -2 \psi(g)a e^{\gamma \Rad{-g}} \sinh \left( \gamma \left( \Rad{-g}
+      - h \right) \right).
 \end{align*}
-and I can write the solution as
-\newcommand{\phiHG}[2]{\sinh \left( \gamma \left( \sqrt{24(u-#2)} - #1
+Choosing $a$ to cancel $-2 e^{\gamma \Rad{-g}}$, I can write the solution as
+\newcommand{\rhoHG}[2]{\sinh \left( \gamma \left( \sqrt{24(u-#2)} - #1
     \right) \right)}
 \begin{equation}
   \label{eq:sol_h}
-  \rho(g,h) \equiv \psi(g) \phi(h,g) \equiv \psi(g) \phiHG{h}{g}.
+  \rho(g,h) \equiv \psi(g) \rhoHG{h}{g}.
 \end{equation}
+
+The difference between the asymptotic solution \eqref{eq:sol_h} and a
+numerical approximation plotted in Fig.~\ref{fig:compare} suggests an
+error in the foregoing analysis.  However, notice that discarding term
+\eqref{eq:t2} relies on
+\begin{equation}
+  \label{eq:ll}
+  \Delta_y \ll \frac{\rho(g_0, h_0)}{\rho \left(L_g, \Rad{-L_g} \right)},
+\end{equation}
+but Fig.~\ref{fig:compare} indicates that with the given value of
+$\Delta_y$ \eqref{eq:ll} fails to hold for most of the range of $h$.
+The equation
+\begin{equation}
+  \label{eq:ugly}
+  \frac{\partial^2}{\partial h^2} \rho(g, h) =
+  \frac{\Delta_y}{\lambda} \rho(g, h) +
+  \frac{12\Delta_y^2}{\lambda \Rad{-g}} \rho \left(g, \Rad{-g} \right)  
+\end{equation}
+follows from retaining \eqref{eq:t2}.  A numerical solution to
+\eqref{eq:ugly} appears in Fig.~\ref{fig:ugly}.
+
+
+
+
 \newcommand{\altphiHG}[2]{e^{-6\gamma^2 \Delta_y h} \sinh \left( \gamma
     \left( \sqrt{24(u-#2)} - #1 \right) \right)} I've obtained an
-alternate solution by assuming the form $\phi(h,g) = f(h) \sinh\left(
+alternate solution by assuming the form $\rho(h,g) = f(h) \sinh\left(
   \gamma \left( \sqrt{24(u-g)} - h \right) \right)$, expanding
-$\phi(h)'' = \gamma^2 \phi(h - 12\Delta_y)$ and solving for $f$ after
+$\rho(h)'' = \gamma^2 \rho(h - 12\Delta_y)$ and solving for $f$ after
 dropping terms that are second order in $\Delta_y$.  The alternative
 solution is
 \begin{equation}
   \label{eq:sol_h_}
-  \rho(g,h) \equiv \psi(g) \phi(h,g) \equiv \psi(g) \altphiHG{h}{g}.  
+  \rho(g,h) \equiv \psi(g) \rho(h,g) \equiv \psi(g) \altphiHG{h}{g}.  
 \end{equation}
 
 \subsection{ODE for $\psi$}
@@ -470,25 +522,25 @@ solution is
 Next I use \eqref{eq:sol_h} in \eqref{eq:integralULq} and
 differentiate to see if a solution for $\psi(g)$ is possible.  Noting
 \begin{equation*}
-  \int \phi(h,g) = \frac{-1}{\gamma} \cosh \left( \gamma \left(
+  \int \rho(h,g) = \frac{-1}{\gamma} \cosh \left( \gamma \left(
       \Rad{-g} - h \right) \right) + C,
 \end{equation*}
 I write
 \begin{align}
-  & \lambda \psi(g_0)\phi(h_0,g_0) \nonumber\\
+  & \lambda \psi(g_0)\rho(h_0,g_0) \nonumber\\
   & \quad =\int_{\LgQ}^{\UgQ} \frac{-\psi(g_1) }{\gamma} \left[
     \cosh\left( \gamma \left( \Rad{-g_1} - h \right)\right) \right]_{
     \frac {\Delta_g} {\Delta_y} - 6 \Delta_y}^{\Rad{-g1}} dg_1
   \nonumber \\
   \label{eq:star}
-  & \sqrt{\lambda \Delta_y} \psi(g_0) \phiHG{h_0}{g_0} \nonumber \\
+  & \sqrt{\lambda \Delta_y} \psi(g_0) \rhoHG{h_0}{g_0} \nonumber \\
   &\quad \dhot - \int_{\Lg}^{\Ug} \psi(g_1) \left[ 1 - \cosh \left(
       \gamma \left( \sqrt{24(u-g_1)} - \frac{g_1 - g_0}{ \Delta_y}
       \right) \right) \right] dg_1.
 \end{align}
 Differentiating \eqref{eq:star}  wrt $g_0$ yields
 \begin{align}
-  & \sqrt{\lambda \Delta_y} \left[ \psi'(g_0) \phiHG{h_0}{g_0} -
+  & \sqrt{\lambda \Delta_y} \left[ \psi'(g_0) \rhoHG{h_0}{g_0} -
    \psi(g_0)  \frac{12 \gamma}{\sqrt{24(u-g_0)}} \cosh\left( \gamma
       \left(\sqrt{24(u-g_0)} -h_0 \right) \right) \right]  \nonumber\\
   \label{eq:d_star_dg}
@@ -676,12 +728,12 @@ I find
 \end{equation}
 The result is unsatisfactory because it is undefined at $g_0 = u$.
 
-I start again.  Let $h_0=0$ and $\phi(h,g)=\phiHG{h}{g}$, then from
+I start again.  Let $h_0=0$ and $\rho(h,g)=\rhoHG{h}{g}$, then from
 \eqref{eq:integralULq}
 \renewcommand{\LgQ}{g_0 - 6\Delta_y^2}
 \begin{align}
   & \lambda \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)} \right) \nonumber \\
-  &= \int_{\LgQ}^{\UgQ} \psi(g_1) \int_{\LhQ}^{\Uh}~ \phiHG{h_1}{g_1}
+  &= \int_{\LgQ}^{\UgQ} \psi(g_1) \int_{\LhQ}^{\Uh}~ \rhoHG{h_1}{g_1}
   ~dh_1 dg_1 \nonumber \\
   & \lambda \gamma \psi(g_0) \sinh\left(\gamma \sqrt{24(u-g_0)}
   \right) \nonumber \\
