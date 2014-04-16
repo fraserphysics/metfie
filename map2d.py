@@ -58,8 +58,6 @@ def main(argv=None):
         mpl.use('PDF')
     import matplotlib.pyplot as plt  # must be after mpl.use
     from scipy.sparse.linalg import LinearOperator
-    from mpl_toolkits.mplot3d import Axes3D  # Mysteriously necessary
-                                             #for "projection='3d'".
     from first_c import LO_step
     #from first import LO_step
 

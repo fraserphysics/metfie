@@ -13,17 +13,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=
     '''Initialize LO_step instance, calculate eigenfuction and store in
 archive directory''')
-    parser.add_argument('--u', type=float, default=(12.0e-6),  # Change from 20.0e-6 makes marginal rough
-                       help='log fractional deviation. 12.0e-6 => h_lim=.024')
-    parser.add_argument('--dy', type=float, default=3.2e-4,
-                       help='y_1-y_0 = log(x_1/x_0)')
+    parser.add_argument('--u', type=float, default=(48.0),
+        help='log fractional deviation')
+    parser.add_argument('--dy', type=float, default=0.2,
+        help='y_1-y_0 = log(x_1/x_0)')
     parser.add_argument('--n_g', type=int, default=400,
                        help='number of integration elements in value')
     parser.add_argument('--n_h', type=int, default=400, help=
 'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
     parser.add_argument('--max_iter', type=int, default=2000,
                        help='Maximum number power iterations')
-    parser.add_argument('--tol', type=float, default=(5.0e-6),
+    parser.add_argument('--tol', type=float, default=(1.0e-6),
                        help='Stopping criterion for power')
     parser.add_argument('--out_file', type=str, default=None,
         help="Name of result file.  Default derived from other args.")
@@ -42,6 +42,7 @@ archive directory''')
     op.power(small=args.tol, n_iter=args.max_iter, verbose=True)
     t_stop = time.time()
     more = {
+        'eigenvalue':float(op.eigenvalue),
         'iterations':op.iterations,
         'time':(t_stop-t_start),
         'memory':resource.getrusage(resource.RUSAGE_SELF).ru_maxrss}
