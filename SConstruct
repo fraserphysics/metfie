@@ -184,19 +184,33 @@ for dy in ('64', '32', '16', '08', '04'):
         ('first_c.cpython-33m.so',),
         command_%(target, n_g, n_h, dy)
     )
-n_g = 5000
-n_h = 1250
-target_ = '%d_g_%d_h_%s_y'
-command_ = 'python3 archive.py --out_file %s --n_g %d --n_h %d  --dy 0.000%s --out_dir reference'
-for dy in ('64', '32', '16', '08'):
-    target = target_%(n_g, n_h, dy)
-    notes.Command(
-        (os.path.join('reference',target),),
-        ('first_c.cpython-33m.so',),
-        command_%(target, n_g, n_h, dy)
-    )
 quadfirst = notes.Clone()
 quadfirst.PDF('quadfirst.tex')
+n_g = 2000
+n_h = 800
+target_ = '%d_g_%d_h_%s_y'
+archive_command = 'python3 archive.py --out_file %s --n_g %d --n_h %d  --dy %s'
+fig_command = (
+'export DISPLAY=:0.0;python view.py --log_floor 1e-45 --resolution 200 200 '+
+'--file %s --fig_files %s')
+for dy in ('.4', '.2', '.1', '.05'):
+    target = target_%(n_g, n_h, dy)
+    archive_target = os.path.join('archive',target)
+    fig_pattern = os.path.join('figs',target_%(n_g, n_h, dy[1:]))
+    quadfirst.Command(
+        (archive_target,),
+        ('first_c.cpython-33m.so',),
+        archive_command%(target, n_g, n_h, dy)
+    )
+    quadfirst.Command(
+        (fig_pattern+'_vec_log.png',),
+        tuple([]),
+        fig_command%(target, fig_pattern)
+    )
+quadfirst.Command(
+    'compare.pdf',
+    [], #'archive/2000_g_800_h_.2_y',
+    'python analysis.py --file 2000_g_800_h_.2_y --out compare.pdf')
 # From command line "designer-qt4 PVE_control.ui"
 qt = Environment()
 qt.Command(

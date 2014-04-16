@@ -5,13 +5,11 @@ regions to which points map and regions that map to points.
 import sys
 import numpy as np
 import matplotlib as mpl
-DEBUG = False
 def main(argv=None):
     '''For looking at sensitivity of time and results to u, dy, n_g, n_h.
 
     '''
     import argparse
-    global DEBUG
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
@@ -44,7 +42,7 @@ def main(argv=None):
     assert len(args.points)%2 == 0
     f_sources = ((args.points[2*i], args.points[2*i+1]) for i in 
                  range(int(len(args.points)/2)))
-        
+    
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
               'text.fontsize': 15,
               'legend.fontsize': 15,

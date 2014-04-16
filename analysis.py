@@ -3,6 +3,7 @@ approximations as functions of h at fixed g=0.
 
 '''
 import numpy as np
+import matplotlib as mpl
 import sys
 import first
 def main(argv=None):
@@ -18,7 +19,21 @@ def main(argv=None):
     parser.add_argument('--dir', type=str,
                         default='archive',
                         help='Read LO_step instance from this file.')
+    parser.add_argument('--out', type=str, default=None,
+        help="Write result to this file")
     args = parser.parse_args(argv)
+    params = {'axes.labelsize': 18,     # Plotting parameters for latex
+              'text.fontsize': 15,
+              'legend.fontsize': 15,
+              'text.usetex': True,
+              'font.family':'serif',
+              'font.serif':'Computer Modern Roman',
+              'xtick.labelsize': 15,
+              'ytick.labelsize': 15}
+    mpl.rcParams.update(params)
+    if args.out != None:
+        mpl.use('PDF')
+    import matplotlib.pyplot as plt  # must be after mpl.use
 
     import pickle, os.path
     from datetime import timedelta
@@ -37,12 +52,14 @@ def main(argv=None):
             continue
         print('%-16s= %s'%(key,_dict[key]))
     LO = first.read_LO_step(args.file, args.dir)
-    line_plot(LO, _dict['dy'], _dict['eigenvalue'])
+    fig = line_plot(LO, _dict['dy'], _dict['eigenvalue'], plt)
+    if args.out == None:
+        plt.show()
+    else:
+        fig.savefig( open(args.out, 'wb'), format='pdf')
     return 0
 
-def line_plot(op, dy, e_val):
-    import matplotlib as mpl
-    import matplotlib.pyplot as plt  # must be after mpl.use
+def line_plot(op, dy, e_val, plt):
     gh = []
     for i in range(op.n_states):
         g,h,G,H = op.state_list[i]
@@ -64,7 +81,8 @@ def line_plot(op, dy, e_val):
     ax.semilogy(h, f, label='eigenfunction')
     ax.semilogy(h, s, label='sinh')
     ax.legend(loc='lower left')
-    plt.show()
+    return fig
+
 if __name__ == "__main__":
     rv = main()
     sys.exit(rv)
