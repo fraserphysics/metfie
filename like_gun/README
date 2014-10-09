@@ -1,0 +1,16 @@
+The like_gun directory is for developing maximum likelihood code for
+gun data and models.
+
+Plans:
+
+1. Extract simple code for gun from parent directory
+
+2. Write code for spline f
+
+3. Write perturbed EOS f and use it for gun
+
+4. Write code for log likelihood L and derivative of L wrt to v_sim
+
+5. Write code for d v_sim / d f
+
+6. Write optimization code
