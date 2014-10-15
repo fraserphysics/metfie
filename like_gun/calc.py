@@ -4,6 +4,7 @@ in parent directory.
 """
 import numpy as np
 from scipy.integrate import quad, odeint
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import numpy.linalg.linalg as LA, scipy.interpolate
 class GUN(object):
     def __init__(self,      # GUN instance
@@ -27,10 +28,10 @@ class GUN(object):
         points.
 
         '''
-        step = np.log(self.xf/self.xi)/N
-        log_x = np.arange(np.log(self.xi),np.log(self.xf)+step/3,step)
-        assert len(log_x) == N+1
         # N+1 points and N intervals equal spacing on log scale
+        log_x = np.linspace(np.log(self.xi),np.log(self.xf),N+1)
+        step = (log_x[-1] - log_x[0])/N
+        assert len(log_x) == N+1
         log_c = log_x[:-1] + step/2
         self.x = np.exp(log_x)
         self.x_c = np.exp(log_c) # Centers of intervals on log scale
@@ -72,6 +73,11 @@ class GUN(object):
                          x,     # Solve for time at each position in x
                          )
         return rv.flatten()
+    def set_eos(self,   # GUN instance
+                x,
+                f
+                ):
+        self.eos = spline(x, f)
 def plot():
     '''Plot velocity as a function of time.
     '''
@@ -84,13 +90,32 @@ def plot():
     ax1.set_xlabel('$t$')
     ax1.set_ylabel('$v$')
     ax2 = fig.add_subplot(2,1,2)
+    ax2.set_xlabel('$x$')
+    ax2.set_ylabel('$f$')
     gun = GUN()
     t = gun.T(gun.x)*1e6 # microseconds
     v = np.array([gun.x_dot(x) for x in gun.x])/1e5 # km/s
     ax1.plot(t,v,label=r'$v(t)$')
-    #ax1.legend(loc='lower left')
-    #plt.show()
-    fig.savefig('fig.pdf', format='pdf')
+    f = [gun.eos(x) for x in gun.x]
+    ax2.plot(gun.x, f)
+    n = 30
+    log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
+    x = np.exp(log_x)
+    f = gun.eos(x)
+    x_off = 0.6
+    y = x-x_off
+    freq=.2
+    w = .2
+    D = np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
+    gun.set_eos(x,f+D)
+    t = gun.T(gun.x)*1e6 # microseconds
+    v = np.array([gun.x_dot(x) for x in gun.x])/1e5 # km/s
+    ax1.plot(t,v,label=r'$\tilde v$')
+    ax1.legend(loc='lower right')
+    f = [gun.eos(x) for x in gun.x]
+    ax2.plot(gun.x, f)
+    plt.show()
+    #fig.savefig('fig.pdf', format='pdf')
     
 def _test():
     import doctest
