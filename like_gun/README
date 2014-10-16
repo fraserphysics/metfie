@@ -9,7 +9,7 @@ x2. Write code for spline f
 
 x3. Write perturbed EOS f and use it for gun
 
-4. Write code for log likelihood L and derivative of L wrt to v_sim
+x4. Write code for log likelihood L and derivative of L wrt to v_sim
 
 5. Write code for d v_sim / d f
 

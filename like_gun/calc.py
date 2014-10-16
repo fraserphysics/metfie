@@ -1,11 +1,30 @@
 """calc.py: Classes for EOS and gun simulation.  Derived from calc.py
 in parent directory.
 
+Run using python3.
+
 """
 import numpy as np
 from scipy.integrate import quad, odeint
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
-import numpy.linalg.linalg as LA, scipy.interpolate
+import scipy.interpolate #.InterpolatedUnivariateSpline
+#https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
+class spline(scipy.interpolate.InterpolatedUnivariateSpline):
+    '''From the source:
+
+    data = dfitpack.fpcurf0(x,y,k,w=w,xb=bbox[0],xe=bbox[1],s=s)
+    n,t,c,k,ier = data[7],data[8],data[9],data[5],data[-1]
+    self._eval_args = t[:n],c[:n],k
+    
+    t is the array of knots, c is the array of coefficients and k is the
+    order.    
+    '''
+    def get_t(self):
+        return self._eval_args[0]
+    def get_c(self):
+        return self._eval_args[1]
+    def set_c(self,c):
+        self._eval_args = self._eval_args[0], c, self._eval_args[2]
+        return
 class GUN(object):
     def __init__(self,      # GUN instance
                  C=2.56e10, # Constant in nominal equation of state
@@ -58,11 +77,16 @@ class GUN(object):
         rv, err = quad(self.eos,self.xi,x)
         return rv
     def x_dot(self, # GUN instance
-              x     # Scalar position /cm at which to calculate velocity
+              x     # Position[s] /cm at which to calculate velocity
               ):
         ''' Calculate the projectile velocity at position x
         '''
-        return np.sqrt(2*self.E(x)/self.m)
+        if isinstance(x,np.ndarray):
+            return np.array([self.x_dot(x_) for x_ in x])
+        elif isinstance(x,np.float): 
+            return np.sqrt(2*self.E(x)/self.m)
+        else:
+            raise RuntimeError('x has type %s'%(type(x),))
     def T(self,  # GUN instance
           x      # Array of positions /cm at which to calculate time
           ):
@@ -78,6 +102,62 @@ class GUN(object):
                 f
                 ):
         self.eos = spline(x, f)
+        return
+    def log_like(
+            self, # GUN instance
+            t,    # Array of measured times
+            v     # Array of measured velocities
+            ):
+        ''' Assume t are accurate and that for model velocities m
+            log(p(v|m)) =\sum_t -((v-m)/1e5)^2
+        '''
+        t_ = self.T(self.x)
+        x_t = spline(t_,self.x)
+        x = x_t(t)
+        m = self.x_dot(x)
+        d = (v-m)/1e5
+        return -np.dot(d,d),-2*d
+    def dv_df(
+            self, # GUN instance
+            x_v,  # Positions of velocity measuerments
+            x_f,  # Positions of eos specifications
+            fraction=1.0e-2
+            ):
+        '''Derivative of velocity at points x wrt. self.f at points x_f.
+        Returns a len(x_v) \times len(x_f) matrix.
+        
+        '''
+        f_all_nom = self.eos(self.x)
+        f_x_nom = np.array([self.eos(x) for x in x_f])
+        v_x_nom = self.x_dot(x_v)
+        self.set_eos(x_f, f_x_nom)
+        f = self.eos
+        f_nom_c = f.get_c()
+        f_nom_t = f.get_t()
+        # f_nom_t is 4 longer than x_f but matches x_f[2:-2] in the middle
+        rv = np.zeros((len(x_v), len(f_nom_c)))
+        
+        # For debug plots: f_i, df_i, v_i
+        f_i = np.empty((len(f_nom_c),len(self.x)))
+        v_i = np.empty((len(f_nom_c),len(x_v)))
+
+        # Should pick pertubations that maintain convexity
+        D_f = np.empty(f_nom_c.shape)
+        for i in range(len(f_nom_c)):
+            f_c = f_nom_c.copy()
+            D_f[i] = f_c[i]*fraction
+            if D_f[i] == 0.0:
+                D_f[i] = D_f[i-1]
+            f_c[i] += D_f[i]
+            f.set_c(f_c)
+            v = self.x_dot(x_v)
+            Dv_Df = (v - v_x_nom)/D_f[i]
+            rv[:,i] = Dv_Df
+            # Debug data
+            f_i[i,:] = f(self.x)
+            v_i[i,:] = v
+        return f_i, v_i, f_all_nom, v_x_nom
+        
 def plot():
     '''Plot velocity as a function of time.
     '''
@@ -86,41 +166,74 @@ def plot():
     import matplotlib.pyplot as plt
     import numpy as np
     fig = plt.figure()
-    ax1 = fig.add_subplot(2,1,1)
+    ax1 = fig.add_subplot(3,1,1)
     ax1.set_xlabel('$t$')
     ax1.set_ylabel('$v$')
-    ax2 = fig.add_subplot(2,1,2)
+    ax2 = fig.add_subplot(3,1,2)
     ax2.set_xlabel('$x$')
     ax2.set_ylabel('$f$')
+    ax3 = fig.add_subplot(3,1,3)
+    ax3.set_xlabel('$t$')
+    ax3.set_ylabel('$dL$')
+    
+    # Plot v(t) and f(x) for unperturbed gun
     gun = GUN()
-    t = gun.T(gun.x)*1e6 # microseconds
-    v = np.array([gun.x_dot(x) for x in gun.x])/1e5 # km/s
-    ax1.plot(t,v,label=r'$v(t)$')
-    f = [gun.eos(x) for x in gun.x]
-    ax2.plot(gun.x, f)
+    t = gun.T(gun.x)
+    v = gun.x_dot(gun.x)
+    ax1.plot(t*1e6, # microseconds
+             v/1e5,# km/s
+             label=r'$v_{\rm nominal}$')
+    ax2.plot(gun.x, [gun.eos(x) for x in gun.x],label=r'$f_{\rm nominal}$')
+
+    # Create perturbed gun
     n = 30
     log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
     x = np.exp(log_x)
+    
+    f_i, v_i, f_all_nom, v_x_nom = gun.dv_df(gun.x, x, 2.0e-2)
+    n_i, n_x = f_i.shape
+    fig2 = plt.figure()
+    for n_,x_,y_,l_ in (
+            (1,gun.x,f_i,'$f$'),
+            (2,gun.x,f_i-f_all_nom,'$Df$'),
+            (3,x,v_i,'$v$'),
+            (4,x,v_i-v_x_nom,'$Dv$'),
+            ):
+        ax = fig2.add_subplot(2,2,n_)
+        ax.set_ylabel(l_)
+        ax.set_xlabel('$x$')
+        for i in range(n_i):
+            ax.plot(gun.x, y_[i])
+        
     f = gun.eos(x)
     x_off = 0.6
     y = x-x_off
     freq=.2
     w = .2
     D = np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
-    gun.set_eos(x,f+D)
-    t = gun.T(gun.x)*1e6 # microseconds
-    v = np.array([gun.x_dot(x) for x in gun.x])/1e5 # km/s
-    ax1.plot(t,v,label=r'$\tilde v$')
+    gun_p = GUN()
+    gun_p.set_eos(x,f+D)
+    
+    # Plot v(t) and f(x) for perturbed gun
+    t = gun.T(x)
+    v = np.array([gun_p.x_dot(x_) for x_ in x])
+    L,dL = gun.log_like(t,v)
+    print('lengths: gun.x=%d, t=%d, v=%d, dL=%d'%(len(gun.x), len(t), len(v), len(dL)))
+    ax1.plot(t*1e6, # microseconds
+             v/1e5,# km/s
+             label=r'$v_{\rm perturbed}$')
+    ax2.plot(
+        gun.x,
+        [gun_p.eos(x) for x in gun_p.x],
+        label=r'$f_{\rm perturbed}$')
+    ax3.plot(t*1e6, dL)
     ax1.legend(loc='lower right')
-    f = [gun.eos(x) for x in gun.x]
-    ax2.plot(gun.x, f)
+    ax2.legend(loc='upper right')
+
+    
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
     
-def _test():
-    import doctest
-    doctest.testmod()
-
 if __name__ == "__main__":
     plot()
     #_test()
