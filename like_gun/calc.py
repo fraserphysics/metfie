@@ -127,10 +127,11 @@ class GUN(object):
         Returns a len(x_v) \times len(x_f) matrix.
         
         '''
-        f_all_nom = self.eos(self.x)
+        eos_orig = self.eos
         f_x_nom = np.array([self.eos(x) for x in x_f])
-        v_x_nom = self.x_dot(x_v)
         self.set_eos(x_f, f_x_nom)
+        f_all_nom = self.eos(self.x) # Use spline as reference
+        v_x_nom = self.x_dot(x_v)
         f = self.eos
         f_nom_c = f.get_c()
         f_nom_t = f.get_t()
@@ -156,6 +157,8 @@ class GUN(object):
             # Debug data
             f_i[i,:] = f(self.x)
             v_i[i,:] = v
+        self.Dv_Df = rv
+        self.eos = eos_orig
         return f_i, v_i, f_all_nom, v_x_nom
         
 def plot():
@@ -190,16 +193,27 @@ def plot():
     log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
     x = np.exp(log_x)
     
+    # fraction = 2.0e-2 about max for convex
+    # fraction = 1.0e-3 about min for bugless v(x) integration
+    f_i_A, v_i_A, f_all_nom_A, v_x_nom_A =gun.dv_df(gun.x, x, 2.0e-3)
+    Dv_Df_A = gun.Dv_Df.T
     f_i, v_i, f_all_nom, v_x_nom = gun.dv_df(gun.x, x, 2.0e-2)
     n_i, n_x = f_i.shape
     fig2 = plt.figure()
+    # 1 2 3
+    # 4 5 6
+    # 7 8 9
     for n_,x_,y_,l_ in (
             (1,gun.x,f_i,'$f$'),
             (2,gun.x,f_i-f_all_nom,'$Df$'),
-            (3,x,v_i,'$v$'),
-            (4,x,v_i-v_x_nom,'$Dv$'),
+            (3,gun.x,f_i_A-f_all_nom_A,'$Df$'),
+            (4,x,v_i,'$v$'),
+            (5,x,v_i-v_x_nom,'$Dv$'),
+            (6,x,v_i_A-v_x_nom_A,'$Dv$'),
+            (8,x,gun.Dv_Df.T,'$Dv/Df$'),
+            (9,x,Dv_Df_A,'$Dv/Df$'),
             ):
-        ax = fig2.add_subplot(2,2,n_)
+        ax = fig2.add_subplot(3,3,n_)
         ax.set_ylabel(l_)
         ax.set_xlabel('$x$')
         for i in range(n_i):
