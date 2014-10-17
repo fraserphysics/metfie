@@ -157,68 +157,81 @@ class GUN(object):
             # Debug data
             f_i[i,:] = f(self.x)
             v_i[i,:] = v
-        self.Dv_Df = rv
         self.eos = eos_orig
-        return f_i, v_i, f_all_nom, v_x_nom
-        
-def plot():
-    '''Plot velocity as a function of time.
+        return f_i, v_i, f_all_nom, v_x_nom, rv
+def plot_f_v_dL(gun, gun_p, fig):
+    '''Calculate and plot nominal and perturbed eoses and the consequent
+    velocities.  Also plot the gradient of the log likelihood.
     '''
-    from matplotlib import cm
-    from matplotlib.ticker import LinearLocator, FormatStrFormatter
-    import matplotlib.pyplot as plt
-    import numpy as np
-    fig = plt.figure()
-    ax1 = fig.add_subplot(3,1,1)
-    ax1.set_xlabel('$t$')
-    ax1.set_ylabel('$v$')
-    ax2 = fig.add_subplot(3,1,2)
-    ax2.set_xlabel('$x$')
-    ax2.set_ylabel('$f$')
-    ax3 = fig.add_subplot(3,1,3)
-    ax3.set_xlabel('$t$')
-    ax3.set_ylabel('$dL$')
-    
-    # Plot v(t) and f(x) for unperturbed gun
-    gun = GUN()
+    # Calculate v(t) and f(x) for perturbed gun
     t = gun.T(gun.x)
-    v = gun.x_dot(gun.x)
-    ax1.plot(t*1e6, # microseconds
-             v/1e5,# km/s
-             label=r'$v_{\rm nominal}$')
-    ax2.plot(gun.x, [gun.eos(x) for x in gun.x],label=r'$f_{\rm nominal}$')
-
-    # Create perturbed gun
-    n = 30
-    log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
-    x = np.exp(log_x)
-    
-    # fraction = 2.0e-2 about max for convex
-    # fraction = 1.0e-3 about min for bugless v(x) integration
-    f_i_A, v_i_A, f_all_nom_A, v_x_nom_A =gun.dv_df(gun.x, x, 2.0e-3)
-    Dv_Df_A = gun.Dv_Df.T
-    f_i, v_i, f_all_nom, v_x_nom = gun.dv_df(gun.x, x, 2.0e-2)
-    n_i, n_x = f_i.shape
-    fig2 = plt.figure()
-    # 1 2 3
-    # 4 5 6
-    # 7 8 9
-    for n_,x_,y_,l_ in (
-            (1,gun.x,f_i,'$f$'),
-            (2,gun.x,f_i-f_all_nom,'$Df$'),
-            (3,gun.x,f_i_A-f_all_nom_A,'$Df$'),
-            (4,x,v_i,'$v$'),
-            (5,x,v_i-v_x_nom,'$Dv$'),
-            (6,x,v_i_A-v_x_nom_A,'$Dv$'),
-            (8,x,gun.Dv_Df.T,'$Dv/Df$'),
-            (9,x,Dv_Df_A,'$Dv/Df$'),
+    v_p = np.array([gun_p.x_dot(x) for x in gun.x])
+    L,dL = gun.log_like(t,v_p)
+    v_p /= 1e5 # km/s
+    f_p = [gun_p.eos(x) for x in gun.x]
+    f = [gun.eos(x) for x in gun.x]
+    t *= 1e6 # microseconds
+    v = gun.x_dot(gun.x)/1e5 # km/s
+    nom = r'$\rm nominal$'
+    pert = r'$\rm perturbed$'
+    for n_,xy,l_x,l_y,loc in (
+            (1,((gun.x,f,nom),(gun.x,f_p,pert)),r'$x$',r'$f$','upper right'),
+            (2,((t,v,nom),(t,v_p,pert)),r'$t$',r'$v$','lower right'),
+            (3,((t,dL,None),),r'$t$',r'$dL$','upper right'),
             ):
-        ax = fig2.add_subplot(3,3,n_)
+        ax = fig.add_subplot(3,1,n_)
+        ax.set_ylabel(l_y)
+        ax.set_xlabel(l_x)
+        for x_,y_,l_ in xy:
+            ax.plot(x_,y_,label=l_)
+        ax.legend(loc=loc)
+def plot_dv_df(gun, x, DA, DB, fig):
+    '''Plot analysis of 2 finite difference approximations to dv/df
+    '''
+    f_i_A, v_i_A, f_all_nom_A, v_x_nom_A, Dv_Df_A = DA
+    f_i_B, v_i_B, f_all_nom_B, v_x_nom_B, Dv_Df_B = DB
+
+    n_i, n_x = f_i_A.shape
+    # Positions for add_subplot(4,3,n_)
+    #  1  2  3
+    #  4  5  6
+    #  7  8  9
+    # 10 11 12
+    for n_,x_,y_,l_ in (
+            (1,gun.x,f_i_B,'$f$'),
+            (2,gun.x,f_i_B-f_all_nom_B,'$Df$'),
+            (3,gun.x,f_i_A-f_all_nom_A,'$Df$'),
+            (4,x,v_i_B,'$v$'),
+            (5,x,v_i_B-v_x_nom_B,'$Dv$'),
+            (6,x,v_i_A-v_x_nom_A,'$Dv$'),
+            (7,x,Dv_Df_B.T-Dv_Df_A.T,r'$\rm Difference$'),
+            (8,x,Dv_Df_B.T,'$Dv/Df$'),
+            (9,x,Dv_Df_A.T,'$Dv/Df$'),
+            (11,x,v_i_B*v_i_B-v_x_nom_B*v_x_nom_B,'$DE$'),
+            (12,x,v_i_A*v_i_A-v_x_nom_A*v_x_nom_A,'$DE$'),
+            ):
+        ax = fig.add_subplot(4,3,n_)
         ax.set_ylabel(l_)
         ax.set_xlabel('$x$')
         for i in range(n_i):
             ax.plot(gun.x, y_[i])
         
+def main():
+    ''' Diagnostic plots
+    '''
+    from matplotlib import cm
+    from matplotlib.ticker import LinearLocator, FormatStrFormatter
+    import matplotlib.pyplot as plt
+    
+    # Unperturbed gun
+    gun = GUN()
+
+    # Select samples in x for derivative and perturbation
+    n = 10
+    log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
+    x = np.exp(log_x)
+    
+    # Create perturbed gun
     f = gun.eos(x)
     x_off = 0.6
     y = x-x_off
@@ -228,28 +241,21 @@ def plot():
     gun_p = GUN()
     gun_p.set_eos(x,f+D)
     
-    # Plot v(t) and f(x) for perturbed gun
-    t = gun.T(x)
-    v = np.array([gun_p.x_dot(x_) for x_ in x])
-    L,dL = gun.log_like(t,v)
-    print('lengths: gun.x=%d, t=%d, v=%d, dL=%d'%(len(gun.x), len(t), len(v), len(dL)))
-    ax1.plot(t*1e6, # microseconds
-             v/1e5,# km/s
-             label=r'$v_{\rm perturbed}$')
-    ax2.plot(
-        gun.x,
-        [gun_p.eos(x) for x in gun_p.x],
-        label=r'$f_{\rm perturbed}$')
-    ax3.plot(t*1e6, dL)
-    ax1.legend(loc='lower right')
-    ax2.legend(loc='upper right')
+    #fig1 = plt.figure(figsize=(8,10))
+    #plot_f_v_dL(gun, gun_p, fig1)
 
-    
+    # Calculate derivatives
+    # fraction = 2.0e-2 about max for convex f(x)
+    # fraction = 1.0e-3 about min for bugless v(x) integration
+    DA = gun.dv_df(gun.x, x, 2.0e-3)
+    DB = gun.dv_df(gun.x, x, 2.0e-2)
+    fig2 = plt.figure(figsize=(14,16))
+    plot_dv_df(gun, x, DA, DB, fig2)
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
     
 if __name__ == "__main__":
-    plot()
+    main()
     #_test()
 
 #---------------
