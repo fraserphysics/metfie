@@ -185,30 +185,31 @@ def plot_f_v_dL(gun, gun_p, fig):
         for x_,y_,l_ in xy:
             ax.plot(x_,y_,label=l_)
         ax.legend(loc=loc)
+    return dL
 def plot_dv_df(gun, x, DA, DB, fig):
     '''Plot analysis of 2 finite difference approximations to dv/df
     '''
     f_i_A, v_i_A, f_all_nom_A, v_x_nom_A, Dv_Df_A = DA
     f_i_B, v_i_B, f_all_nom_B, v_x_nom_B, Dv_Df_B = DB
 
-    n_i, n_x = f_i_A.shape
+    n_i, n_x = f_i_B.shape
     # Positions for add_subplot(4,3,n_)
     #  1  2  3
     #  4  5  6
     #  7  8  9
     # 10 11 12
     for n_,x_,y_,l_ in (
-            (1,gun.x,f_i_B,'$f$'),
-            (2,gun.x,f_i_B-f_all_nom_B,'$Df$'),
-            (3,gun.x,f_i_A-f_all_nom_A,'$Df$'),
-            (4,x,v_i_B,'$v$'),
-            (5,x,v_i_B-v_x_nom_B,'$Dv$'),
-            (6,x,v_i_A-v_x_nom_A,'$Dv$'),
-            (7,x,Dv_Df_B.T-Dv_Df_A.T,r'$\rm Difference$'),
-            (8,x,Dv_Df_B.T,'$Dv/Df$'),
-            (9,x,Dv_Df_A.T,'$Dv/Df$'),
-            (11,x,v_i_B*v_i_B-v_x_nom_B*v_x_nom_B,'$DE$'),
-            (12,x,v_i_A*v_i_A-v_x_nom_A*v_x_nom_A,'$DE$'),
+            (1,gun.x,f_i_A,'$f$'),
+            (2,gun.x,f_i_A-f_all_nom_A,'$Df$'),
+            (3,gun.x,f_i_B-f_all_nom_B,'$Df$'),
+            (4,x,v_i_A,'$v$'),
+            (5,x,v_i_A-v_x_nom_A,'$Dv$'),
+            (6,x,v_i_B-v_x_nom_B,'$Dv$'),
+            (7,x,Dv_Df_A.T-Dv_Df_B.T,r'$\rm Difference$'),
+            (8,x,Dv_Df_A.T,'$Dv/Df$'),
+            (9,x,Dv_Df_B.T,'$Dv/Df$'),
+            (11,x,v_i_A*v_i_A-v_x_nom_A*v_x_nom_A,'$DE$'),
+            (12,x,v_i_B*v_i_B-v_x_nom_B*v_x_nom_B,'$DE$'),
             ):
         ax = fig.add_subplot(4,3,n_)
         ax.set_ylabel(l_)
@@ -222,6 +223,7 @@ def main():
     from matplotlib import cm
     from matplotlib.ticker import LinearLocator, FormatStrFormatter
     import matplotlib.pyplot as plt
+    from numpy.linalg import lstsq
     
     # Unperturbed gun
     gun = GUN()
@@ -241,16 +243,41 @@ def main():
     gun_p = GUN()
     gun_p.set_eos(x,f+D)
     
-    #fig1 = plt.figure(figsize=(8,10))
-    #plot_f_v_dL(gun, gun_p, fig1)
+    fig1 = plt.figure(figsize=(8,10))
+    dL = plot_f_v_dL(gun, gun_p, fig1)*0.5e5
 
     # Calculate derivatives
     # fraction = 2.0e-2 about max for convex f(x)
     # fraction = 1.0e-3 about min for bugless v(x) integration
-    DA = gun.dv_df(gun.x, x, 2.0e-3)
-    DB = gun.dv_df(gun.x, x, 2.0e-2)
-    fig2 = plt.figure(figsize=(14,16))
-    plot_dv_df(gun, x, DA, DB, fig2)
+    c_pert = gun_p.eos.get_c()
+    f_pert = gun_p.eos(gun.x)
+    v_pert = gun_p.x_dot(gun.x)
+    
+    DA = gun.dv_df(gun.x, x, 2.0e-2)
+    dv_df = DA[-1]
+    c_hat = lstsq(dv_df, dL)[0] + c_pert
+    gun_p.eos.set_c(c_hat)
+    f_hat = gun_p.eos(gun.x)
+    v_hat = gun_p.x_dot(gun.x)
+    
+    f_nom = gun.eos(gun.x)
+    v_nom = gun.x_dot(gun.x)
+    
+    fig3 = plt.figure()
+    nom = r'$\rm nominal$'
+    pert = r'$\rm perturbed$'
+    fit = r'$\rm fit$'
+    for yl,n_ in (
+        (   ((f_nom,nom), (f_pert,pert), (f_hat,fit)), 1),
+        (   ((v_nom,nom), (v_pert,pert), (v_hat,fit)), 2),
+        ):
+        ax = fig3.add_subplot(2,1,n_)
+        for y,l in yl:
+            ax.plot(gun.x,y,label=l)
+        ax.legend()
+    #DB = gun.dv_df(gun.x, x, 2.0e-3)
+    #fig2 = plt.figure(figsize=(14,16))
+    #plot_dv_df(gun, x, DA, DB, fig2)
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
     
