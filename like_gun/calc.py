@@ -109,14 +109,30 @@ class GUN(object):
             v     # Array of measured velocities
             ):
         ''' Assume t are accurate and that for model velocities m
-            log(p(v|m)) =\sum_t -((v-m)/1e5)^2
+
+            L(m) = log(p(v|m)) =\sum_t - \frac{(v-m)^2}{2\sigma^2}
+
+            g = dL/dm = \frac{v-m}{\sigma^2}
+
+            h = \frac{d^2 L(m + ag)}{d a^2} = -\frac{1}{\sigma^2}
+
+        This problem is easy because H is -\frac{1}{\sigma^2}\cdot I
+        In general:
+
+            m_hat = m + H^{-1} g
+
+        Return: L, g, h
         '''
+        sigma_sq = 1.0e5
         t_ = self.T(self.x)
         x_t = spline(t_,self.x)
         x = x_t(t)
         m = self.x_dot(x)
-        d = (v-m)/1e5
-        return -np.dot(d,d),-2*d
+        d = v-m
+        g = d/sigma_sq
+        L = -np.dot(d,g)
+        h = -1.0/sigma_sq
+        return L, g, h 
     def dv_df(
             self, # GUN instance
             x_v,  # Positions of velocity measuerments
@@ -159,25 +175,22 @@ class GUN(object):
             v_i[i,:] = v
         self.eos = eos_orig
         return f_i, v_i, f_all_nom, v_x_nom, rv
-def plot_f_v_dL(gun, gun_p, fig):
-    '''Calculate and plot nominal and perturbed eoses and the consequent
-    velocities.  Also plot the gradient of the log likelihood.
+def plot_f_v_dL(gun, t, f_p, v_p, g, fig):
+    ''' Plot nominal and perturbed eoses and the consequent
+    velocities.  Accept dict with keys "nom, pert, fit"
+
+    Don't plot the gradient of the log likelihood.
     '''
-    # Calculate v(t) and f(x) for perturbed gun
-    t = gun.T(gun.x)
-    v_p = np.array([gun_p.x_dot(x) for x in gun.x])
-    L,dL = gun.log_like(t,v_p)
-    v_p /= 1e5 # km/s
-    f_p = [gun_p.eos(x) for x in gun.x]
+    v_p = v_p/1e5 # km/s
     f = [gun.eos(x) for x in gun.x]
-    t *= 1e6 # microseconds
+    t = t*1e6 # microseconds
     v = gun.x_dot(gun.x)/1e5 # km/s
     nom = r'$\rm nominal$'
     pert = r'$\rm perturbed$'
     for n_,xy,l_x,l_y,loc in (
             (1,((gun.x,f,nom),(gun.x,f_p,pert)),r'$x$',r'$f$','upper right'),
             (2,((t,v,nom),(t,v_p,pert)),r'$t$',r'$v$','lower right'),
-            (3,((t,dL,None),),r'$t$',r'$dL$','upper right'),
+            (3,((t,g,None),),r'$t$',r'$dL$','upper right'),
             ):
         ax = fig.add_subplot(3,1,n_)
         ax.set_ylabel(l_y)
@@ -185,7 +198,7 @@ def plot_f_v_dL(gun, gun_p, fig):
         for x_,y_,l_ in xy:
             ax.plot(x_,y_,label=l_)
         ax.legend(loc=loc)
-    return dL
+    return
 def plot_dv_df(gun, x, DA, DB, fig):
     '''Plot analysis of 2 finite difference approximations to dv/df
     '''
@@ -227,7 +240,9 @@ def main():
     
     # Unperturbed gun
     gun = GUN()
-
+    f_nom = gun.eos(gun.x)
+    v_nom = gun.x_dot(gun.x)
+    
     # Select samples in x for derivative and perturbation
     n = 10
     log_x = np.linspace(np.log(gun.xi),np.log(gun.xf),n)
@@ -242,42 +257,49 @@ def main():
     D = np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
     gun_p = GUN()
     gun_p.set_eos(x,f+D)
+    # Calculate f(x), v(t) and c for perturbed gun
+    f_p = gun_p.eos(gun.x)
+    v_p = gun_p.x_dot(gun.x)
+    c_p = gun_p.eos.get_c()
+
+    # Calculate step in v tomaximize L
+    t = gun.T(gun.x)
+    L, g, h = gun.log_like(t,v_p)
+    Dv = g/h
     
+    # Plot nominal and perturbed performance
     fig1 = plt.figure(figsize=(8,10))
-    dL = plot_f_v_dL(gun, gun_p, fig1)*0.5e5
+    plot_f_v_dL(gun, t, f_p, v_p, g, fig1)
 
     # Calculate derivatives
     # fraction = 2.0e-2 about max for convex f(x)
     # fraction = 1.0e-3 about min for bugless v(x) integration
-    c_pert = gun_p.eos.get_c()
-    f_pert = gun_p.eos(gun.x)
-    v_pert = gun_p.x_dot(gun.x)
-    
     DA = gun.dv_df(gun.x, x, 2.0e-2)
     dv_df = DA[-1]
-    c_hat = lstsq(dv_df, dL)[0] + c_pert
+    DB = gun.dv_df(gun.x, x, 2.0e-3)
+    fig2 = plt.figure(figsize=(14,16))
+    plot_dv_df(gun, x, DA, DB, fig2)
+
+    # Estimate eos based on measured v
+    c_hat = lstsq(dv_df, Dv)[0] + c_p
     gun_p.eos.set_c(c_hat)
     f_hat = gun_p.eos(gun.x)
     v_hat = gun_p.x_dot(gun.x)
     
-    f_nom = gun.eos(gun.x)
-    v_nom = gun.x_dot(gun.x)
-    
+    # Plot fit, nominal and perturbed
     fig3 = plt.figure()
     nom = r'$\rm nominal$'
     pert = r'$\rm perturbed$'
     fit = r'$\rm fit$'
     for yl,n_ in (
-        (   ((f_nom,nom), (f_pert,pert), (f_hat,fit)), 1),
-        (   ((v_nom,nom), (v_pert,pert), (v_hat,fit)), 2),
+        (   ((f_nom,nom), (f_p,pert), (f_hat,fit)), 1),
+        (   ((v_nom,nom), (v_p,pert), (v_hat,fit)), 2),
         ):
         ax = fig3.add_subplot(2,1,n_)
         for y,l in yl:
             ax.plot(gun.x,y,label=l)
         ax.legend()
-    #DB = gun.dv_df(gun.x, x, 2.0e-3)
-    #fig2 = plt.figure(figsize=(14,16))
-    #plot_dv_df(gun, x, DA, DB, fig2)
+
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
     
