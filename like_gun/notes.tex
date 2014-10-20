@@ -1,0 +1,149 @@
+\documentclass[]{article}
+\usepackage{amsmath,amsfonts,afterpage}
+\usepackage{showlabels}
+\usepackage[pdftex]{graphicx,color}
+\newcommand{\normal}[2]{{\cal N}(#1,#2)}
+\newcommand{\normalexp}[3]{ -\frac{1}{2}
+      (#1 - #2)^T #3^{-1} (#1 - #2) }
+\newcommand{\La}{{\cal L}}
+\newcommand{\fnom}{\tilde f}
+\newcommand{\fhat}{\hat f}
+\newcommand{\COST}{\cal C}
+\newcommand{\LL}{{\cal L}}
+\newcommand{\Prob}{\text{Prob}}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand\REAL{\field{R}}
+\newcommand\Z{\field{Z}}
+\newcommand{\partialfixed}[3]{\left. \frac{\partial #1}{\partial
+      #2}\right|_#3}
+\newcommand{\partiald}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\argmin}{\operatorname*{argmin}}
+\newcommand{\argmax}{\operatorname*{argmax}}
+\newcommand\norm[1]{\left|#1\right|}
+\newcommand\bv{\mathbf{v}}
+\newcommand\bt{\mathbf{t}}
+\newcommand\Vfunc{\mathbb{V}}
+\newcommand\Vt{\mathbf{V}}
+\newcommand\vexp{V_{\rm{exp}}}
+\newcommand\texp{T_{\rm{exp}}}
+\newcommand\cf{c_f}
+\newcommand\cv{c_v}
+\newcommand\fbasis{b_f}
+\newcommand\vbasis{b_v}
+\newcommand\tsim{{\mathbf t}_{\rm{sim}}}
+\newcommand\DVDf{\partiald{\Vt}{f}}
+\newcommand\Lbb{\mathbb{L}}
+\title{Notes EOS Estimation Code}
+
+\author{Andrew M.\ Fraser}
+\begin{document}
+\maketitle
+
+\section{Notation for and Implementation of Basic Functions}
+\label{sec:basic}
+
+
+Given an experimental sequence of measured pairs of velocity and time
+values, $(\vexp, \texp)$ and an initial model, $\fnom$, I describe how
+to estimate a new model, $\fhat$.
+
+\subsection{Notation}
+\label{sec:basic_notation}
+
+\begin{description}
+\item[$(\vexp, \texp)$:] An experimental sequence of measured pairs of
+  velocity and time
+\item[$\bv$:] A model sequence of velocities
+\item[$\Vt$:] A model map from  times to velocities, eg, $\bv = \Vt(\texp)$
+\item[$\tsim$:] A sequence of closely spaced sample times at which to record
+  simulated position and velocity for constructing $\Vt$.
+\item[$f$:] An EOS function
+\item[$\Vfunc$:] An expensive procedure that maps an EOS function to a
+  function that maps time to velocity with $\Vt = \Vfunc(f)$
+\item[$\cv,\vbasis$:] Vectors of spline coefficients and basis functions
+  that define a $\Vt$
+\item[$\cf,\fbasis$:] Vector of spline coefficients and basis functions
+  that define an EOS
+\item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$;
+  represented by the matrix $\partiald{\cv}{\cf}$.  Very expensive to
+  evaluate.
+\end{description}
+
+\subsection{Implementation}
+\label{sec:basic_implementation}
+
+\begin{description}
+\item[$\Vfunc(f)$:] Run a simulation and record a sequence of
+  velocities $\bv$ at times $\tsim$.  Then fit a
+  spline to $(\bv, \bt)$ to obtain $\Vt\iff \{cv,\vbasis\}$.
+\item[$\Vt$:] Call the spline evaluation method to get $\bv = \Vt(\texp)$
+\item[$f$:] A spline with coefficients $\cf$ and basis functions
+  $\fbasis$
+\item[$\DVDf$:] Use $N(\cf)+1$ different sets of coefficients $\cf$ to
+  get as many EOSs $f$ and evaluate $\Vfunc(f)$ for each.  Use these
+  finite differences to get a matrix that approximates
+  $\partiald{\cv}{\cf}$.
+\end{description}
+
+\section{Priors, Likelihood and Optimization}
+\label{sec:opt}
+
+I use Gaussians with constant diagonal covariances for priors and
+likelihood as follows:
+\begin{align}
+\vexp,\texp | f &\sim \normal{\vexp-\Vt_f(\texp)}{\Sigma_v} \\
+\cf &\sim \normal{\cf - c_{\fnom}}{\Sigma_{\cf}}
+\end{align}
+Up to irrelevant constants $K$ the log probabilities are:
+\begin{align}
+  L(\cf) & \equiv \log(K_2) + \log \left(\Prob(\cf) \right)\\
+  & = \normalexp{\cf}{c_{\fnom}}{\Sigma_{\cf}}\\
+  L(\Vt_f) & \equiv \log(K_1) + \log \left(\Prob(\vexp,\texp | f) \right)
+  \nonumber \\
+  & = \normalexp{\vexp}{\Vt_f(\texp)}{\Sigma_v} \\
+  &= -\sum_{i=1}^{N_{\rm exp}} \frac{(\vexp[i] -
+    \Vt_f(\texp[i]))^2}{2\sigma_v[i]}, \\
+  & \text{and in terms of spline coefficients }\cv[j]\text{ and basis
+    functions } \vbasis[j]\\
+  \label{eq:vfsum}
+  \Vt_f(\texp[i]) &= \sum_j \cv[j]\vbasis[j](\texp[i]).
+\end{align}
+In \eqref{eq:vfsum} the only term on the right that depends on the EOS
+$f$ is $\cv[j]$.  If $f=\sum_k \cf[k] \fbasis[k]$ and $\delta=\sum_k d[k]
+\fbasis[k]$, then
+\begin{equation}
+  \label{eq:taylor}
+  \Vt_{f+\delta}(\texp[i]) = \sum_j \cv[j]\vbasis[j](\texp[i]) +
+  \sum_j \sum_k \DVDf[j,k]d[k]\vbasis[j](\texp[i]) +\text{ HOT}.
+\end{equation}
+
+Given $f$ (in terms of $\cf$) and the functions $\Vt$, $\DVDf$, etc.\
+that depend on it, an optimization step consists of ignoring the
+\emph{higher order terms} (HOT) in \eqref{eq:taylor} and solving for
+the vector $d$ that maximizes
+\begin{equation}
+  \label{eq:L}
+  \Lbb(\cf,d) = L(c_{f+\delta}) +
+  \Lbb(f+\delta) \equiv L(\Vt_{f+\delta}(\texp)).
+\end{equation}
+Differentiating, I find
+\begin{align*}
+  \frac{d \Lbb(\cf,d)}{d d} &= (c_{\fnom} - \cf - d)^T
+  \Sigma^{-1}_{\cf} + \sum_{i=1}^{N_{\rm exp}}
+  \frac{\Vt_{f+\delta}(\texp[i]) - \vexp[i] }{\sigma_v[i]}
+  \frac{d \Vt_{f+\delta}(\texp[i])}{d d} \\
+  \frac{d \Lbb(\cf,d)}{d d[k]} &= 
+  \frac{c_{\fnom}[k] - \cf[k] - d[k]}{\sigma_{\cf}[k]} +
+  \sum_{i=1}^{N_{\rm exp}}
+  \frac{\Vt_{f+\delta}(\texp[i]) - \vexp[i] }{\sigma_v[i]}
+  \sum_j \DVDf[j,k] \vbasis[j] (\texp[i])
+\end{align*}
+
+
+\end{document}
+
+%%%---------------
+%%% Local Variables:
+%%% eval: (TeX-PDF-mode)
+%%% eval: (setq ispell-personal-dictionary "./localdict")
+%%% End:
