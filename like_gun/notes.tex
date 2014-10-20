@@ -1,4 +1,4 @@
-\documentclass[11pt]{article}
+\documentclass[]{article}
 \usepackage{amsmath,amsfonts,afterpage}
 \usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
@@ -123,9 +123,21 @@ that depend on it, an optimization step consists of ignoring the
 the vector $d$ that maximizes
 \begin{equation}
   \label{eq:L}
-  \Lbb(\cf,d) = \Lbb(f+\delta) \equiv L(\Vt_{f+\delta}(\texp)) +
-  L(c_{f+\delta}).
+  \Lbb(\cf,d) = L(c_{f+\delta}) +
+  \Lbb(f+\delta) \equiv L(\Vt_{f+\delta}(\texp)).
 \end{equation}
+Differentiating, I find
+\begin{align*}
+  \frac{d \Lbb(\cf,d)}{d d} &= (c_{\fnom} - \cf - d)^T
+  \Sigma^{-1}_{\cf} + \sum_{i=1}^{N_{\rm exp}}
+  \frac{\Vt_{f+\delta}(\texp[i]) - \vexp[i] }{\sigma_v[i]}
+  \frac{d \Vt_{f+\delta}(\texp[i])}{d d} \\
+  \frac{d \Lbb(\cf,d)}{d d[k]} &= 
+  \frac{c_{\fnom}[k] - \cf[k] - d[k]}{\sigma_{\cf}[k]} +
+  \sum_{i=1}^{N_{\rm exp}}
+  \frac{\Vt_{f+\delta}(\texp[i]) - \vexp[i] }{\sigma_v[i]}
+  \sum_j \DVDf[j,k] \vbasis[j] (\texp[i])
+\end{align*}
 
 
 \end{document}
