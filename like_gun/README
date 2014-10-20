@@ -13,4 +13,7 @@ x4. Write code for log likelihood L and derivative of L wrt to v_sim
 
 x5. Write code for d v_sim / d f
 
-6. Write optimization code
+6. Write unconstrained optimization code
+
+7. Write code to maximize a posteriori probability constrained by
+    convexity
