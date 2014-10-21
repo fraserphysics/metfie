@@ -47,24 +47,20 @@ class GUN(object):
         points.
 
         '''
-        # N+1 points and N intervals equal spacing on log scale
-        log_x = np.linspace(np.log(self.xi),np.log(self.xf),N+1)
-        step = (log_x[-1] - log_x[0])/N
-        assert len(log_x) == N+1
-        log_c = log_x[:-1] + step/2
+        # N points and N-1 intervals equal spacing on log scale
+        stretch = 1.1
+        log_x = np.linspace(np.log(self.xi/stretch),np.log(self.xf*stretch))
         self.x = np.exp(log_x)
-        self.x_c = np.exp(log_c) # Centers of intervals on log scale
-        self.dx = self.x[1:] - self.x[:-1]
-        self.eos = lambda t: self.C/t**3
-        self.s =self.eos(self.x_c)  # Nominal eos at sample points
+        self.eos = spline(self.x, self.C/self.x**3)
+        # Fudge to avoid 1/0 in self.dT_dx
+        self._xi_ = self.xi + (self.x[1] - self.x[0])/10.0
         def dT_dx(t, x):
             ''' a service function called by odeint to calculate
             muzzle time T.  Since odeint calls dT_dx with two
             arguments, dT_dx has the unused t argument.
             '''
-            # Since self.E(self.xi) = 0, I put a floor of self.x_c[0] on x
-            x = max(x,self.x_c[0])
-            x = min(x,self.xf)
+            if x < self._xi_:
+                x = self._xi_
             return np.sqrt((self.m/(2*self.E(x))))
         self.dT_dx = dT_dx
         return
@@ -74,7 +70,9 @@ class GUN(object):
         ''' Integrate eos between xi and x using numpy.integrate.quad
         to get energy of projectile at position.
         '''
-        rv, err = quad(self.eos,self.xi,x)
+        rv, err = quad(self.eos,self.xi, min(x,self.xf))
+        if rv != rv: # test for nan
+            raise RuntimeError
         return rv
     def x_dot(self, # GUN instance
               x     # Position[s] /cm at which to calculate velocity
@@ -84,9 +82,9 @@ class GUN(object):
         if isinstance(x,np.ndarray):
             return np.array([self.x_dot(x_) for x_ in x])
         elif isinstance(x,np.float):
-            if x <= 0.4:
+            if x <= self.xi:
                 return 0.0
-            assert(self.E(x)>=0.0)
+            assert(self.E(x)>=0.0),'E(%s)=%s'%(x,self.E(x))
             return np.sqrt(2*self.E(x)/self.m)
         else:
             raise RuntimeError('x has type %s'%(type(x),))
@@ -106,6 +104,87 @@ class GUN(object):
                 ):
         self.eos = spline(x, f)
         return
+    def set_t2v(self):
+        '''Build spline for mapping times to velocities
+        '''
+        # Calculate t and v for range of self.x
+        t = self.T(self.x) # *** expensive ***
+        t_max = t[-1]
+        v = self.x_dot(self.x)
+        v_max = v[-1]
+        # Extend range of t by frac
+        frac = .1
+        n_frac = int(len(t)*frac)
+        t_frac = t_max*frac
+        t_pre = np.linspace(-t_frac, 0.0, n_frac,endpoint=False)
+        t_post = np.linspace(t_max, t_frac+t_max, n_frac)[1:]
+        v_pre = np.zeros(t_pre.shape)
+        v_post = np.ones(t_post.shape)*v_max
+        t_ = np.concatenate((t_pre, t, t_post))
+        v_ = np.concatenate((v_pre, v, v_post))
+        self.t2v = spline(t_,v_)
+        return self.t2v
+    def set_D(self, fraction=2.0e-2):
+        '''Calculate dv/df in terms of spline coefficients and save as self.D
+        '''
+        c_f_nom = self.eos.get_c()
+        n_f = len(c_f_nom)
+        c_v_nom = self.set_t2v().get_c()
+        n_v = len(c_v_nom)
+        self.D = np.empty((n_v,n_f))
+        for i in range(n_f):
+            c_f = c_f_nom.copy()
+            d_f = float(c_f[i]*fraction)
+            if d_f == 0.0:
+                d_f = fraction*float(c_f.max())*(self.xi/self.xf)**3
+            c_f[i] += d_f
+            self.eos.set_c(c_f)
+            c_v = self.set_t2v().get_c() # *** expensive ***
+            self.D[:,i] = (c_v - c_v_nom)/d_f
+        self.eos.set_c(c_f_nom)
+        self.t2v.set_c(c_v_nom)
+    def set_Be(self, vt):
+        '''Given experimental velocities and times, vt: calculate errors,
+        self.e, and the matrix of basis functions applied to times, self.B.
+        '''
+        v,t = vt
+        n_vt = len(v)
+        assert len(t) == n_vt
+        c_v = self.set_t2v().get_c() # Calculate nominal t2v function
+        c_ = c_v * 0.0
+        n_c = len(c_v)
+        self.B = np.empty((n_vt,n_c)) # b[i,j] = b_t2v[j](t[i])
+        for j in range(n_c):
+            c_[j] = c_v[j]
+            self.t2v.set_c(c_)
+            self.B[:,j] = self.t2v(t)
+            c_[j] = 0.0
+        self.t2v.set_c(c_v)      # Restore nominal t2v function
+        self.e = v - self.t2v(t) # Calculate errors
+    def _solve_(self, a, b):
+        from numpy.linalg import lstsq # solve
+        d_hat = lstsq(a,b)[0]
+        new_c = self.eos.get_c() + d_hat
+        self.eos.set_c(new_c)
+    def mse(self,vt):
+        self.set_Be(vt)
+        self.set_D()
+        BD = np.dot(self.B, self.D)
+        b = np.dot(BD.T,self.e)
+        a = np.dot(BD.T, BD)
+        self._solve_(a,b)
+    def map(self,vt):
+        ''' Need calculations of a and b appropriate to eq:hat in notes.tex
+        '''
+        from numpy.linalg import lstsq # solve
+        self.set_Be(vt)
+        self.set_D()
+        BD = np.dot(self.B, self.D)
+        BDTe = np.dot(BD.T,self.e)
+        BDTBD = np.dot(BD.T, BD)
+        d_hat = lstsq(BDTBD,BDTe)[0]
+        new_c = self.eos.get_c() + d_hat
+        self.eos.set_c(new_c)
     def log_like(
             self, # GUN instance
             tv,   # Arrays of measured times and velocities
@@ -143,7 +222,7 @@ class GUN(object):
         from numpy.linalg import lstsq, norm
         L_old, g, h = self.log_like(tv)
         c_old = self.eos.get_c()
-        for i in range(100):
+        for i in range(5):
             print('%2d L=%f, norm(g)=%e, h=%e'%(i, L_old, norm(g), h))
             c = lstsq(dv_df, -g/h)[0] + c_old
             self.eos.set_c(c)
@@ -283,7 +362,7 @@ def main():
     t_p = gun_p.T(gun.x)
     plot_data['perturbed'] = ((gun.x, f_p, 'f'),(gun.x, v_p/1e5, 'v'))
 
-    # Select samples in x for derivative and fitting
+    # Select samples in x for fitting and derivative
     n = 12
     log_x = np.linspace(np.log(gun.xi/stretch),np.log(gun.xf*stretch),n)
     x = np.exp(log_x)
@@ -291,18 +370,9 @@ def main():
     gun_fit = GUN()
     gun_fit.set_eos(x,f)
 
-    # Calculate derivatives
-    # fraction = 2.0e-2 about max for convex f(x)
-    # fraction = 1.0e-3 about min for bugless v(x) integration
-    DA = gun.dv_df(gun.x, x, 2.0e-2)
-    dv_df = DA[-1]
-    DB = gun.dv_df(gun.x, x, 1.0e-2)
-    fig2 = plt.figure(figsize=(14,16))
-    plot_dv_df(gun, x, DA, DB, fig2)
-
     # Estimate eos based on measured v
     tv = (t_p, v_p)
-    gun_fit.max_like(tv, dv_df)
+    gun_fit.mse(tv)
     f_hat = gun_fit.eos(gun.x)
     v_hat = gun_fit.x_dot(gun.x)
     plot_data['fit'] = ((gun.x, f_hat, 'f'),(gun.x, v_hat/1e5, 'v'))
@@ -311,6 +381,17 @@ def main():
     L, g, h = gun.log_like(tv)
     fig1 = plt.figure(figsize=(8,10))
     plot_f_v_dL(gun, plot_data, t_p, g, fig1)
+
+    plt.show()
+    return
+    # Calculate derivatives
+    # fraction = 2.0e-2 about max for convex f(x)
+    # fraction = 1.0e-3 about min for bugless v(x) integration
+    DA = gun.dv_df(gun.x, x, 2.0e-2)
+    dv_df = DA[-1]
+    DB = gun.dv_df(gun.x, x, 1.0e-2)
+    fig2 = plt.figure(figsize=(14,16))
+    plot_dv_df(gun, x, DA, DB, fig2)
 
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
