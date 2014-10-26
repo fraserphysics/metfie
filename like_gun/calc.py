@@ -57,17 +57,6 @@ class GUN(object):
         log_x = np.linspace(np.log(self.xi/stretch),np.log(self.xf*stretch),N)
         self.x = np.exp(log_x)
         self.eos = spline(self.x, self.C/self.x**3)
-        # Fudge to avoid 1/0 in self.dT_dx
-        self._xi_ = self.xi + (self.x[1] - self.x[0])/10.0
-        def dT_dx(t, x):
-            ''' a service function called by odeint to calculate
-            muzzle time T.  Since odeint calls dT_dx with two
-            arguments, dT_dx has the unused t argument.
-            '''
-            if x < self._xi_:
-                x = self._xi_
-            return np.sqrt((self.m/(2*self.E(x))))
-        self.dT_dx = dT_dx
         return
     def E(self, # GUN instance
           x     # Scalar position at which to calculate energy
@@ -93,16 +82,27 @@ class GUN(object):
             return np.sqrt(2*self.E(x)/self.m)
         else:
             raise RuntimeError('x has type %s'%(type(x),))
-    def T(self,  # GUN instance
-          x      # Array of positions /cm at which to calculate time
+    def T(self,         # GUN instance
+          x,            # Array of positions /cm at which to calculate time
+          fudge=1.0e-4  # avoid 1/0 in dT_dx
           ):
         ''' Calculate projectile time as a function of position
         '''
-        rv = odeint(self.dT_dx, # RHS of ODE
-                         0,     # Initial value of time
-                         x,     # Solve for time at each position in x
-                         )
-        return rv.flatten()
+        x_d = self.xi + fudge     # Divide x into parts at x_d
+        w = np.where(x < x_d)[0]
+        d = w[-1]
+        x_a = np.maximum(0.0, x[:d+2]-self.xi)
+        x_b = x[d+1:]
+        a = self.eos((self.xi+x_d)/2)/self.m #acceleration
+        t_a = np.sqrt(2*x_a/a)               # invert x = (1/2)*a*t**2
+        # Two arguments for dT_dx because odeint calls func with two arguments
+        dT_dx = lambda t,x:np.sqrt((self.m/(2*self.E(x))))
+        t_b = odeint(dT_dx,   # RHS of ODE
+                     t_a[-1], # Initial value of time
+                     x_b,     # Solve for time at each position in x
+            )
+        rv= np.concatenate((t_a[:-1],t_b.flatten()))
+        return rv
     def set_eos(self,   # GUN instance
                 x,
                 f
@@ -112,7 +112,7 @@ class GUN(object):
     def set_t2v(self):
         '''Build spline for mapping times to velocities
         '''
-        log_x = np.linspace(np.log(self.xi),np.log(self.xf),1000)
+        log_x = np.linspace(np.log(self.xi),np.log(self.xf),500)
         x = np.exp(log_x)
         # Calculate t and v for x
         t = self.T(x) # *** expensive ***
@@ -130,10 +130,8 @@ class GUN(object):
         frac = .1
         t_frac = self.t_max*frac
         t = np.linspace(-t_frac, self.t_max+t_frac, 250)
-        #t_b = np.linspace(-t_frac, 0, 25)
-        #t = np.concatenate((t_b,t_a[1:]))
         v = np.array([v_func(t_) for t_ in t])
-        self.t2v = spline(t,v,k=2)
+        self.t2v = spline(t,v)
         return self.t2v
     def set_D(self, fraction=2.0e-2):
         '''Calculate dv/df in terms of spline coefficients and save as self.D
@@ -175,7 +173,7 @@ class GUN(object):
             c_[j] = 0.0
         self.t2v.set_c(c_v)      # Restore nominal t2v function
         self.e = v - self.t2v(t) # Calculate errors
-    def mse(self,vt):
+    def mse(self,vt,label):
         from numpy.linalg import lstsq # solve
         self.set_Be(vt)
         self.set_D()
@@ -189,7 +187,9 @@ class GUN(object):
         print('B.shape=%s, D.shape=%s, e.shape=%s,'%(
             self.B.shape, self.D.shape,self.e.shape))
         v,t = vt
-        new_ax('e').plot(t,self.e)
+        ax = new_ax('e')
+        ax.plot(t,self.e,label=label)
+        ax.legend()
     def m_ap(self,vt):
         '''Maximum a posterior probability.  See eq:dmap in notes.tex.
         '''
@@ -227,7 +227,8 @@ class GUN(object):
         v,t = vt
         sigma_sq = 1.0e5
         t_ = self.T(self.x)
-        x_t = spline(t_,self.x)
+        i = np.where(t_ == 0.0)[0][-1]
+        x_t = spline(t_[i:],self.x[i:])
         x = x_t(t)
         m = self.x_dot(x)
         d = v-m
@@ -235,66 +236,6 @@ class GUN(object):
         L = -np.dot(d,g)
         h = -1.0/sigma_sq
         return L, g, h
-    def max_like(self, tv, dv_df):
-        '''Adjust self.eos to maximize the likelihood of tv with the
-        assumption that dv_df is right.
-        '''
-        from numpy.linalg import lstsq, norm
-        L_old, g, h = self.log_like(tv)
-        c_old = self.eos.get_c()
-        for i in range(5):
-            print('%2d L=%f, norm(g)=%e, h=%e'%(i, L_old, norm(g), h))
-            c = lstsq(dv_df, -g/h)[0] + c_old
-            self.eos.set_c(c)
-            L, g, h = self.log_like(tv)
-            if L < L_old:
-                print('Quit with L=%f, norm(g)=%e, h=%e\n'%(L, norm(g), h))
-                self.eos.set_c(c_old)
-                return
-            L_old = L
-            c_old = c
-    def dv_df(
-            self, # GUN instance
-            x_v,  # Positions of velocity measuerments
-            x_f,  # Positions of eos specifications
-            fraction=1.0e-2
-            ):
-        '''Derivative of velocity at points x wrt. self.f at points x_f.
-        Returns a len(x_v) \times len(x_f) matrix.
-        
-        '''
-        eos_orig = self.eos
-        f_x_nom = np.array([self.eos(x) for x in x_f])
-        self.set_eos(x_f, f_x_nom)
-        f_all_nom = self.eos(self.x) # Use spline as reference
-        v_x_nom = self.x_dot(x_v)
-        f = self.eos
-        f_nom_c = f.get_c()
-        f_nom_t = f.get_t()
-        # f_nom_t is 4 longer than x_f but matches x_f[2:-2] in the middle
-        rv = np.zeros((len(x_v), len(f_nom_c)))
-        
-        # For debug plots: f_i, df_i, v_i
-        f_i = np.empty((len(f_nom_c),len(self.x)))
-        v_i = np.empty((len(f_nom_c),len(x_v)))
-
-        # Should pick pertubations that maintain convexity
-        D_f = np.empty(f_nom_c.shape)
-        for i in range(len(f_nom_c)):
-            f_c = f_nom_c.copy()
-            D_f[i] = f_c[i]*fraction
-            if D_f[i] == 0.0:
-                D_f[i] = D_f[i-1]
-            f_c[i] += D_f[i]
-            f.set_c(f_c)
-            v = self.x_dot(x_v)
-            Dv_Df = (v - v_x_nom)/D_f[i]
-            rv[:,i] = Dv_Df
-            # Debug data
-            f_i[i,:] = f(self.x)
-            v_i[i,:] = v
-        self.eos = eos_orig
-        return f_i, v_i, f_all_nom, v_x_nom, rv
 def plot_f_v_dL(gun, data, t, dL, fig):
     '''Plot nominal, perturbed and fit eoses and the consequent
     velocities.  Also plot the gradient of the log likelihood used for
@@ -387,8 +328,9 @@ def main():
     vt= (v, t)
     # Set gun for fitting and derivative
     gun_fit = GUN(N=12)
-    #gun_fit.m_ap(vt)
-    gun_fit.mse(vt)
+    for i in range(4):
+        #gun_fit.m_ap(vt)
+        gun_fit.mse(vt,'%d'%i)
     f_hat = gun_fit.eos(gun.x)
     v_hat = gun_fit.x_dot(gun.x)
     plot_data['fit'] = ((gun.x, f_hat, 'f'),(gun.x, v_hat/1e5, 'v'))
@@ -402,7 +344,7 @@ def main():
     return
     # Calculate derivatives
     # fraction = 2.0e-2 about max for convex f(x)
-    # fraction = 1.0e-3 about min for bugless v(x) integration
+    # fraction = 1.0e-3 about min for bugless T(x) integration
     DA = gun.dv_df(gun.x, x, 2.0e-2)
     dv_df = DA[-1]
     DB = gun.dv_df(gun.x, x, 1.0e-2)
