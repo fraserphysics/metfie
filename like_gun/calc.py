@@ -27,14 +27,35 @@ class spline(scipy.interpolate.InterpolatedUnivariateSpline):
     def set_c(self,c):
         self._eval_args = self._eval_args[0], c, self._eval_args[2]
         return
-class GUN(object):
+class go:
+    ''' Generic object.  For storing magic numbers.
+    '''
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+magic = go(
+    n_t=500,              # Number of ts for t2v spline
+    t_min=-5.0e-6,        # Range of times for t2v spline
+    t_max=110.0e-6,       # Range of times for t2v spline
+    n_x_pert=1000,        # Number of x points for perturbed EOS
+    D_frac=2.0e-2,        # Fractional finte difference for esimating dv/df
+    cm2km=1.0e5,          # For conversion from cm/sec to km/sec
+    n_t_sim=1000,         # len(vt), simulated velocity time pairs
+    fit_dim=20,           # Number of x points for EOS fit
+    like_iter=10,         # Bound for iterations maximizing likelihood
+    converge=1.0e-3,      # Fractional tolerance for max like
+    stretch=1.1,          # Expansion of x beyond (xi,xf)
+    v_var=1.0e5,          # Variance attributed to v measurements
+           )
+
+class GUN:
     def __init__(self,      # GUN instance
                  C=2.56e10, # Constant in nominal equation of state
                  xi=0.4,    # Initial position of projectile / cm
                  xf=4.0,    # Final/muzzle position of projectile /cm
                  m=100.0,   # Mass of projectile / g
                  N=400,     # Number of intervals between xi and xf
-                 sigma_sq_v = 1.0e6
+                 sigma_sq_v = magic.v_var
                  ):
         self.C = C
         self.xi = xi
@@ -44,9 +65,9 @@ class GUN(object):
         self.sigma_sq_v = sigma_sq_v
         return
     def _set_N(
-            self,         # GUN instance
-            N,            # Number of intervals between xi and xf
-            stretch = 1.1 # Extension of EOS beyond barrel
+            self,                 # GUN instance
+            N,                    # Number of intervals between xi and xf
+            stretch=magic.stretch # Extension of EOS beyond barrel
     ):
         '''Interval lengths are uniform on a log scale ie constant ratio.  x_c
         are points in the centers of the intervals and x are the end
@@ -82,27 +103,6 @@ class GUN(object):
             return np.sqrt(2*self.E(x)/self.m)
         else:
             raise RuntimeError('x has type %s'%(type(x),))
-    def T(self,         # GUN instance
-          x,            # Array of positions /cm at which to calculate time
-          fudge=1.0e-4  # avoid 1/0 in dT_dx
-          ):
-        ''' Calculate projectile time as a function of position
-        '''
-        x_d = self.xi + fudge     # Divide x into parts at x_d
-        w = np.where(x < x_d)[0]
-        d = w[-1]
-        x_a = np.maximum(0.0, x[:d+2]-self.xi)
-        x_b = x[d+1:]
-        a = self.eos((self.xi+x_d)/2)/self.m #acceleration
-        t_a = np.sqrt(2*x_a/a)               # invert x = (1/2)*a*t**2
-        # Two arguments for dT_dx because odeint calls func with two arguments
-        dT_dx = lambda t,x:np.sqrt((self.m/(2*self.E(x))))
-        t_b = odeint(dT_dx,   # RHS of ODE
-                     t_a[-1], # Initial value of time
-                     x_b,     # Solve for time at each position in x
-            )
-        rv= np.concatenate((t_a[:-1],t_b.flatten()))
-        return rv
     def set_eos(self,   # GUN instance
                 x,
                 f
@@ -112,28 +112,21 @@ class GUN(object):
     def set_t2v(self):
         '''Build spline for mapping times to velocities
         '''
-        log_x = np.linspace(np.log(self.xi),np.log(self.xf),500)
-        x = np.exp(log_x)
-        # Calculate t and v for x
-        t = self.T(x) # *** expensive ***
+        m = self.m
+        f = self.eos
+        xf = self.xf
+        def F(x,t):
+            '''x = (position,velocity)
+            '''
+            if t<0:
+                return np.zeros(2)
+            return np.array([x[1], f(min(x[0],xf))/m])
+        t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
         self.t_max = t[-1]
-        v = self.x_dot(x)
-        v_max = v[-1]
-        v_spline = spline(t,v)
-        def v_func(t):
-            if t <= 0.0:
-                return 0.0
-            if t >= self.t_max:
-                return v_max
-            return v_spline(t)
-        # Extend range of t by frac
-        frac = .1
-        t_frac = self.t_max*frac
-        t = np.linspace(-t_frac, self.t_max+t_frac, 250)
-        v = np.array([v_func(t_) for t_ in t])
-        self.t2v = spline(t,v)
+        xv = odeint(F,[self.xi,0],t)
+        self.t2v = spline(t,xv[:,1])
         return self.t2v
-    def set_D(self, fraction=2.0e-2):
+    def set_D(self, fraction=magic.D_frac):
         '''Calculate dv/df in terms of spline coefficients and save as self.D
         '''
         c_f_nom = self.eos.get_c()
@@ -152,6 +145,7 @@ class GUN(object):
             self.D[:,i] = (c_v - c_v_nom)/d_f
         self.eos.set_c(c_f_nom)
         self.t2v.set_c(c_v_nom)
+        return self.D
     def set_Be(self, vt):
         '''Given experimental velocities and times, vt: calculate errors,
         self.e, and the matrix of basis functions for t2v applied to
@@ -184,8 +178,6 @@ class GUN(object):
         c = self.eos.get_c()
         new_c = self.eos.get_c() + d_hat
         self.eos.set_c(new_c)
-        print('B.shape=%s, D.shape=%s, e.shape=%s,'%(
-            self.B.shape, self.D.shape,self.e.shape))
         v,t = vt
         ax = new_ax('e')
         ax.plot(t,self.e,label=label)
@@ -225,15 +217,12 @@ class GUN(object):
         Return: L, g, h
         '''
         v,t = vt
-        sigma_sq = 1.0e5
-        t_ = self.T(self.x)
-        i = np.where(t_ == 0.0)[0][-1]
-        x_t = spline(t_[i:],self.x[i:])
-        x = x_t(t)
-        m = self.x_dot(x)
+        t2v = self.set_t2v()
+        m = t2v(t)
+        sigma_sq = magic.v_var
         d = v-m
         g = d/sigma_sq
-        L = -np.dot(d,g)
+        L = -np.dot(d,g)/2
         h = -1.0/sigma_sq
         return L, g, h
 def plot_f_v_dL(gun, data, t, dL, fig):
@@ -257,36 +246,65 @@ def plot_f_v_dL(gun, data, t, dL, fig):
         ax_d[name]['ax'].legend(loc=ax_d[name]['loc'])
     ax_d['dL']['ax'].plot(t*1e6,dL)
     return
-def plot_dv_df(gun, x, DA, DB, fig):
+def plot_dv_df(gun, x, fig):
     '''Plot analysis of 2 finite difference approximations to dv/df
     '''
-    f_i_A, v_i_A, f_all_nom_A, v_x_nom_A, Dv_Df_A = DA
-    f_i_B, v_i_B, f_all_nom_B, v_x_nom_B, Dv_Df_B = DB
+    # fraction = 2.0e-2 about max for convex f(x)
+    # fraction = 1.0e-3 about min for bugless T(x) integration
+    frac_a = 2.0e-2
+    frac_b = 2.0e-3
+    DA = gun.set_D(fraction=frac_a)
+    DB = gun.set_D(fraction=frac_b)
+    x_D = gun.t2v.get_t()*1.0e6
 
-    n_i, n_x = f_i_B.shape
+    c = gun.eos.get_c()
+    f = gun.eos(x)
+    t = np.linspace(0,105.0e-6,500)
+    gun.set_t2v()
+    v = gun.t2v(t)
+    def delta(frac):
+        df = []
+        dv = []
+        for i in range(len(c)):
+            c_ = c.copy()
+            c_[i] = c[i]*(1+frac)
+            gun.eos.set_c(c_)
+            gun.set_t2v()
+            df.append(gun.eos(x)-f)
+            dv.append(gun.t2v(t) - v)
+        return np.array(df),np.array(dv)
+    dfa, dva = delta(frac_a)
+    dfb, dvb = delta(frac_b)
     # Positions for add_subplot(4,3,n_)
     #  1  2  3
     #  4  5  6
     #  7  8  9
-    # 10 11 12
-    for n_,x_,y_,l_ in (
-            (1,gun.x,f_i_A,'$f$'),
-            (2,gun.x,f_i_A-f_all_nom_A,'$Df$'),
-            (3,gun.x,f_i_B-f_all_nom_B,'$Df$'),
-            (4,x,v_i_A,'$v$'),
-            (5,x,v_i_A-v_x_nom_A,'$Dv$'),
-            (6,x,v_i_B-v_x_nom_B,'$Dv$'),
-            (7,x,Dv_Df_A.T-Dv_Df_B.T,r'$\rm Difference$'),
-            (8,x,Dv_Df_A.T,'$Dv/Df$'),
-            (9,x,Dv_Df_B.T,'$Dv/Dc$'),
-            (11,x,v_i_A*v_i_A-v_x_nom_A*v_x_nom_A,'$DE$'),
-            (12,x,v_i_B*v_i_B-v_x_nom_B*v_x_nom_B,'$DE$'),
+    knot = r'$t/(\mu \rm{sec})\,\rm{ knots }$'
+    mic_sec = r'$t/(\mu \rm{sec})$'
+    for n_, x_, y_, l_x, l_y in (
+            (1, x, np.array([f]), '$x$', '$f$'),
+            (2, x, dfa, '$x$', '$\Delta f$'),
+            (3, x, dfb, '$x$', '$\Delta f$'),
+            (4, t, np.array([v]),mic_sec, r'$v/(\rm{km/s})$'),
+            (5, t, dva,mic_sec, '$\Delta v$'),
+            (6, t, dvb, mic_sec,'$\Delta v$'),
+            (7, x_D, DA.T-DB.T, knot, r'$\rm Difference$'),
+            (8, x_D, DA.T, knot, '$\Delta v/\Delta f$'),
+            (9, x_D, DB.T, knot, '$\Delta v/\Delta f$'),
             ):
-        ax = fig.add_subplot(4,3,n_)
-        ax.set_ylabel(l_)
-        ax.set_xlabel('$x$')
-        for i in range(n_i):
-            ax.plot(gun.x, y_[i])
+        ax = fig.add_subplot(3,3,n_)
+        ax.set_xlabel(l_x)
+        ax.set_ylabel(l_y)
+        n_y, n_x = y_.shape
+        if n_x == len(t):
+            y_ = y_/magic.cm2km
+            if y_.max() < 0.1:
+                y_ *= 1e3
+                ax.set_ylabel(r'$\Delta v/(\rm{m/s})$')
+            x_ = x_*1.0e6
+        for i in range(n_y):
+            ax.plot(x_, y_[i])
+    fig.subplots_adjust(wspace=0.3) # Make more space for label
         
 def main():
     ''' Diagnostic plots
@@ -298,12 +316,17 @@ def main():
     f_nom = gun.eos(gun.x)
     v_nom = gun.x_dot(gun.x)
 
+    # Plot study of derivatives
+    fig2 = plt.figure('derivatives', figsize=(14,16))
+    plot_dv_df(GUN(N=10), gun.x, fig2)
+
     plot_data = {'nominal':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
     
     # Select samples in x for perturbation
-    n = 1000
-    stretch = 1.1
-    log_x = np.linspace(np.log(gun.xi/stretch),np.log(gun.xf*stretch),n)
+    log_x = np.linspace(
+        np.log(gun.xi/magic.stretch),
+        np.log(gun.xf*magic.stretch),
+        magic.n_x_pert)
     x = np.exp(log_x)
     
     # Create perturbed gun
@@ -313,46 +336,45 @@ def main():
     freq=.2
     w = .2
     D = np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
-    gun_p = GUN(N=1000)
+    gun_p = GUN(N=magic.n_x_pert)
     gun_p.set_eos(x,f+D)
     # plot f(x) and v(x) for perturbed gun
     f_p = gun_p.eos(gun_p.x)
     v_p = gun_p.x_dot(gun_p.x)
-    t_p = gun_p.T(gun_p.x)
-    plot_data['perturbed'] = ((gun_p.x, f_p, 'f'),(gun_p.x, v_p/1e5, 'v'))
-
+    plot_data['perturbed'] = (
+        (gun_p.x, f_p, 'f'),(gun_p.x, v_p/magic.cm2km, 'v'))
     # Make simulated measurements
     t2v = gun_p.set_t2v()
-    t = np.linspace(0,gun_p.t_max*1.05,1000)
+    t = np.linspace(0,gun_p.t_max,magic.n_t_sim)
     v = t2v(t)
     vt= (v, t)
     # Set gun for fitting and derivative
-    gun_fit = GUN(N=12)
-    for i in range(4):
+    gun_fit = GUN(N=magic.fit_dim)
+    last, g,h = gun_fit.log_like(vt)
+    for i in range(magic.like_iter):
         #gun_fit.m_ap(vt)
+        old_c = gun_fit.eos.get_c()
         gun_fit.mse(vt,'%d'%i)
+        L, g, h = gun_fit.log_like(vt)
+        Delta = L - last
+        print('L[%d]=%e, delta=%e'%(i,L,Delta))
+        if Delta <= abs(L)*magic.converge:
+            gun_fit.eos.set_c(old_c)
+            break
+        last=L
     f_hat = gun_fit.eos(gun.x)
     v_hat = gun_fit.x_dot(gun.x)
-    plot_data['fit'] = ((gun.x, f_hat, 'f'),(gun.x, v_hat/1e5, 'v'))
-    
+    plot_data['fit'] = (
+        (gun.x, f_hat, 'f'),
+        (gun.x, v_hat/magic.cm2km, 'v'))
     # Plot fit, nominal, perturbed and fit and dL
     L, g, h = gun.log_like(vt)
     fig1 = plt.figure(figsize=(8,10))
     plot_f_v_dL(gun, plot_data, t, g, fig1)
 
     plt.show()
-    return
-    # Calculate derivatives
-    # fraction = 2.0e-2 about max for convex f(x)
-    # fraction = 1.0e-3 about min for bugless T(x) integration
-    DA = gun.dv_df(gun.x, x, 2.0e-2)
-    dv_df = DA[-1]
-    DB = gun.dv_df(gun.x, x, 1.0e-2)
-    fig2 = plt.figure(figsize=(14,16))
-    plot_dv_df(gun, x, DA, DB, fig2)
-
-    plt.show()
     #fig.savefig('fig.pdf', format='pdf')
+    return
     
 if __name__ == "__main__":
     main()
