@@ -167,7 +167,7 @@ class GUN:
             c_[j] = 0.0
         self.t2v.set_c(c_v)      # Restore nominal t2v function
         self.e = v - self.t2v(t) # Calculate errors
-    def mse(self,vt,label):
+    def mse(self,vt):
         from numpy.linalg import lstsq # solve
         self.set_Be(vt)
         self.set_D()
@@ -178,10 +178,6 @@ class GUN:
         c = self.eos.get_c()
         new_c = self.eos.get_c() + d_hat
         self.eos.set_c(new_c)
-        v,t = vt
-        ax = new_ax('e')
-        ax.plot(t,self.e,label=label)
-        ax.legend()
     def m_ap(self,vt):
         '''Maximum a posterior probability.  See eq:dmap in notes.tex.
         '''
@@ -225,26 +221,32 @@ class GUN:
         L = -np.dot(d,g)/2
         h = -1.0/sigma_sq
         return L, g, h
-def plot_f_v_dL(gun, data, t, dL, fig):
+def plot_f_v_e(gun, data, t, e, fig):
     '''Plot nominal, perturbed and fit eoses and the consequent
-    velocities.  Also plot the gradient of the log likelihood used for
-    fitting.
-
+    velocities.  Also plot the errors used for fitting.
     '''
+    cm = r'$x/(\rm{cm})$'
+    mu_sec = r'$t/(\mu\rm{sec})$'
+    v_key = r'$v/(\rm{km/s})$'
+    e_key = r'$e/(\rm{m/s})$'
     ax_d = {
-        'f':{'ax':fig.add_subplot(3,1,1), 'l_x':r'$x$','loc':'upper right'},
-        'v':{'ax':fig.add_subplot(3,1,2),'l_x':r'$x$','loc':'lower right'},
-        'dL':{'ax':fig.add_subplot(3,1,3),'l_x':r'$t$'}
+        'f':{'ax':fig.add_subplot(3,1,1), 'l_x':cm,'loc':'upper right'},
+        'v':{'ax':fig.add_subplot(3,1,2), 'l_x':cm,
+            'l_y':v_key, 'loc':'lower right'},
+        'e':{'ax':fig.add_subplot(3,1,3), 'l_x':mu_sec,
+             'l_y':e_key, 'loc':'lower right'}
     }
-    for name,d in ax_d.items():
-        d['ax'].set_ylabel(r'$%s$'%name)
-        d['ax'].set_xlabel(d['l_x'])
     for mod,xyn in data.items():
         for x,y,name in xyn:
             ax_d[name]['ax'].plot(x,y,label=r'$\rm %s$'%mod)
-    for name in ('f','v'):
-        ax_d[name]['ax'].legend(loc=ax_d[name]['loc'])
-    ax_d['dL']['ax'].plot(t*1e6,dL)
+    for i in range(len(e)):
+        ax_d['e']['ax'].plot(t*1e6,e[i]/100,label='%d'%i)
+    for name,d in ax_d.items():
+        d['ax'].legend(loc=ax_d[name]['loc'])
+        d['ax'].set_xlabel(d['l_x'])
+        d['ax'].set_ylabel(r'$%s$'%name)
+        if 'l_y' in d:
+            d['ax'].set_ylabel(d['l_y'])
     return
 def plot_dv_df(gun, x, fig):
     '''Plot analysis of 2 finite difference approximations to dv/df
@@ -317,8 +319,8 @@ def main():
     v_nom = gun.x_dot(gun.x)
 
     # Plot study of derivatives
-    fig2 = plt.figure('derivatives', figsize=(14,16))
-    plot_dv_df(GUN(N=10), gun.x, fig2)
+    fig_d = plt.figure('derivatives', figsize=(14,16))
+    plot_dv_df(GUN(N=10), gun.x, fig_d)
 
     plot_data = {'nominal':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
     
@@ -351,10 +353,12 @@ def main():
     # Set gun for fitting and derivative
     gun_fit = GUN(N=magic.fit_dim)
     last, g,h = gun_fit.log_like(vt)
+    e = []
     for i in range(magic.like_iter):
         #gun_fit.m_ap(vt)
         old_c = gun_fit.eos.get_c()
-        gun_fit.mse(vt,'%d'%i)
+        gun_fit.mse(vt)
+        e.append(gun_fit.e)
         L, g, h = gun_fit.log_like(vt)
         Delta = L - last
         print('L[%d]=%e, delta=%e'%(i,L,Delta))
@@ -369,8 +373,8 @@ def main():
         (gun.x, v_hat/magic.cm2km, 'v'))
     # Plot fit, nominal, perturbed and fit and dL
     L, g, h = gun.log_like(vt)
-    fig1 = plt.figure(figsize=(8,10))
-    plot_f_v_dL(gun, plot_data, t, g, fig1)
+    fig_fve = plt.figure('fve',figsize=(8,10))
+    plot_f_v_e(gun, plot_data, t, e, fig_fve)
 
     plt.show()
     #fig.savefig('fig.pdf', format='pdf')
