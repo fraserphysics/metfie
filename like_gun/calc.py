@@ -1,7 +1,7 @@
 """calc.py: Classes for EOS and gun simulation.  Derived from calc.py
 in parent directory.
 
-Run using python3.
+Run using python3 and scipy 0.14
 
 """
 import numpy as np
@@ -174,6 +174,23 @@ class GUN:
             c_[j] = 0.0
         self.t2v.set_c(c_v)      # Restore nominal t2v function
         self.e = v - self.t2v(t) # Calculate errors
+    def set_ddd(self):
+        '''Calculate the derivative (wrt to c) of the second derivative of eos
+        wrt x at the knots t.  Store result as self.ddd and return it.
+        '''
+        s = self.eos
+        c_old = s.get_c()
+        c = np.zeros(c_old.shape)
+        t_all = s.get_t()
+        t = t_all[3:-3]
+        self.ddd = ddd = np.empty((len(t), len(c)))
+        for i in range(len(c)):
+            c[i] = 1.0
+            s.set_c(c)
+            ddd[:,i] = s.derivative(2)(t)
+            c[i] = 0.0
+        s.set_c(c_old)
+        return ddd
     def mse(self,vt):
         from numpy.linalg import lstsq
         self.set_D()
@@ -205,44 +222,38 @@ class GUN:
         from scipy.optimize import fmin_slsqp as fmin
         self.set_D() # Expensive
         self.set_Be(vt)
-        BD = np.dot(self.B, self.D)
-        def func(d, BD, e, s):
+        self.BD = np.dot(self.B, self.D)
+        self.set_ddd()
+        def func(d, self):
             '''The objective function, S(d) in notes.tex.
             '''
-            r = e - np.dot(BD,d)
-            rv = float(np.dot(r.T,r))
-            return rv
-        def d_func(d, BD, e, s):
-            '''The objective function, S(d) in notes.tex.
+            r = self.e - np.dot(self.BD,d)
+            return float(np.dot(r.T,r))
+        def d_func(d, self):
+            '''Derivative of the objective function.
             '''
-            r = e - np.dot(BD,d)
-            rv = -2*np.dot(BD.T,r)
-            return rv
-        def dd(d, BD, e, s):
+            r = self.e - np.dot(self.BD,d)
+            return -2*np.dot(self.BD.T,r)
+        def dd(d, self):
             '''The vector of constraint function values, ie, the second
             derivitive of f at the knots.
             '''
+            s = self.eos
             c = s.get_c()
             t = s.get_t()
             s.set_c(c+d)
-            n_t = len(t)
-            rv = np.zeros(n_t-6)
-            for i in range(n_t-6):
-                rv[i] = s.derivatives(t[i+3])[2]
+            rv = s.derivative(2)(t[3:-3])
             s.set_c(c)
             return rv
         c = self.eos.get_c()
-        epsilon = float(np.sqrt(np.dot(c.T,c)/len(c)))/1e12
-        t = dd(np.zeros(c.shape), BD, self.e, self.eos)
-        #print('t.max=%e, t.min=%e'%(t.max(),t.min()))
         d_hat, ss, its, lmode, smode = fmin(
             func,
             np.zeros(c.shape),
             f_ieqcons=dd,
-            args=(BD,self.e,self.eos),
+            args=(self,),
             fprime=d_func,
             iter=2000,
-            epsilon=epsilon,
+            fprime_ieqcons=lambda d, self: self.ddd,
             full_output=True,
             iprint=0,
             )
