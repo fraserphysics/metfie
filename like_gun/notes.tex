@@ -66,7 +66,8 @@ to estimate a new model, $\fhat$.
 \item[$\cf,\fbasis$:] Vector of spline coefficients and basis functions
   that define an EOS
 \item[$D$] Matrix with elements $D[j,k] = \partiald{\cv[j]}{\cf[k]}$
-\item[$B$] Matrix with elements $B[i,j] = \vbasis[j](\texp[i])$
+\item[$B$] Matrix with elements $B[i,j] = \vbasis[j](\texp[i])$, ie,
+  the exactly linear map from $c_v$ to simulated data.
 \item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; very
   expensive to evaluate.  $\DVDf (\texp)$ is represented by the matrix
   $(BD)^T$.
@@ -170,7 +171,7 @@ Differentiating, I find
 Thus I seek $\hat d$ that solves
 \begin{equation}
   \label{eq:dmap}
-  (BD)^T\epsilon + \Sigma_f^{-1} (c_{\tilde f} - \cf) = 
+  (BD)^T\Sigma_v^{-1}\epsilon + \Sigma_f^{-1} (c_{\tilde f} - \cf) = 
   \left((BD)^T\Sigma_v^{-1}BD + \Sigma_f^{-1} \right) \hat d.
 \end{equation}
 

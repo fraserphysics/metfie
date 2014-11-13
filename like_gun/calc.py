@@ -8,7 +8,7 @@ import numpy as np
 from scipy.integrate import quad, odeint
 import matplotlib.pyplot as plt # For plots for debugging
 new_ax = lambda n : plt.figure(n).add_subplot(1,1,1)
-import scipy.interpolate #.InterpolatedUnivariateSpline
+import scipy.interpolate # InterpolatedUnivariateSpline
 #https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
 class spline(scipy.interpolate.InterpolatedUnivariateSpline):
     '''From the source:
@@ -41,11 +41,13 @@ magic = go(
     D_frac=2.0e-2,        # Fractional finte difference for esimating dv/df
     cm2km=1.0e5,          # For conversion from cm/sec to km/sec
     n_t_sim=1000,         # len(vt), simulated velocity time pairs
-    fit_dim=20,           # Number of x points for EOS fit
-    like_iter=10,         # Bound for iterations maximizing likelihood
+    fit_dim=50,           # Number of x points for EOS fit
+    like_iter=50,         # Bound for iterations maximizing likelihood
     converge=1.0e-3,      # Fractional tolerance for max like
-    stretch=1.1,          # Expansion of x beyond (xi,xf)
+    stretch=1.25,          # Expansion of x beyond (xi,xf)
     v_var=1.0e5,          # Variance attributed to v measurements
+    k_factor=1.0e6,       # (f(xi)/f(xf))^2
+    c_weight=1.0e8,
            )
 
 class GUN:
@@ -77,7 +79,18 @@ class GUN:
         # N points and N-1 intervals equal spacing on log scale
         log_x = np.linspace(np.log(self.xi/stretch),np.log(self.xf*stretch),N)
         self.x = np.exp(log_x)
-        self.eos = spline(self.x, self.C/self.x**3)
+        self.set_eos(self.x, self.C/self.x**3)
+        c = self.eos.get_c()
+        c_sq = c*c
+        k = c_sq.sum()/len(c_sq)
+        self.sigma_f = (c_sq + k*magic.k_factor)/magic.c_weight
+        self.mu_f = c
+        return
+    def set_eos(self,   # GUN instance
+                x,
+                f
+                ):
+        self.eos = spline(x, f)
         return
     def E(self, # GUN instance
           x     # Scalar position at which to calculate energy
@@ -103,12 +116,6 @@ class GUN:
             return np.sqrt(2*self.E(x)/self.m)
         else:
             raise RuntimeError('x has type %s'%(type(x),))
-    def set_eos(self,   # GUN instance
-                x,
-                f
-                ):
-        self.eos = spline(x, f)
-        return
     def set_t2v(self):
         '''Build spline for mapping times to velocities
         '''
@@ -123,7 +130,7 @@ class GUN:
             return np.array([x[1], f(min(x[0],xf))/m])
         t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
         self.t_max = t[-1]
-        xv = odeint(F,[self.xi,0],t)
+        xv = odeint(F,[self.xi,0],t, atol=1.0e-11, rtol=1.0e-11)
         self.t2v = spline(t,xv[:,1])
         return self.t2v
     def set_D(self, fraction=magic.D_frac):
@@ -168,9 +175,9 @@ class GUN:
         self.t2v.set_c(c_v)      # Restore nominal t2v function
         self.e = v - self.t2v(t) # Calculate errors
     def mse(self,vt):
-        from numpy.linalg import lstsq # solve
-        self.set_Be(vt)
+        from numpy.linalg import lstsq
         self.set_D()
+        self.set_Be(vt)
         BD = np.dot(self.B, self.D)
         b = np.dot(BD.T,self.e)
         a = np.dot(BD.T, BD)
@@ -181,18 +188,67 @@ class GUN:
     def m_ap(self,vt):
         '''Maximum a posterior probability.  See eq:dmap in notes.tex.
         '''
-        from numpy.linalg import lstsq # solve
-        self.set_Be(vt)
+        from numpy.linalg import lstsq
         self.set_D()
-        c = self.eos.get_c()
-        c_sq = c*c
-        sigma_c = (c_sq + c_sq.sum()/(1.0e8*len(c_sq)))/1.0e-8
+        self.set_Be(vt)
         BD = np.dot(self.B, self.D)
-        b = np.dot(BD.T,self.e)/self.sigma_sq_v
-        a = np.dot(BD.T, BD)/self.sigma_sq_v + np.diag(1/sigma_c)
+        c = self.eos.get_c()
+        b = np.dot(BD.T,self.e)/self.sigma_sq_v + (self.mu_f-c)/self.sigma_f
+        a = np.dot(BD.T, BD)/self.sigma_sq_v + np.diag(1/self.sigma_f)
         d_hat = lstsq(a,b)[0]
         new_c = c + d_hat
         self.eos.set_c(new_c)
+        return
+    def opt(self, vt):
+        ''' Do a constrained optimization step
+        ''' 
+        from scipy.optimize import fmin_slsqp as fmin
+        self.set_D() # Expensive
+        self.set_Be(vt)
+        BD = np.dot(self.B, self.D)
+        def func(d, BD, e, s):
+            '''The objective function, S(d) in notes.tex.
+            '''
+            r = e - np.dot(BD,d)
+            rv = float(np.dot(r.T,r))
+            return rv
+        def d_func(d, BD, e, s):
+            '''The objective function, S(d) in notes.tex.
+            '''
+            r = e - np.dot(BD,d)
+            rv = -2*np.dot(BD.T,r)
+            return rv
+        def dd(d, BD, e, s):
+            '''The vector of constraint function values, ie, the second
+            derivitive of f at the knots.
+            '''
+            c = s.get_c()
+            t = s.get_t()
+            s.set_c(c+d)
+            n_t = len(t)
+            rv = np.zeros(n_t-6)
+            for i in range(n_t-6):
+                rv[i] = s.derivatives(t[i+3])[2]
+            s.set_c(c)
+            return rv
+        c = self.eos.get_c()
+        epsilon = float(np.sqrt(np.dot(c.T,c)/len(c)))/1e12
+        t = dd(np.zeros(c.shape), BD, self.e, self.eos)
+        #print('t.max=%e, t.min=%e'%(t.max(),t.min()))
+        d_hat, ss, its, lmode, smode = fmin(
+            func,
+            np.zeros(c.shape),
+            f_ieqcons=dd,
+            args=(BD,self.e,self.eos),
+            fprime=d_func,
+            iter=2000,
+            epsilon=epsilon,
+            full_output=True,
+            iprint=0,
+            )
+        new_c = c + d_hat
+        self.eos.set_c(new_c)
+        return
     def log_like(
             self, # GUN instance
             vt,   # Arrays of measured times and velocities
@@ -305,7 +361,11 @@ def plot_dv_df(gun, x, fig):
                 ax.set_ylabel(r'$\Delta v/(\rm{m/s})$')
             x_ = x_*1.0e6
         for i in range(n_y):
-            ax.plot(x_, y_[i])
+            if l_y == '$\Delta f$' or l_y == '$f$':
+                ax.loglog(x_, y_[i])
+                ax.set_ylim(ymin=1e4, ymax=1e12)
+            else:
+                ax.plot(x_, y_[i])
     fig.subplots_adjust(wspace=0.3) # Make more space for label
         
 def main():
@@ -337,7 +397,7 @@ def main():
     y = x-x_off
     freq=.2
     w = .2
-    D = np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
+    D = 2*np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
     gun_p = GUN(N=magic.n_x_pert)
     gun_p.set_eos(x,f+D)
     # plot f(x) and v(x) for perturbed gun
@@ -353,11 +413,13 @@ def main():
     # Set gun for fitting and derivative
     gun_fit = GUN(N=magic.fit_dim)
     last, g,h = gun_fit.log_like(vt)
+    print('L[-1]=%e'%(last,))
     e = []
     for i in range(magic.like_iter):
-        #gun_fit.m_ap(vt)
         old_c = gun_fit.eos.get_c()
-        gun_fit.mse(vt)
+        #gun_fit.mse(vt)
+        #gun_fit.m_ap(vt)
+        gun_fit.opt(vt)
         e.append(gun_fit.e)
         L, g, h = gun_fit.log_like(vt)
         Delta = L - last
