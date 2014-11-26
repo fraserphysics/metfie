@@ -235,7 +235,7 @@ class GUN:
             r = self.e - np.dot(self.BD,d)
             return -2*np.dot(self.BD.T,r)
         def dd(d, self):
-            '''The vector of constraint function values, ie, the second
+            '''Return the vector of constraint function values, ie, the second
             derivitive of f at the knots.
             '''
             s = self.eos

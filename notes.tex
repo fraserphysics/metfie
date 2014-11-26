@@ -1471,11 +1471,12 @@ The following inequality describes the disk in terms of the covariance:
 
 Put equations 2.11 and 2.12 on page 19 of Fickett and Davis in terms
 of density rather than specific volume.
-\begin{align*}
-  v &= \frac{1}{\rho} \\
+\begin{align}
+  v &= \frac{1}{\rho} \nonumber \\
+  \label{eq:dpdrho}
   \frac{d\, P(v(\rho))}{d\,\rho} &= \frac{d\, P}{d\, v} \frac{d\,
     v}{d\, \rho} = \frac{-1}{\rho^2} \frac{d\, P}{d\, v}
-\end{align*}
+\end{align}
 Combining 2.11 and 2.12 of Fickett and Davis and supposing $p_0 = 0$
 yields
 \begin{equation*}
@@ -1493,6 +1494,23 @@ Solving for $P$ yields
 \begin{equation*}
   P = \frac{\rho(\rho - \rho_0) }{\rho_0}\frac{d\, P}{d\, \rho}.
 \end{equation*}
+
+\subsection{Convex in $v$ or $\rho$}
+\label{sec:convex}
+
+Starting from \eqref{eq:dpdrho}
+\begin{align*}
+  \frac{d^2\, P(v(\rho))}{d\,\rho^2} &=
+       \frac{d\, P}{d\, v} \frac{2}{\rho^3} +
+       \frac{d^2\, P}{d\, v^2} \frac{1}{\rho^4} \\
+  P_{v,v} &= \rho^4P_{\rho,\rho} - 2\rho P_v \\
+  P_{v,v} &> 0 ~ \implies ~ P_{\rho, \rho} > 2\frac{P_v}{\rho^3}
+            = -2\frac{P_\rho}{\rho} \\
+  & \text{because}\\
+  P_\rho &= -\frac{P_v}{\rho^2} ~\& ~ P_v = -\rho^2 P_\rho
+\end{align*}
+
+
 
 \end{document}
 

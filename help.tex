@@ -300,7 +300,33 @@ Date of Publication: Jul 1984
 Author(s): Justesen, J.
 Hoholdt, T.
 Volume: 30 , Issue: 4
-Page(s): 665 - 667 
+Page(s): 665 - 667
+
+\section{Composition}
+\label{sec:composition}
+
+\begin{align*}
+  \left( P(0\mapsto 1) \right)_{i,j} &= \frac{L_i A_{i,j} R_j}
+    {\lambda z \frac{\sum_k L_i A_{i,k} R_k}{\lambda z}} \\
+  &= \frac{A_{i,j} R_j}{\lambda R_i} \\
+  \left( P(0\mapsto 2) \right)_{i,j} &=
+     \sum_k \frac{A_{i,k} R_k}{\lambda R_i}
+            \frac{A_{k,j} R_j}{\lambda R_k} \\
+  &= \frac{(A^2)_{i,j} R_j}{\lambda^2 R_i}                                       
+\end{align*}
+If $B$ is the adjacency matrix for twice the step size of $A$,
+sufficient conditions for consistency are
+\begin{align*}
+  B R &= \gamma R \\
+  \frac{B_{i,j} R_j}{\gamma R_i} &= \frac{(A^2)_{i,j} R_j}{\lambda^2
+                                   R_i} \text{or}\\
+  (A^2)_{i,j} &= \frac{\lambda^2}{\gamma} B_{i,j}.
+\end{align*}
+The conditions are not plausible because if it is possible to get from
+$i$ to $j$ in two steps, ie, $B_{i,j}=1$, the number of ways to get
+from $i$ to $j$ in two steps will vary depending on the values of $i$
+and $j$.
+
 \end{document}
 
 %%%---------------

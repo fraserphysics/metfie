@@ -244,6 +244,45 @@ Figure~\ref{fig:boundsC} illustrates those constraints.
   \label{fig:boundsC}
 \end{figure}
 
+\section{Scaling and Pie Slices}
+\label{sec:scaling}
+
+Eric Mjolsness suggested calculating moments of the images of each
+allowed point in $G \times H$.  Before doing the honest work, I
+considered the kinds of images that occur and noticed that there is
+only one parameter in the problem.  While both $\Delta_y$ and $u$
+appear in \eqref{eq:UL_g} and \eqref{eq:UL_h}, in the alternative
+coordinates in which $\Delta_y=1$, ie,
+\begin{align*}
+  \tilde g(g) &= \frac{g}{\Delta_y^2} \\
+  \tilde h(h) &= \frac{h}{\Delta_y} \\
+  \tilde u(u) &= \frac{u}{\Delta_y^2}
+\end{align*}
+it is clearer that the behavior near $g=u$ does not depend on
+$\Delta_y$, and that the ratio $\frac{u}{\Delta_y^2}$ is the number
+that characterizes the problem.
+
+So, without loss of generality, in this section, I assume $\Delta_y=1$
+and let $u$ define the problem.  The domain $D$ of the problem is the set
+of points in $G\times H$ that satisfy
+\begin{subequations}
+  \label{eq:domain}
+  \begin{align}
+    -u &\leq g \leq u \\
+    h^2 &\leq 24(u-g)
+  \end{align}
+\end{subequations}
+The image of each point $(g_0, h_0)$ is a \emph{pie slice} defined by
+the intersection of a wedge and the domain $D$.  Each wedge has an
+apex at $(g_0+h_0-6, h_0-6)$, and from the apex, one edge is vertical
+and the other has unit slope $\frac{d\, h}{d\, g} = 1$.  I consider
+the following three kinds of pie slices, $P$
+\begin{description}
+\item[Left end:] For some $(g,h) \in P$, $g=-u$
+\item[Right end:] For some $(g,h) \in P$, $g=u$
+\item[Interior:] All other cases
+\end{description}
+
 \section{Integral Equations}
 \label{sec:integral-equations}
 
@@ -394,7 +433,7 @@ Fig.~\ref{fig:eigenfunction}.
       \includegraphics{figs/2000_g_800_h_2_y_vec_log.png}}
     \caption{The $\text{log}_{10}$ of the amplitude of a numerically
       estimated eigenfunction.}
-  \label{fig:Av3}
+  \label{fig:eigenfunction}
 \end{figure}
 
 \onecolumn
@@ -499,7 +538,7 @@ The equation
   \frac{12\Delta_y^2}{\lambda \Rad{-g}} \rho \left(g, \Rad{-g} \right)  
 \end{equation}
 follows from retaining \eqref{eq:t2}.  A numerical solution to
-\eqref{eq:ugly} appears in Fig.~\ref{fig:ugly}.
+\eqref{eq:ugly} appears in \marginpar{FixMe} %Fig.~\ref{fig:ugly}.
 
 \begin{figure}
   \centering
@@ -507,11 +546,8 @@ follows from retaining \eqref{eq:t2}.  A numerical solution to
       \includegraphics{compare.pdf}}
     \caption{A comparison of the asymptotic solution \eqref{eq:sol_h}
       and a numerically estimated eigenfunction.}
-  \label{fig:Av3}
+  \label{fig:compare}
 \end{figure}
-
-
-
 
 \newcommand{\altphiHG}[2]{e^{-6\gamma^2 \Delta_y h} \sinh \left( \gamma
     \left( \sqrt{24(u-#2)} - #1 \right) \right)} I've obtained an
