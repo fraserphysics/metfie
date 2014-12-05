@@ -10,6 +10,7 @@ def axplot(*args):
     ax.plot(y,x,*args[3:])
 def sym(clipped=False):
     import sympy
+    from sympy import collect
     x, y, x0, y0, a, d = sympy.symbols('x y x0 y0 a d')
     #y1 = sympy.Max(-d, y0 + x0 - 1/(4*a))
     if clipped:
@@ -27,6 +28,24 @@ def sym(clipped=False):
     print('''
     x3=%s
     '''%(x3,))
+    def integrate(f):
+        ia = sympy.integrate(
+            sympy.integrate(f,(y, y1, y1+x-x1)),
+            (x, x1, x2))
+        ib = sympy.integrate(
+            sympy.integrate(f,(y, y1, d - a*x*x)),
+            (x, x2, x3))
+        i = ia + ib
+        return i.subs(a, sympy.Rational(1,24))
+    i0 = integrate(1)
+    print('i0=%s'%(collect(i0,(x0,y0)),))
+    E = lambda f:(integrate(f)/i0)
+    sigma = lambda f,g:collect(E(f*g) - E(f)*E(g),x0)
+    print('\nEx=%s'%(E(x),))
+    print('\nEy=%s'%(E(y),))
+    print('\nSigmaxx=%s'%(sigma(x,x),))
+    print('\nSigmaxy=%s'%(sigma(x,y),))
+    print('\nSigmayy=%s'%(sigma(y,y),))
 def main(argv=None):
     '''For looking at sensitivity of time and results to u, dy, n_g, n_h.
 
@@ -69,6 +88,8 @@ def main(argv=None):
     mpl.rcParams.update(params)
     if args.out != None:
         mpl.use('PDF')
+    else:
+        mpl.use('Qt4Agg')
     import matplotlib.pyplot as plt  # must be after mpl.use
 
     h_max = (48*args.u)**.5
@@ -107,8 +128,8 @@ def main(argv=None):
     return 0
 
 if __name__ == "__main__":
-    rv = main()
-    #rv = sym()
+    #rv = main()
+    rv = sym()
     sys.exit(rv)
 
 #---------------
