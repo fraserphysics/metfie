@@ -185,6 +185,11 @@ for dy in ('64', '32', '16', '08', '04'):
         command_%(target, n_g, n_h, dy)
     )
 quadfirst = notes.Clone()
+quadfirst.Command(
+    ('eric.pdf', 'eric.latex'),
+    ('eric.py',),
+    'python eric.py --out eric.pdf --latex eric.latex'
+    )
 quadfirst.PDF('quadfirst.tex')
 n_g = 2000
 n_h = 800

@@ -1,6 +1,7 @@
 \documentclass[twocolumn]{article}
 \usepackage{amsmath,amsfonts,afterpage}
-\usepackage{showlabels}
+%\usepackage{showlabels}
+\usepackage{lscape}
 \usepackage[pdftex]{graphicx,color}
 \newcommand{\normal}[2]{{\cal N}(#1,#2)} \newcommand{\La}{{\cal L}}
 \newcommand{\nomf}{\tilde f} \newcommand{\COST}{\cal C}
@@ -26,7 +27,7 @@
 \newcommand\Ddum{d\dum}
 \newcommand\lambdaPF{\lambda_{\rm{PF}}} % Peron Frobenius eigenvalue
 \newcommand\rhoPF{\rho_{\rm{PF}}} % Peron Frobenius eigenvector
-
+\input{eric.latex} % newcommands from sympy calculations
 \title{Quadratic Approximation to First Order Integral Operator}
 
 \author{Andrew M.\ Fraser}
@@ -292,6 +293,38 @@ The equation
   \end{align}
 \end{subequations}
 are the boundaries of $D$.
+\onecolumn
+\begin{landscape}
+  I used the python sympy package to calculate moments of the images
+analytically.  Here is the expected value of $h$ in the image of
+$z\equiv(x_0,y_0)\equiv(h_0,g_0)$
+\begin{equation*}
+  \Ex
+\end{equation*}
+and here is the expected value of $g$ 
+\begin{equation*}
+  \Ey
+\end{equation*}
+The expressions for the elements of the covaraince matrix are even
+worse.  Although I find the expressions incomprehensible, I believe
+that they are correct.  The ellipses in Figure~\ref{fig:eric}
+represent the moments in terms of the level sets
+\begin{equation*}
+  (z-\mu)^T \Sigma^{-1} (z-\mu) = 2
+\end{equation*}
+for the image sets of four initial points $z_0$.  I used sympy
+functions to substitute floating point values in for variables in the
+analytic expressions for the moments to draw the ellipses in the
+figure.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{eric.pdf}}  
+    \caption{Images of four points under the map and moments of those
+      images}
+  \label{fig:eric}
+\end{figure}
+\end{landscape}
+\twocolumn
 \section{Integral Equations}
 \label{sec:integral-equations}
 
