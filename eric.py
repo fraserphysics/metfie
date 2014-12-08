@@ -1,88 +1,81 @@
-'''eric.py derived from explore.py.  For making plots of pie slices,
-regions to which points map.
-
+'''eric.py for calculating moments of pie slices and plotting the
+slices and their moments.
 '''
 import sys
 import numpy as np
-import matplotlib as mpl
 import sympy
 from sympy import collect
-def lineplot(*args):
-    ax,za,zb = args[0:3]
-    ax.plot((za[0],zb[0]),(za[1],zb[1]),*args[3:])
-def symplot(*args,**kwargs):
-    ax,za = args[0:2]
-    ax.plot(za[0],za[1],*args[2:],**kwargs)
 class sym:
     '''Symbolic calculations of characteristics of images of initial points
-    z0=(x0,y0)
+    z0=(h0,g0)
     '''
-    def __init__(self, clipped=False):
-        x, y, x0, y0, a, d = sympy.symbols('x y x0 y0 a d')
-        #y1 = sympy.Max(-d, y0 + x0 - 1/(4*a))
-        if clipped:
-            y1 = d
-        else:
-            y1 = y0 + x0 - 1/(4*a)
-        x1 = x0 - 1/(2*a)
-        boundary = d - a*x*x - y
-        slope = y1 + x - x1 - y
-        both = boundary - slope
-        x2 = sympy.solve(both,x)[0]
-        y2 = x2 - x1 + y1
-        y3 = y1
-        x3 = sympy.solve(boundary.subs(y, y1),x)[1]
+    def __init__(self):
+        h, g, h0, g0, a, d = sympy.symbols('h g h0 g0 a d')
+        #g1 = sympy.Max(-d, g0 + h0 - 1/(4*a))
+        g1 = g0 + h0 - 1/(4*a)
+        h1 = h0 - 1/(2*a)
+        parabola = d - a*h*h     # =g on boundary
+        slope = g1 + h - h1      # =g on line with slope=1 through z1
+        h2 = sympy.solve(parabola-slope,h)[0] # First solution is above z1
+        g2 = h2 - h1 + g1
+        g3 = g1
+        h3 = sympy.solve((parabola-g).subs(g, g1),h)[1] # Second is on right
+        r_a = sympy.Rational(1,24) # a=1/24 always
+        self.h = tuple(x.subs(a,r_a) for x in (h0, h1, h2, h3))
+        self.g = tuple(x.subs(a,r_a) for x in (g0, g1, g2, g3))
         def integrate(f):
             ia = sympy.integrate(
-                sympy.integrate(f,(y, y1, y1+x-x1)),
-                (x, x1, x2))
+                sympy.integrate(f,(g, g1, g1+h-h1)),
+                (h, h1, h2)) # Integral of f over triangle
             ib = sympy.integrate(
-                sympy.integrate(f,(y, y1, d - a*x*x)),
-                (x, x2, x3))
-            i = ia + ib
-            return i.subs(a, sympy.Rational(1,24))
+                sympy.integrate(f,(g, g1, parabola)),
+                (h, h2, h3)) # Integral of f over region against parabola
+            return (ia+ib).subs(a, r_a)
         i0 = integrate(1)               # Area = integral of pie slice
-        E = lambda f:(integrate(f)/i0)  # Expected value wrt Lebesgue
-        #sigma = lambda f,g:collect(E(f*g) - E(f)*E(g),x0)
+        E = lambda f:(integrate(f)/i0)  # Expected value wrt Lebesgue measure
         sigma = lambda f,g:E(f*g) - E(f)*E(g)
-        for s in 'x0 y0 a d x1 y1 x2 y2 x3 y3'.split():
-            setattr(self, s, locals()[s])
-        self.Ex = E(x)
-        self.Ey = E(y)
-        self.Sigmaxx = sigma(x,x)
-        self.Sigmaxy = sigma(x,y)
-        self.Sigmayy = sigma(y,y)
+        self.d = d
+        self.Eh = collect(E(h),sympy.sqrt(d-g0-h0+6))
+        self.Eg = E(g)
+        self.Sigmahh = sigma(h,h)
+        self.Sigmahg = sigma(h,g)
+        self.Sigmagg = sigma(g,g)
         return
-    def Sigma(self, *args):
-        '''Call with float args for (x0 y0 a d).  Returns covariance of image of
-        z0=(x0,y0) as 2x2 array of floats.
+    def Sigma(
+            self,   # sym instance
+            *args   # Float values for h0, g0 and d
+    ):
+        '''Returns covariance of image of z0=(h0,g0) as 2x2 array of floats.
         '''
-        # paris[0] = (self.x0 (a sympy variable), x0 (a float argument))
-        pairs = zip((getattr(self, s) for s in 'x0 y0 a d'.split()),args)
-        xx = self.Sigmaxx.subs(pairs).evalf()
-        xy = self.Sigmaxy.subs(pairs).evalf()
-        yy = self.Sigmayy.subs(pairs).evalf()
-        return np.array([[xx,xy],[xy,yy]])
-    def z1(self, *args):
-        pairs = zip((getattr(self, s) for s in 'x0 y0 a d'.split()),args)
-        x = self.x1.subs(pairs).evalf()
-        y = self.y1.subs(pairs).evalf()
-        return (x,y)
-    def z2(self, *args):
-        pairs = zip((getattr(self, s) for s in 'x0 y0 a d'.split()),args)
-        x = self.x2.subs(pairs).evalf()
-        y = self.y2.subs(pairs).evalf()
-        return (x,y)
-    def z3(self, *args):
-        pairs = zip((getattr(self, s) for s in 'x0 y0 a d'.split()),args)
-        x = self.x3.subs(pairs).evalf()
-        y = self.y3.subs(pairs).evalf()
-        return (x,y)
-    def Ez(self, *args):
-        pairs = zip((getattr(self, s) for s in 'x0 y0 a d'.split()),args)
-        x = self.Ex.subs(pairs).evalf()
-        y = self.Ey.subs(pairs).evalf()
-        return (x,y)
+        pairs = zip((self.h[0], self.g[0], self.d),args)
+        # paris[0] = (self.h0 (a sympy variable), h0 (a float argument))
+        hh = self.Sigmahh.subs(pairs).evalf()
+        hg = self.Sigmahg.subs(pairs).evalf()
+        gg = self.Sigmagg.subs(pairs).evalf()
+        return np.array([[hh,hg],[hg,gg]])
+    # FixMe: def zn(self, n, *args)
+    def zn(
+            self,  # sym instance
+            n,     # index of point to return
+            *args  # Float values for h0, g0 and d
+    ):
+        ''' Returns (h[n],g[n]) as pair of floats
+        '''
+        pairs = zip((self.h[0], self.g[0], self.d),args)
+        h = self.h[n].subs(pairs).evalf()
+        g = self.g[n].subs(pairs).evalf()
+        return (h,g)
+    def Ez(
+            self,  # sym instance
+            *args  # Float values for h0, g0 and d
+    ):
+        '''Returns expected value (ie, mean) of z over image of z0=(h0,g0) as
+        pair of floats.
+        '''
+        pairs = zip((self.h[0], self.g[0], self.d),args)
+        h = self.Eh.subs(pairs).evalf()
+        g = self.Eg.subs(pairs).evalf()
+        return (h,g)
 def plot(args, s):
     '''Make a single figure to show the following for several starting points
     z_0:
@@ -95,60 +88,90 @@ def plot(args, s):
     mu        Mean of pie slice
     ellipse   Level set of quadratic z^t \Sigma^{-1} z
     '''
-    assert len(args.points)%2 == 0
-    f_sources = np.array(tuple((args.points[2*i], args.points[2*i+1]) for i in 
-                 range(int(len(args.points)/2))))
-    
+
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
               'text.fontsize': 15,
               'legend.fontsize': 15,
               'xtick.labelsize': 15,
               'ytick.labelsize': 15}
-    mpl.rcParams.update(params)
+    import matplotlib as mpl
+    import numpy.linalg as LA
     if args.out == 'show':
-        mpl.use('Qt4Agg')
+        mpl.use('Qt4Agg', warn=False)
     else:
-        mpl.use('PDF')
+        mpl.use('PDF', warn=False)
     import matplotlib.pyplot as plt  # must be after mpl.use
-    from level import ellipse
+    mpl.rcParams.update(params)
 
-    h_max = (48*args.u)**.5
+    def ellipse(C,M=500):
+        ''' Find M points on the level set x CI x = 1
+        '''
+        CI = LA.inv(C)
+        a = CI[0,0]
+        b = CI[0,1]
+        c = CI[1,1]
+        step = 2*np.pi/M
+        theta = np.arange(0,2*np.pi+0.5*step,step)
+        sin = np.sin(theta)
+        cos = np.cos(theta)
+        rr = 1/(a*cos*cos + 2*b*cos*sin + c*sin*sin)
+        r = np.sqrt(rr)
+        return (r*cos,r*sin)
+    
+    def lineplot(*args,**kwargs):
+        '''Plot a line from za to zb on ax and pass other args and kwargs to
+        the plot call.
+        '''
+        ax,za,zb = args[0:3]
+        ax.plot((za[0],zb[0]),(za[1],zb[1]),*args[3:],**kwargs)
+    def symplot(*args,**kwargs):
+        '''Plot a point at za on ax and pass other args and kwargs to
+        the plot call.
+        '''
+        ax,za = args[0:2]
+        ax.plot(za[0],za[1],*args[2:],**kwargs)
+
+    h_max = (48*args.d)**.5 # Scalar value of biggest h
     h =  np.linspace(-h_max, h_max, 1000)
-    boundary = lambda x: args.u -x*x/24
+    boundary = lambda h: args.d -h*h/24
     g = boundary(h)
     fig = plt.figure(figsize=(10,8))
     ax = fig.add_subplot(1,1,1)
     # Plot the boundary
     ax.plot(h, g, 'b-')
-    ax.plot(h, np.ones(h.shape)*(-args.u),'b-')
+    ax.plot(h, np.ones(h.shape)*(-args.d),'b-')
 
-    g = args.u*f_sources[:,0]
-    h_max = np.sqrt(24*(args.u-g))
-    h = f_sources[:,1]*h_max
+    assert len(args.points)%2 == 0
+    f_sources = np.array(tuple((args.points[2*i], args.points[2*i+1]) for i in 
+                 range(int(len(args.points)/2))))
+    g = args.d*f_sources[:,1]      # Verticies of pie slices, ie, g_1
+    h_max = np.sqrt(24*(args.d-g)) # Array biggest h for each element of g
+    h = f_sources[:,0]*h_max       # Verticies of pie slices, ie, h_1
     h_0 = h + 12
-    g_0 = g - h_0 + 6
+    g_0 = g - h_0 + 6              # (h_0[i],g_0[i])=preimage of ith pie slice
     for i in range(len(g)):
-        v = h_0[i], g_0[i], 1.0/24, args.u
-        z0 = (h_0[i],g_0[i])
-        z1 = s.z1(*v)
-        z2 = s.z2(*v)
-        z3 = s.z3(*v)
+        v = h_0[i], g_0[i], args.d
+        z = tuple(s.zn(n,*v) for n in range(4))
         Ez = s.Ez(*v)
         Sigma = s.Sigma(*v)
-        lineplot(ax,z1,z3,'r-')        # horizontal line
-        lineplot(ax,z1,z2,'r-')        # diagonal line
-        lineplot(ax,z0,z1,'g--')       # line from z0 to z1
-        x,y = ellipse(Sigma*2)
+        lineplot(ax,z[1],z[3],'r-')        # horizontal line
+        lineplot(ax,z[1],z[2],'r-')        # diagonal line
+        lineplot(ax,z[0],z[1],'g--')       # line from z0 to z1
+        h,g = ellipse(Sigma*2)
         if i == 0:
-            symplot(ax,z0,'gx',label='z0')
-            symplot(ax,z1,'r.',label='z1')
-            symplot(ax,Ez,'bo',label=r'$\mu$')
-            ax.plot(x+Ez[0], y+Ez[1], 'c-',label=r'$2\Sigma$')
+            symplot(ax,z[0],'g.',label=r'$z_0$')
+            symplot(ax,z[1],'r.',label=r'$z_1$')
+            symplot(ax,z[2],'m.',label=r'$z_2$')
+            symplot(ax,z[3],'k.',label=r'$z_3$')
+            symplot(ax,Ez,'b.',label=r'$\mu$')
+            ax.plot(h+Ez[0], g+Ez[1], 'c-',label=r'$\sqrt{2}\Sigma$')
         else:
-            symplot(ax,z1,'r.')
-            symplot(ax,z0,'gx')
-            symplot(ax,Ez,'bo')
-            ax.plot(x+Ez[0], y+Ez[1], 'c-')
+            symplot(ax,z[0],'g.')
+            symplot(ax,z[1],'r.')
+            symplot(ax,z[2],'m.')
+            symplot(ax,z[3],'k.')
+            symplot(ax,Ez,'b.')
+            ax.plot(h+Ez[0], g+Ez[1], 'c-')
     ax.set_xlabel('$h$')
     ax.set_ylabel('$g$')
     ax.legend()
@@ -159,7 +182,7 @@ def plot(args, s):
     return 0
 
 def main(argv=None):
-    '''For looking at sensitivity of time and results to u, dy, n_g, n_h.
+    '''For looking at map action and moments of images.
 
     '''
     import argparse
@@ -167,50 +190,42 @@ def main(argv=None):
         argv = sys.argv[1:]
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--u', type=float, default=(48.0),
-        help='log fractional deviation')
+    parser.add_argument('--d', type=float, default=(48.0),
+        help='Maximum of g')
     parser.add_argument(
         '--points', type=float, nargs='*', default=(
-            #-1.05, -0.9,
-            -0.99, -0.99,
-            0.6, -1.0,
-            -.1, .5,
-            #-.2, 0,
-            #-0.15, 0.95,
-            #0.8, 0.95,
-            0.95, -1.,
-            #0.95,1.0,
+            -0.99,  -0.99,
+            -1.0,  0.6,
+            .5,-.1,
+            -1.,  0.95,
         ),
-        help='Plot pie slices with apex at (g,h) as fractions')
-    parser.add_argument('--backward', action='store_true',
-        help='Plot pre-images of points.')
+        help='Specify pie slices with apexes at (fh,fg) as fractions')
     parser.add_argument('--out', type=str, default=None,
         help="Write result to this file")
     parser.add_argument('--latex', type=str, default=None,
         help="Write latex results to this file")
-    parser.add_argument('--integrate', action='store_true')
+    parser.add_argument('--simplify', action='store_true',
+        help="Call sympy.simplify.  Takes about 2 minutes.")
+    parser.add_argument('--test', action='store_true')
     args = parser.parse_args(argv)
     
+    if args.test:
+        print('No testing defined here')
+        return 0
     s = sym()
     if args.latex != None:
+        c = 'abcd'
         f = open(args.latex,'w')
-        f.write('\\newcommand{\Ex}{%s}\n'%(sympy.latex(s.Ex.simplify())),)
-        f.write('\\newcommand{\Ey}{%s}\n'%(sympy.latex(s.Ey.simplify())),)
-    if args.integrate:
-        #print('\nEx=%s'%(s.Ex,))
-        #print('\nEy=%s'%(s.Ey,))
-        #print('\nSigmaxx=%s'%(s.Sigmaxx,))
-        #print('\nSigmaxy=%s'%(s.Sigmaxy,))
-        #print('\nSigmayy=%s'%(s.Sigmayy,))
-        #print('\nx2=%s'%(s.x2,))
-        v = (0,0,1.0/24, args.u)
-        print('''
-        z1=%s
-        z2=%s
-        z3=%s
-        Ez=%s
-        Sigma=
-%s'''%(s.z1(*v),s.z2(*v),s.z3(*v),s.Ez(*v),s.Sigma(*v)))
+        for i in range(1,len(s.h)):
+            for q in 'g h'.split():
+                r = sympy.latex(getattr(s,q)[i].simplify())
+                f.write('\\newcommand{\\%s%c}{%s}\n\n'%(q,c[i],r))
+        for q in 'Eh Eg Sigmahh Sigmahg Sigmagg'.split():
+            if args.simplify:
+                r = sympy.latex(getattr(s,q).simplify())
+            else:
+                r = sympy.latex(getattr(s,q))
+            f.write('\\newcommand{\\%s}{%s}\n\n'%(q,r))
     if args.out != None:
         plot(args,s)
     return 0

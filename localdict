@@ -1,7 +1,8 @@
-personal_ws-1.1 en 69 
+personal_ws-1.1 en 72 
 dynes
 vis
 Hengartner
+sympy
 epistemic
 al
 Fickett
@@ -22,13 +23,14 @@ Greeff
 eigenfunctions
 dt
 autocorrelation
-eq
 dv
+eq
+iff
 LAUR
 dx
 eigenvectors
-et
 dy
+et
 Higdon
 affine
 eigenvector
@@ -57,6 +59,7 @@ Honnell
 Rightley
 diagonalizing
 covariance
+Mjolsness
 Alamos
 EOSs
 Zimmer

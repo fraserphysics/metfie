@@ -249,82 +249,106 @@ Figure~\ref{fig:boundsC} illustrates those constraints.
 \label{sec:scaling}
 
 Eric Mjolsness suggested calculating moments of the images of each
-allowed point in $G \times H$.  Before doing the honest work, I
-considered the kinds of images that occur and noticed that there is
-only one parameter in the problem.  While both $\Delta_y$ and $u$
-appear in \eqref{eq:UL_g} and \eqref{eq:UL_h}, in the alternative
-coordinates in which $\Delta_y=1$, ie,
+allowed point in ${\cal G} \times {\cal H}$.  In thinking about that
+calculation, I noticed that there is only one parameter in the problem.
+While both $\Delta_y$ and $u$ appear in \eqref{eq:UL_g} and
+\eqref{eq:UL_h}, in the alternative coordinates in which $\Delta_y=1$,
+ie,
 \begin{align*}
   \tilde g(g) &= \frac{g}{\Delta_y^2} \\
-  \tilde h(h) &= \frac{h}{\Delta_y} \\
-  \tilde u(u) &= \frac{u}{\Delta_y^2}
+  \tilde h(h) &= \frac{h}{\Delta_y}
 \end{align*}
-it is clearer that the behavior near $g=u$ does not depend on
-$\Delta_y$, and that the ratio $\frac{u}{\Delta_y^2}$ is the number
-that characterizes the problem.
+it is clearer that the behavior near $\tilde g=d$ does not depend on
+$\Delta_y$, and that the ratio $d = \frac{u}{\Delta_y^2}$ is the
+number that characterizes the problem.
 
 So, without loss of generality, in this section, I assume $\Delta_y=1$
-and let $u$ define the problem.  The domain $D$ of the problem is the set
-of points in $G\times H$ that satisfy
-\begin{subequations}
-  \label{eq:domain}
-  \begin{align}
-    -u &\leq g \leq u \\
-    h^2 &\leq 24(u-g)
-  \end{align}
-\end{subequations}
-The image of each point $(g_0, h_0)$ is a \emph{pie slice} defined by
-the intersection of a wedge and the domain $D$.  Each wedge has an
-apex at $(g_0+h_0-6, h_0-12)$, and from the apex, one edge is vertical
-and the other has unit slope $\frac{d\, h}{d\, g} = 1$.  I consider
-the following three kinds of pie slices, $P$
-\begin{description}
-\item[Left end:] For some $(g,h) \in P$, $g=-u$
-\item[Right end:] For some $(g,h) \in P$, $g=u$
-\item[Interior:] All other cases
-\end{description}
+and let $d$ define the problem.  The domain of the problem is the
+set of points
+\begin{equation*}
+  D = \left\{ z = (g,h) :
+    \begin{array}{l}
+      -d \, \leq g \, \leq d \\
+      h^2\, \leq \, 24(d-g)
+    \end{array}
+    \right\},
+\end{equation*}
+and the image of each point $z_0 \in D$ is a \emph{pie slice} $P(z_0)$
+defined by the intersection of a wedge and $D$.  In
+Figure~\ref{fig:eric} I've labeled the points
+\begin{align*}
+  z_1 &= \left( \hb, \gb \right) \\
+  z_2 &= \left( \hc, \gc \right) \\
+  z_3 &= \left( \hd, \gd \right)
+\end{align*}
+where $z_1$ is the wedge apex and $z_2$/$z_3$ is the intersection of
+the upper/lower edge of the wedge with the boundary respectively.
 
-The equation
-\begin{subequations}
-  \label{eq:boundary}
-  \begin{align}
-  g &= u -\frac{h^2}{24}\\
-  g &= =u
-  \end{align}
-\end{subequations}
-are the boundaries of $D$.
+Results from calculating moments of the images with the python sympy
+package are too complex to be enlightening.  The parts that fit on
+single lines appear in Eqn.~\eqref{eq:sympy}.  However,
+Figure~\ref{fig:eric} suggests that the expressions are correct.  The
+ellipses in the figure are the level sets
+\begin{equation*}
+  \left\{ z : (z-\mu)^T \Sigma^{-1} (z-\mu) = 2 \right\}
+\end{equation*}
+for the image sets $P(z_0)$ of four initial points $z_0$.  I used
+sympy functions to substitute floating point values in for variables
+in the analytic expressions to draw the ellipses.
 \onecolumn
 \begin{landscape}
-  I used the python sympy package to calculate moments of the images
-analytically.  Here is the expected value of $h$ in the image of
-$z\equiv(x_0,y_0)\equiv(h_0,g_0)$
-\begin{equation*}
-  \Ex
-\end{equation*}
-and here is the expected value of $g$ 
-\begin{equation*}
-  \Ey
-\end{equation*}
-The expressions for the elements of the covaraince matrix are even
-worse.  Although I find the expressions incomprehensible, I believe
-that they are correct.  The ellipses in Figure~\ref{fig:eric}
-represent the moments in terms of the level sets
-\begin{equation*}
-  (z-\mu)^T \Sigma^{-1} (z-\mu) = 2
-\end{equation*}
-for the image sets of four initial points $z_0$.  I used sympy
-functions to substitute floating point values in for variables in the
-analytic expressions for the moments to draw the ellipses in the
-figure.
 \begin{figure}
   \centering
     \resizebox{\columnwidth}{!}{\includegraphics{eric.pdf}}  
     \caption{Images of four points under the map and moments of those
-      images}
+      images.}
   \label{fig:eric}
 \end{figure}
+  \tiny
+  \begin{subequations}
+    \label{eq:sympy}
+    \begin{equation}
+      \mu_h = \Eh
+    \end{equation}
+    \begin{equation}
+      \mu_g = \Eg
+    \end{equation}
+    \begin{equation}
+      \Sigma_{h,h} = \Sigmahh
+    \end{equation}
+    \begin{equation}
+      \Sigma_{h,g} = \Sigmahg
+    \end{equation}
+    \begin{equation}
+      \Sigma_{g,g} = \Sigmagg
+    \end{equation}
+  \end{subequations}
 \end{landscape}
 \twocolumn
+\subsection{Speculation}
+\label{sec:speculation}
+
+In Figure~\ref{fig:eric} there is flow that is counter clockwise with
+an overall drift to the right.  The approximation of the resulting
+eigenfunction that appears in Figure~\ref{fig:Av2} varies by more than
+a factor of $10^{40}$.  The eigenfunction is largest along boundary
+where the flow accumulates which is on the right in
+Figure~\ref{fig:eric}.  There seem to be the following three regimes:
+\begin{description}
+\item[Small $g$] Where images are truncated by the $g=-d$ boundary.
+  Figure \ref{fig:Av2} shows that the truncation reduces the amplitude
+  of eigenfunction along the $+h$ edge for small $g$.
+\item[Intermediate $g$] Where triangular approximations of the pie
+  slices look adequate.  Such approximations may be analytically tractable.
+\item[Big $g$:] Near $g=d$ which is the only region where the flow
+  maps points away from the right hand boundary.
+\end{description}
+I conjecture that for large $d$, the effect of the truncation at small
+$g$ decays as the flow moves through the intermediate $g$ regime and
+the eigenfunction away from the big $g$ region converges as
+$d\rightarrow \infty$.  I don't know if the conjecture implies
+convergence to a measure on functions as $\Delta_y \rightarrow 0$.
+
 \section{Integral Equations}
 \label{sec:integral-equations}
 
