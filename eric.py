@@ -14,10 +14,10 @@ class sym:
         #g1 = sympy.Max(-d, g0 + h0 - 1/(4*a))
         g1 = g0 + h0 - 1/(4*a)
         h1 = h0 - 1/(2*a)
-        parabola = d - a*h*h     # =g on boundary
-        slope = g1 + h - h1      # =g on line with slope=1 through z1
+        parabola = d - a*h*h       # =g on boundary
+        slope = g1 + h - h1        # =g on line with slope=1 through z1
         h2 = sympy.solve(parabola-slope,h)[0] # First solution is above z1
-        g2 = h2 - h1 + g1
+        g2 = h2 - h1 + g1          # Line has slope of 1
         g3 = g1
         h3 = sympy.solve((parabola-g).subs(g, g1),h)[1] # Second is on right
         r_a = sympy.Rational(1,24) # a=1/24 always
@@ -26,7 +26,7 @@ class sym:
         def integrate(f):
             ia = sympy.integrate(
                 sympy.integrate(f,(g, g1, g1+h-h1)),
-                (h, h1, h2)) # Integral of f over triangle
+                (h, h1, h2)) # Integral of f over right triangle
             ib = sympy.integrate(
                 sympy.integrate(f,(g, g1, parabola)),
                 (h, h2, h3)) # Integral of f over region against parabola
@@ -150,7 +150,7 @@ def plot(args, s):
     h_0 = h + 12
     g_0 = g - h_0 + 6              # (h_0[i],g_0[i])=preimage of ith pie slice
     for i in range(len(g)):
-        v = h_0[i], g_0[i], args.d
+        v = h_0[i], g_0[i], args.d # Vector of args for calls to s.*()
         z = tuple(s.zn(n,*v) for n in range(4))
         Ez = s.Ez(*v)
         Sigma = s.Sigma(*v)
@@ -217,7 +217,7 @@ def main(argv=None):
         c = 'abcd'
         f = open(args.latex,'w')
         for i in range(1,len(s.h)):
-            for q in 'g h'.split():
+            for q in 'h g'.split():
                 r = sympy.latex(getattr(s,q)[i].simplify())
                 f.write('\\newcommand{\\%s%c}{%s}\n\n'%(q,c[i],r))
         for q in 'Eh Eg Sigmahh Sigmahg Sigmagg'.split():
