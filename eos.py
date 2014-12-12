@@ -83,7 +83,8 @@ S_max = 69.16 Joules/degree
         return self.cv*P*v
     def PE2v(self, P,E):
         return (E/P)/self.cv
-    def Ev2P(self, E, v):
+    def Ev2P(self, # ideal instance
+             E, v):
         return (E/v)/self.cv
     def Ev2S(self, E, v):
         """Return entropy given energy and specific volume"""
@@ -247,7 +248,8 @@ class shaw(ideal):
         c = (self.a[:-1] - self.rhoCJ*self.a[1:])/self.I[1:]
         return E + np.dot(c, x**(self.I[:-1] + 2))
     # The next 4 methods work with energy E instead of T
-    def Ev2P(self, E, v):
+    def Ev2P(self, # Shaw instance
+             E, v):
         '''Implements Eqn. 4.6 of Hixson
         '''
         r = 1/v
@@ -267,7 +269,8 @@ class shaw(ideal):
         return self.S_0 + self.cv*np.log((E - D)/self.E_0)
         d_E = E - E_CJ
         return self.R*(self.cv*np.log(E/self.E_0) + np.log(v/self.v_0))
-    def Pv2E(self, P, v):
+    def Pv2E(self, # shaw instance
+             P, v):
         from scipy.optimize import brentq
         def f(E,v):
             return P - self.Ev2P(E,v)

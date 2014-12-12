@@ -28,13 +28,14 @@ class Visualization(TA.HasTraits):
         '''
         ML.axes(ranges=self.ranges,xlabel='P',ylabel='v',zlabel='E')
         ML.outline()
-    def __init__(self):
+    def __init__(self # Visualization
+        ):
         """ Calculate three 2-d arrays of values to describe EOS
         surface and put the surface into self.scene
         """
         import numpy as np
         import eos
-        EOS = eos.shaw()
+        EOS = eos.ideal()
         TA.HasTraits.__init__(self)
         P, v = np.mgrid[1e10:4e10:20j, 1e-6:4e-6:20j]
         P = P.T

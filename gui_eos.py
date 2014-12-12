@@ -130,7 +130,7 @@ class state:
                  var_dict, # Dictionary that will hold variable instances
                  vis):     # mayavi visualization instance
         import eos
-        self.EOS = eos.shaw()       # Methods for EOS constraints
+        self.EOS = eos.ideal()       # Methods for EOS constraints
         self.var_dict = var_dict
         self.vis = vis
         self.vis.curve = None
@@ -173,6 +173,14 @@ class state:
         E = self.EOS.Pv2E(P, v)
         self.values['E'] = E
         self.values['S'] = self.EOS.Ev2S(E,v)
+    def shaw_eos(self,     # state instance
+                ):
+        import eos
+        self.EOS = eos.shaw()
+    def ideal_eos(self,     # state instance
+                ):
+        import eos
+        self.EOS = eos.ideal()
     def new_constant(self # state instance
                      ):
         '''Find which radio button is checked and then do update
@@ -268,6 +276,8 @@ class PVE_widget(QWidget, PVE_control):
         self.setupUi(self)
         var_dict = {}
         self.state = state(var_dict, vis_widget.visualization)
+        self.Ideal_button.clicked.connect(self.state.ideal_eos)
+        self.Shaw_button.clicked.connect(self.state.shaw_eos)
         for spin, slide, button, name, factor in (
 # spin                 slide                  button             name  factor
 (self.doubleSpinBox_P, self.verticalSlider_P, self.radioButton_P, 'P', 1e10),
