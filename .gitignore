@@ -1,6 +1,7 @@
 archive
 reference
 build
+figs
 *.so
 *.c
 *.pyc
@@ -19,3 +20,4 @@ study_*
 nohup.out
 *~
 *.ps
+/eric.latex
