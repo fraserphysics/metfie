@@ -1,6 +1,6 @@
-\documentclass[12pt]{article}
+\documentclass[11pt]{article}
 \usepackage{amsmath,amsfonts,afterpage}
-\usepackage{showlabels}
+%\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
 \newcommand{\normal}[2]{{\cal N}(#1,#2)}
 \newcommand{\normalexp}[3]{ -\frac{1}{2}
@@ -33,7 +33,7 @@
 \newcommand\tsim{{\mathbf t}_{\rm{sim}}}
 \newcommand\DVDf{\partiald{\Vt}{f}}
 \newcommand\Lbb{\mathbb{L}}
-\title{Notes EOS Estimation Code}
+\title{Notes on EOS Estimation Code}
 
 \author{Andrew M.\ Fraser}
 \begin{document}
@@ -41,7 +41,6 @@
 
 \section{Notation for and Implementation of Basic Functions}
 \label{sec:basic}
-
 
 Given an experimental sequence of measured pairs of velocity and time
 values, $(\vexp, \texp)$ and an initial model, $\fnom$, I describe how
@@ -174,11 +173,129 @@ Thus I seek $\hat d$ that solves
   (BD)^T\Sigma_v^{-1}\epsilon + \Sigma_f^{-1} (c_{\tilde f} - \cf) = 
   \left((BD)^T\Sigma_v^{-1}BD + \Sigma_f^{-1} \right) \hat d.
 \end{equation}
+\subsection{Numerical Results}
+\label{sec:numerical-results}
+
+\newcommand{\freq}{k} %
+Figures \ref{fig:d} and \ref{fig:fve} illustrate iterative maximum
+likelihood fitting of an EOS.  The procedure starts with the following
+initial function
+\begin{equation}
+  \label{eq:initial}
+  \fnom(x) = \frac{C}{x^3},
+\end{equation}
+and the iterations approach the \emph{actual} function
+\begin{align}
+  \label{eq:actual}
+  f(x) &= \fnom(x) + \frac{2 e^{-\frac{x^2}{2w^2}}
+         \fnom(x_0)}{\freq}  \sin(\freq x)\\
+   \text{ where }C &= 2.56\times 10^{10} \nonumber \\
+  \freq &= 0.2 \nonumber \\
+  w &= 0.2, \nonumber
+\end{align}
+which was used to generate the simulated data.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{fig_d.pdf}}  
+    \caption{Illustration of the derivative of the velocity function
+      with respect to the pressure function, $\frac{d v}{d p}$.  The
+      second and third columns correspond variations of the
+      coefficients of basis functions that differ by a factor of ten.
+      The lower left plot indicates that nonlinear part of the
+      response is a factor of a thousand smaller than the linear
+      response.  }
+  \label{fig:d}
+\end{figure}
+\begin{figure}
+  \centering
+    \resizebox{0.8\columnwidth}{!}{\includegraphics{fig_fve.pdf}}  
+    \caption{Maximum likelihood estimation of $f$.  The \emph{true}
+      EOS appears as \emph{actual} in the upper plot, and the
+      optimization starts with the \emph{initial} and ends with
+      \emph{fit}.  The corresponding velocity as a function of
+      position appears in the middle plot, and the sequence of errors
+      in the velocity time series for each step in the optimization
+      appears in the lower plot. }
+  \label{fig:fve}
+\end{figure}
+
+\section{Comparing Model Classes}
+\label{sec:classes}
+
+We want to test the hypothesis that splines are better for building
+models of an EOS than polynomials.  We hope to compare the bias and
+variance of two sequences of estimators, one that uses splines and one
+that uses polynomials.  We will study estimators for quantities of
+interest that are functionals of the EOS that differ from the
+functionals that correspond to the measurements.  In previous work, we
+have analyzed the functionals for muzzle time and muzzle velocity for
+an ideal gun, and in the sections above we have described an analysis
+of velocity measurements that depend on time.  We hope that those
+quantities of interest and those measurements are sufficiently
+different in that the measurements are given as functions of time and
+the quantities of interest are required as functions of position.
+
+Here is the agenda:
+\begin{enumerate}
+\item Design two classes of EOS models, ie, pressure as a function of
+  volume along an isentrope.  One class will be splines with $n$ knots
+  equally spaced on a log scale, and the other will be $n^{\text{th}}$
+  order polynomials.
+\item Write code that draws realizations of experimental data based on
+  an EOS that is outside of both model classes for any finite $n$.
+\item Write code that estimates the coefficients of polynomial models
+  of the EOS.
+\item Calculate (or estimate with simulations) sequences (indexed by
+  $n$) of bias and variance pairs of estimators for quantities of
+  interest using the two classes of models.  We hope to find that the
+  curve defined by the pairs for splines lies below the curve defined
+  by pairs for polynomials.
+\end{enumerate}
+
+\subsection{Alternative Measurements}
+\label{sec:alternative}
+
+If we need measurements that are more different from the quantities of
+interest, we have could use the following simplification of
+measurements of cylinders.  Suppose that all of the material in a long
+cylinder detonates in an instant and that the density after that is
+uniform inside.  Thus the function $\left\{r(t): t>0 \right\}$ is a
+sufficient specification of an experimental result.  Letting
+$r(0) = r_0$ denote the initial radius the work done by the gas in
+expanding to $r$ is
+\begin{equation*}
+  U(r) = \int_{r_0}^r p(v(r)) \frac{dv}{dr} dr = \int_{r_0}^r p(\pi
+  r^2) 2\pi r dr.
+\end{equation*}
+That work is used to deform and accelerate the cladding.  We say that
+the energy of deformation is
+\begin{equation*}
+  D(r) = \sigma \log \left(\frac{r}{r_0} \right),
+\end{equation*}
+and the kinetic energy of the cladding is
+\begin{equation*}
+  K = \frac{1}{2} m \left( \dot r \right)^2.
+\end{equation*}
+Thus the velocity as a function of radius is
+\begin{equation*}
+  v(r) = \sqrt{\frac{2}{m} \left( U(r) - \sigma \log
+      \left(\frac{r}{r_0} \right) \right) },
+\end{equation*}
+and we can obtain the velocity as a function of time by numerical
+integration.
 
 \section*{Appendix}
 \label{sec:appendix}
 
 See other information in cmfSuite/doc/HE.tex
+
+One may fetch source code for this project from google code and build
+this document as follows:
+\begin{verbatim}
+->git clone https://code.google.com/p/metfie
+->cd metfie/like_gun
+->make notes.pdf
+\end{verbatim}
 
 \end{document}
 

@@ -348,7 +348,6 @@ def plot_dv_df(gun, x, fig):
     #  1  2  3
     #  4  5  6
     #  7  8  9
-    knot = r'$t/(\mu \rm{sec})\,\rm{ knots }$'
     mic_sec = r'$t/(\mu \rm{sec})$'
     for n_, x_, y_, l_x, l_y in (
             (1, x, np.array([f]), '$x$', '$f$'),
@@ -357,9 +356,9 @@ def plot_dv_df(gun, x, fig):
             (4, t, np.array([v]),mic_sec, r'$v/(\rm{km/s})$'),
             (5, t, dva,mic_sec, '$\Delta v$'),
             (6, t, dvb, mic_sec,'$\Delta v$'),
-            (7, x_D, DA.T-DB.T, knot, r'$\rm Difference$'),
-            (8, x_D, DA.T, knot, '$\Delta v/\Delta f$'),
-            (9, x_D, DB.T, knot, '$\Delta v/\Delta f$'),
+            (7, x_D, DA.T-DB.T, mic_sec, r'$\rm Difference$'),
+            (8, x_D, DA.T, mic_sec, '$\Delta v/\Delta f$'),
+            (9, x_D, DB.T, mic_sec, '$\Delta v/\Delta f$'),
             ):
         ax = fig.add_subplot(3,3,n_)
         ax.set_xlabel(l_x)
@@ -393,7 +392,7 @@ def main():
     fig_d = plt.figure('derivatives', figsize=(14,16))
     plot_dv_df(GUN(N=10), gun.x, fig_d)
 
-    plot_data = {'nominal':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
+    plot_data = {'initial':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
     
     # Select samples in x for perturbation
     log_x = np.linspace(
@@ -414,7 +413,7 @@ def main():
     # plot f(x) and v(x) for perturbed gun
     f_p = gun_p.eos(gun_p.x)
     v_p = gun_p.x_dot(gun_p.x)
-    plot_data['perturbed'] = (
+    plot_data['actual'] = (
         (gun_p.x, f_p, 'f'),(gun_p.x, v_p/magic.cm2km, 'v'))
     # Make simulated measurements
     t2v = gun_p.set_t2v()
@@ -437,6 +436,7 @@ def main():
         print('L[%d]=%e, delta=%e'%(i,L,Delta))
         if Delta <= abs(L)*magic.converge:
             gun_fit.eos.set_c(old_c)
+            e.pop()
             break
         last=L
     f_hat = gun_fit.eos(gun.x)
@@ -449,13 +449,15 @@ def main():
     fig_fve = plt.figure('fve',figsize=(8,10))
     plot_f_v_e(gun, plot_data, t, e, fig_fve)
 
-    plt.show()
-    #fig.savefig('fig.pdf', format='pdf')
+    if True:
+        fig_d.savefig('fig_d.pdf', format='pdf')
+        fig_fve.savefig('fig_fve.pdf', format='pdf')
+    else:
+        plt.show()
     return
     
 if __name__ == "__main__":
     main()
-    #_test()
 
 #---------------
 # Local Variables:

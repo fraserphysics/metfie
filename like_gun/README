@@ -1,19 +1,25 @@
-The like_gun directory is for developing maximum likelihood code for
-gun data and models.
+The like_gun directory is for exploring HE modeling issues using
+simple toy models.
 
 Plans:
 
-x1. Extract simple code for gun from parent directory
+1. Make sure that that the EOS model used for generating simulated
+   data is not in any class of fitted models so that there will be
+   bias.
 
-x2. Write code for spline f
+2. Develop a stochastic model for the measurements so that there will
+   be variance in the estimates of EOS models.
 
-x3. Write perturbed EOS f and use it for gun
+3. Write code that estimates polynomial models for the EOS.
 
-x4. Write code for log likelihood L and derivative of L wrt to v_sim
+4. Write code that calculates or estimates bias and variance of
+   estimated muzzle energy and muzzle time given a parametric EOS
+   model.
 
-x5. Write code for d v_sim / d f
+5. Plot bias/variance pairs for sequences of spline and polynomial
+   models with increasing numbers of parameters.
 
-x6. Write optimization code
+6. Explain all of the above work in notes.tex
 
 7. Devise MAP scheme and explain in notes.tex
 
