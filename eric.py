@@ -84,6 +84,20 @@ class sym:
         h = self.Eh.subs(pairs).evalf()
         g = self.Eg.subs(pairs).evalf()
         return (h,g)
+    
+def lineplot(*args,**kwargs):
+    '''Plot a line from za to zb on ax and pass other args and kwargs to
+    the plot call.
+    '''
+    ax,za,zb = args[0:3]
+    ax.plot((za[0],zb[0]),(za[1],zb[1]),*args[3:],**kwargs)
+def symplot(*args,**kwargs):
+    '''Plot a point at za on ax and pass other args and kwargs to
+    the plot call.
+    '''
+    ax,za = args[0:2]
+    ax.plot(za[0],za[1],*args[2:],**kwargs)
+
 def f_n(
         args,
         dummy,
@@ -93,19 +107,32 @@ def f_n(
     z_1 = f(z_0), namely f^n(h,g) = (h - 12n, g + n(h - 6n))
 
     '''
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_subplot(1,1,1)
+    
+    # Plot the boundary
     h_max = (48*args.d)**.5 # Scalar value of biggest h
     h =  np.linspace(-h_max, h_max, 41)
     boundary = lambda h: args.d -h*h/24
     g = boundary(h)
-    fig = plt.figure(figsize=(10,8))
-    ax = fig.add_subplot(1,1,1)
-    # Plot the boundary
     ax.plot(h, g, 'b-', label=r'$\rm boundary$')
+
+    F = lambda z: (z[0]-12, z[1]+z[0]-6)
+    
+    # Plot F^n
     h_0, g_0 = 0.0, args.d - 2.5
-    n = h/12   # Step size \approx 0.2
+    n = np.linspace(-4, 4, 41)  # Step size 0.2
     h_n = h_0 - 12*n
     g_n = g_0 + n * (h_0 - 6*n)
-    ax.plot(h_n, g_n, 'r.', label=r'$F^n$')
+    ax.plot(h_n, g_n, 'm.', label=r'$F^n$')
+
+    # Plot images of points on h=0
+    for z_0 in [(0,g) for g in np.linspace(-args.d, args.d, 11)]:
+        z_1 = F(z_0)
+        symplot(ax,z_0,'g.')
+        symplot(ax,z_1,'r.')
+        lineplot(ax,z_0,z_1,'g--')       # line from z0 to z1
+    lineplot(ax,z_0,z_1,'g--', label=r'$[z_0,z_1]\,\rm lines$')
     ax.set_xlabel('$h$')
     ax.set_ylabel('$g$')
     ax.legend()
@@ -143,19 +170,6 @@ def eric(
         r = np.sqrt(rr)
         return (r*cos,r*sin)
     
-    def lineplot(*args,**kwargs):
-        '''Plot a line from za to zb on ax and pass other args and kwargs to
-        the plot call.
-        '''
-        ax,za,zb = args[0:3]
-        ax.plot((za[0],zb[0]),(za[1],zb[1]),*args[3:],**kwargs)
-    def symplot(*args,**kwargs):
-        '''Plot a point at za on ax and pass other args and kwargs to
-        the plot call.
-        '''
-        ax,za = args[0:2]
-        ax.plot(za[0],za[1],*args[2:],**kwargs)
-
     h_max = (48*args.d)**.5 # Scalar value of biggest h
     h =  np.linspace(-h_max, h_max, 1000)
     boundary = lambda h: args.d -h*h/24
