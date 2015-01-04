@@ -15,6 +15,8 @@
 \newcommand{\EV}[2]{\field{E}_{#1}\left[#2\right]}
 \newcommand{\partialfixed}[3]{\left. \frac{\partial #1}{\partial
       #2}\right|_#3}
+\newcommand{\partialtwo}[2]{ \frac{\partial #1}{\partial
+      #2}}
 \newcommand{\dhot}{=_{\text{dhot}}}
 \newcommand{\argmin}{\operatorname*{argmin}}
 \newcommand{\argmax}{\operatorname*{argmax}}
@@ -284,17 +286,14 @@ respectively\footnote{Note that since the diagonal edge of each wedge
   goes through $(-6,g_0)$, $z_2$ depends on $g_0$ but not $h_0$.}.
 
 Results from calculating moments of the images with the python sympy
-package are too complex to be enlightening.  The parts that fit on
-single lines appear in Eqn.~\eqref{eq:sympy}.  In
-Figure~\ref{fig:eric}, the ellipses that are the level sets
+package are too complex to be enlightening.  In Figure~\ref{fig:eric},
+the ellipses that are the level sets
 \begin{equation*}
   \left\{ z : (z-\mu)^T \Sigma^{-1} (z-\mu) = 2 \right\}
 \end{equation*}
 for the image sets $P(z_0)$ of four initial points $z_0$ are more
 informative.
-%
-\onecolumn
-\begin{landscape}
+
 \begin{figure}
   \centering
     \resizebox{\columnwidth}{!}{\includegraphics{eric.pdf}}  
@@ -302,27 +301,112 @@ informative.
       images.}
   \label{fig:eric}
 \end{figure}
-  \tiny
-  \begin{subequations}
-    \label{eq:sympy}
-    \begin{equation}
-      \mu_h = \Eh
-    \end{equation}
-    \begin{equation}
-      \mu_g = \Eg
-    \end{equation}
-    \begin{equation}
-      \Sigma_{h,h} = \Sigmahh
-    \end{equation}
-    \begin{equation}
-      \Sigma_{h,g} = \Sigmahg
-    \end{equation}
-    \begin{equation}
-      \Sigma_{g,g} = \Sigmagg
-    \end{equation}
-  \end{subequations}
-\end{landscape}
-\twocolumn
+
+The following simple formula describes iterations of the map $z_1 =
+F(z_0)$:
+\begin{align*}
+  F(h,g) &\equiv (h-12, g + h -6) \\
+  F^n &\equiv (h_n, g_n) \\
+  h_n &= h - 12 n \\
+  g_{n+1} &= g_n + h - 12 n -6 \\
+  g_{n+1} - g_n &= h - 12 n -6 \\
+  g_{n+1} &= g + (n+1) (h-6) - 12\sum_{k=1}^n k \\
+  &= g + (n+1)(h - 6(n+1)) \\
+  g_n &= g + n(h - 6 n).
+\end{align*}
+In Figure~\ref{fig:f_n}, the boundary and the set
+\begin{equation*}
+S = \left\{ F^{\frac{n}{5}} (0,d-2.5) : n
+    \in \left\{ -20, -19, \ldots , 20 \right\} \right\}  
+\end{equation*}
+appear.  Notice that each element of $S$ is below the boundary by the
+same distance, namely 2.5.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{f_n.pdf}}  
+    \caption{Illustration of the action of $F^n$ with noninteger
+      values of $n$.}
+  \label{fig:f_n}
+\end{figure}
+
+\subsection{Properties of Boundary Points}
+\label{sec:boundary}
+
+Here I will prove that if $z_0$ is on the boundary, then so is $z_1$,
+the apex of its image.  Points on the boundary satisfy
+\begin{equation}
+  \label{eq:boundary}
+  g = d - \frac{h^2}{24},
+\end{equation}
+and the apex of the image of $z_0 \equiv (h_0,g_0)$ is
+\begin{equation}
+  \label{eq:image}
+  z_1 = (h_0 -12, g_0 +h_0 -6).
+\end{equation}
+The proof follows
+\begin{align}
+  g_0 &= d - \frac{h_0^2}{24} & \text{ \eqref{eq:boundary}} \\
+  h_1 &= h_0 -12 & \text{ \eqref{eq:image}} \\
+  \frac{h_1^2}{24} &= \frac{h_0^2}{24} - h_0 +6 \\
+  g_1 &= g_0 + h_0 -6 \\
+  &= d - \frac{h_0^2}{24} + h_0 -6 \\
+  &= d - \frac{h_1^2}{24} 
+\end{align}
+
+For $z_0 = (12, d-6)$ the image is given by $z_1 = z_2 = z_3 = (0,d)$
+and the area of the image is zero.  Similarly the area of the image is
+zero for any $z_0 = (h, d - \frac{h^2}{24})$ if $h \geq 12$, and
+\begin{equation}
+  \label{eq:zip}
+  \rho(h, d - \frac{h^2}{24})~\forall h \geq 12.
+\end{equation}
+
+Now I assume that in a neighborhood of $z_d \equiv (0,d)$ the
+eigenfunction is so smooth that for any $z$ in a neighborhood of $z_0
+= (12,d-6)$ one can approximate
+\begin{equation*}
+  \rho(z) = \frac{\rho(z_d)}{\lambda} a(z) \equiv \rho_0  a(z)
+\end{equation*}
+where $a(z)$ is the area of the image of $z$.  In particular, for
+$z_a(\epsilon) \equiv (12-\epsilon, d-6)$
+\begin{align*}
+  z_{a1} &= (-\epsilon, d - 12 + (12-\epsilon)) \\
+  &= (-\epsilon, d - \epsilon) \\
+  z_{a2} &= (0,d) \\
+  z_{a3} &= (\sqrt{24 \epsilon}, d - \epsilon) \\
+  \rho(z_a(\epsilon)) &= \sqrt{6} \epsilon^{\frac{3}{2}}\rho_0.
+\end{align*}
+For $z_b(\epsilon) \equiv (12, d-6-\epsilon)$
+\begin{align*}
+  z_{b1} &= (0,d-\epsilon) \\
+  z_{b2} &\approx (\epsilon ,d - \frac{\epsilon^2}{24}) \\
+  z_{b3} &= (\sqrt{24 \epsilon}, d - \epsilon) \\
+  \rho(z_b(\epsilon)) &= \sqrt{6} \epsilon^{\frac{3}{2}}\rho_0.
+\end{align*}
+And on the boundary with
+\begin{align*}
+  z_c & \equiv \left(12 - \epsilon , d - 6 + \epsilon -
+  \frac{\epsilon^2}{24} \right) \\
+  z_{c1} &= \left( -\epsilon, d - \frac{\epsilon^2}{24} \right) \\
+  rho(z_c(\epsilon) & = \frac{\epsilon^3}{72} \rho_0.
+\end{align*}
+Note that since along the boundary at $z_0 = (12, d-6)$
+\begin{equation*}
+  \left. \frac{dg}{dh} \right|_{z_0} = -1,
+\end{equation*}
+the results for $z_a(\epsilon)$, $z_b(\epsilon)$ and $z_c(\epsilon)$
+are consistent.
+
+\subsection{Derivatives}
+\label{sec:derivatives}
+
+\begin{align*}
+  \partialtwo{\rho(z_0)}{h_0} &= \frac{-1}{\lambda} \int_{h_1}^{h_3}
+  \rho(h, g_1) dh \\
+  \partialtwo{\rho(z_0)}{g_0} &= \frac{1}{\lambda} \left(
+    \int_{h_1}^{h_3} \rho(h, g_1) dh
+    - \int_{h_1}^{h_2} \rho(h, g_0 + 6 -h ) dh \right)
+\end{align*}
 \subsection{Speculation}
 \label{sec:speculation}
 

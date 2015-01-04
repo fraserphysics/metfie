@@ -5,6 +5,14 @@ import sys
 import numpy as np
 import sympy
 from sympy import collect
+params = {'axes.labelsize': 18,     # Plotting parameters for latex
+          'text.fontsize': 15,
+          'legend.fontsize': 15,
+          'xtick.labelsize': 15,
+          'ytick.labelsize': 15}
+import matplotlib as mpl
+import numpy.linalg as LA
+
 class sym:
     '''Symbolic calculations of characteristics of images of initial points
     z0=(h0,g0)
@@ -76,7 +84,38 @@ class sym:
         h = self.Eh.subs(pairs).evalf()
         g = self.Eg.subs(pairs).evalf()
         return (h,g)
-def plot(args, s):
+def f_n(
+        args,
+        dummy,
+        plt
+):
+    '''Make a figure to illustrate iterations of the function f that gives
+    z_1 = f(z_0), namely f^n(h,g) = (h - 12n, g + n(h - 6n))
+
+    '''
+    h_max = (48*args.d)**.5 # Scalar value of biggest h
+    h =  np.linspace(-h_max, h_max, 41)
+    boundary = lambda h: args.d -h*h/24
+    g = boundary(h)
+    fig = plt.figure(figsize=(10,8))
+    ax = fig.add_subplot(1,1,1)
+    # Plot the boundary
+    ax.plot(h, g, 'b-', label=r'$\rm boundary$')
+    h_0, g_0 = 0.0, args.d - 2.5
+    n = h/12   # Step size \approx 0.2
+    h_n = h_0 - 12*n
+    g_n = g_0 + n * (h_0 - 6*n)
+    ax.plot(h_n, g_n, 'r.', label=r'$F^n$')
+    ax.set_xlabel('$h$')
+    ax.set_ylabel('$g$')
+    ax.legend()
+    return fig
+
+def eric(
+        args,
+        s,     # A sym instance
+        plt
+    ):
     '''Make a single figure to show the following for several starting points
     z_0:
 
@@ -88,20 +127,6 @@ def plot(args, s):
     mu        Mean of pie slice
     ellipse   Level set of quadratic z^t \Sigma^{-1} z
     '''
-
-    params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
-              'legend.fontsize': 15,
-              'xtick.labelsize': 15,
-              'ytick.labelsize': 15}
-    import matplotlib as mpl
-    import numpy.linalg as LA
-    if args.out == 'show':
-        mpl.use('Qt4Agg', warn=False)
-    else:
-        mpl.use('PDF', warn=False)
-    import matplotlib.pyplot as plt  # must be after mpl.use
-    mpl.rcParams.update(params)
 
     def ellipse(C,M=500):
         ''' Find M points on the level set x CI x = 1
@@ -175,11 +200,7 @@ def plot(args, s):
     ax.set_xlabel('$h$')
     ax.set_ylabel('$g$')
     ax.legend()
-    if args.out == 'show':
-        plt.show()
-    else:
-        fig.savefig( open(args.out, 'wb'), format='pdf')
-    return 0
+    return fig
 
 def main(argv=None):
     '''For looking at map action and moments of images.
@@ -200,8 +221,10 @@ def main(argv=None):
             -1.,  0.95,
         ),
         help='Specify pie slices with apexes at (fh,fg) as fractions')
-    parser.add_argument('--out', type=str, default=None,
-        help="Write result to this file")
+    parser.add_argument('--eric', type=str, default=None,
+        help="Write eric result to this file")
+    parser.add_argument('--f_n', type=str, default=None,
+        help="Write f_n result to this file")
     parser.add_argument('--latex', type=str, default=None,
         help="Write latex results to this file")
     parser.add_argument('--simplify', action='store_true',
@@ -209,6 +232,15 @@ def main(argv=None):
     parser.add_argument('--test', action='store_true')
     args = parser.parse_args(argv)
     
+    if args.eric == 'show' or args.f_n == 'show':
+        assert args.eric == 'show' or args.eric == None
+        assert args.f_n == 'show' or args.f_n == None
+        mpl.use('Qt4Agg', warn=False)
+    else:
+        mpl.use('PDF', warn=False)
+    import matplotlib.pyplot as plt  # must be after mpl.use
+    mpl.rcParams.update(params)
+
     if args.test:
         print('No testing defined here')
         return 0
@@ -226,8 +258,15 @@ def main(argv=None):
             else:
                 r = sympy.latex(getattr(s,q))
             f.write('\\newcommand{\\%s}{%s}\n\n'%(q,r))
-    if args.out != None:
-        plot(args,s)
+    for filename, function in ((args.eric, eric), (args.f_n, f_n)):
+        
+        if filename != None:
+            fig = function(args,s,plt)
+            if filename == 'show':
+                plt.show()
+            else:
+                fig.savefig( open(filename, 'wb'), format='pdf')
+
     return 0
 
 if __name__ == "__main__":

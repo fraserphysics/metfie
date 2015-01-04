@@ -188,7 +188,12 @@ quadfirst = notes.Clone()
 quadfirst.Command(
     ('eric.pdf', 'eric.latex'),
     ('eric.py',),
-    'python eric.py --out eric.pdf --latex eric.latex'
+    'python eric.py --eric eric.pdf --latex eric.latex'
+    )
+quadfirst.Command(
+    ('f_n.pdf'),
+    ('eric.py',),
+    'python eric.py --f_n f_n.pdf'
     )
 quadfirst.PDF('quadfirst.tex')
 n_g = 2000
