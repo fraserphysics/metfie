@@ -39,7 +39,23 @@
   Derived via \emph{notes} from \emph{Propagating Uncertainty About
     Gas EOS to Performance Bounds for an Ideal Gun} LA-UR-12-22731.
   I describe simulations and calculations on an approximation to an
-  integral operator.
+  integral operator.\\
+  \textbf{To do:}
+  \begin{itemize}
+  \item Figure out if conjecture in Section~\ref{sec:speculation}
+    implies convergence, and make alternative plans if not
+  \item Rewrite Sections~\ref{sec:integral-equations} and~\ref{sec:approximate}
+    using notation developed in Section~\ref{sec:scaling} and
+    $\Delta_y=1$
+  \item Delete Section~\ref{sec:solve}
+  \item Try to extend the work in Section~\ref{sec:boundary} to yield
+    an analytic description of the eigenfunction along the right edge
+    of the boundary
+  \item Revise simulation code to assume $\Delta_y = 1$ and do
+    simulations to test/support the conjecture.
+  \item Refactor and submit for publication.
+  \end{itemize}
+
 \end{abstract}
 \section{Introduction}
   \label{sec:introduction}
@@ -427,10 +443,15 @@ Figure~\ref{fig:eric}.  There seem to be the following three regimes:
   maps points away from the right hand boundary.
 \end{description}
 I conjecture that for large $d$, the effect of the truncation at small
-$g$ decays as the flow moves through the intermediate $g$ regime and
-the eigenfunction away from the small $g$ region converges as
-$d\rightarrow \infty$.  I don't know if the conjecture implies
-convergence to a measure on functions as $\Delta_y \rightarrow 0$.
+$g$ decays as the flow moves through the intermediate $g$ regime and:
+\begin{itemize}
+\item The eigenfunctions away from the small $g$ region converges as
+  $d\rightarrow \infty$
+\item The eigenvalue converges as $d\rightarrow \infty$ (Necessary for
+  the eigenfunction convergence above.)
+\end{itemize}
+I don't know if the conjecture implies convergence to a measure on
+functions as $\Delta_y \rightarrow 0$.
 
 \section{Integral Equations}
 \label{sec:integral-equations}
