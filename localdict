@@ -1,4 +1,4 @@
-personal_ws-1.1 en 73 
+personal_ws-1.1 en 74 
 dynes
 vis
 sympy
@@ -24,14 +24,14 @@ Greeff
 eigenfunctions
 dt
 autocorrelation
-eq
 dv
+eq
 iff
 LAUR
 dx
 eigenvectors
-et
 dy
+et
 Higdon
 affine
 eigenvector
@@ -46,6 +46,7 @@ Maskaly's
 monotonicity
 integrand
 functionals
+rescaling
 Beate
 eigenfunction
 invariance

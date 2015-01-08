@@ -20,7 +20,7 @@
 \newcommand{\dhot}{=_{\text{dhot}}}
 \newcommand{\argmin}{\operatorname*{argmin}}
 \newcommand{\argmax}{\operatorname*{argmax}}
-\newcommand{\set}[1]{{\cal #1}}
+\newcommand{\set}[1]{\left\{ #1 \right\}}
 \newcommand\inner[2]{\left<#1,#2\right>}
 \newcommand\norm[1]{\left|#1\right|}
 \newcommand\bv{\mathbf{v}}
@@ -274,20 +274,23 @@ the alternative coordinates in which $\Delta_y=1$, ie,
   \tilde g(g) &= \frac{g}{\Delta_y^2} \\
   \tilde h(h) &= \frac{h}{\Delta_y},
 \end{align*}
-it is clear that the behavior near $\tilde g=d$ does not depend on
-$\Delta_y$, and that the ratio $d = \frac{u}{\Delta_y^2}$ is the
-number that characterizes the problem.  Without loss of generality, in
-this section, I assume $\Delta_y=1$ and let $d$ define the problem.
+the ratio $d = \frac{u}{\Delta_y^2}$ is the number that characterizes
+the problem and it is clear that the strucure of allowed sequential
+pairs near $\tilde g=d$ depends only on the difference $d-\tilde g$
+and not on $d$ itself.  Without loss of generality, in this section, I
+assume $\Delta_y=1$ and let $d$ define the problem.  I will use $h$
+and $g$ as variables rather than $\tilde h$ and $\tilde g$.
 
 The domain of the problem is the set of points
-\begin{equation*}
-  D = \left\{ z = (g,h) :
+\begin{equation}
+  \label{eq:domain}
+  D = \left\{ z = (h,g) :
     \begin{array}{l}
       -d \, \leq g \, \leq d \\
       h^2\, \leq \, 24(d-g)
     \end{array}
     \right\},
-\end{equation*}
+\end{equation}
 and the image of each point $z_0 \in D$ is a \emph{pie slice} $P(z_0)$
 defined by the intersection of a wedge and $D$.  In
 Figure~\ref{fig:eric}, I've labeled the points
@@ -346,46 +349,38 @@ same distance, namely 2.5.
   \label{fig:f_n}
 \end{figure}
 
+The following calculation proves that $F$ preserves distance to the
+boundary in the $g$ direction.  For a given $h$ the value of $g$ at
+the boundary is
+\begin{equation*}
+  B(h) = d - \frac{h^2}{24}.
+\end{equation*}
+Now
+\begin{equation*}
+  F(h,B(h)-c) = \left( h-12, d - \frac{h^2}{24} - 6 -c \right)
+\end{equation*}
+and since
+\begin{equation*}
+  B(h-12) = d - \frac{h^2}{24} - 6,
+\end{equation*}
+The distance to the boundary in the $g$ direction, namely $c$, is
+preserved.
+
+
 \subsection{Properties of Boundary Points}
 \label{sec:boundary}
 
-Here I will prove that if $z_0$ is on the boundary, then so is $z_1$,
-the apex of its image.  Points on the boundary satisfy
-\begin{equation}
-  \label{eq:boundary}
-  g = d - \frac{h^2}{24},
-\end{equation}
-and the apex of the image of $z_0 \equiv (h_0,g_0)$ is
-\begin{equation}
-  \label{eq:image}
-  z_1 = (h_0 -12, g_0 +h_0 -6).
-\end{equation}
-The proof follows
-\begin{align}
-  g_0 &= d - \frac{h_0^2}{24} & \text{ \eqref{eq:boundary}} \\
-  h_1 &= h_0 -12 & \text{ \eqref{eq:image}} \\
-  \frac{h_1^2}{24} &= \frac{h_0^2}{24} - h_0 +6 \\
-  g_1 &= g_0 + h_0 -6 \\
-  &= d - \frac{h_0^2}{24} + h_0 -6 \\
-  &= d - \frac{h_1^2}{24} 
-\end{align}
-
-For $z_0 = (12, d-6)$ the image is given by $z_1 = z_2 = z_3 = (0,d)$
-and the area of the image is zero.  Similarly the area of the image is
-zero for any $z_0 = (h, d - \frac{h^2}{24})$ if $h \geq 12$, and
-\begin{equation}
-  \label{eq:zip}
-  \rho(h, d - \frac{h^2}{24})~\forall h \geq 12.
-\end{equation}
-
-Now I assume that in a neighborhood of $z_d \equiv (0,d)$ the
-eigenfunction is so smooth that for any $z$ in a neighborhood of $z_0
-= (12,d-6)$ one can approximate
+Note that for $z_0 = (12,d-6)$,
 \begin{equation*}
-  \rho(z) = \frac{\rho(z_d)}{\lambda} a(z) \equiv \rho_0  a(z)
+  F(z_0) = (0,d) \equiv z_d.
 \end{equation*}
-where $a(z)$ is the area of the image of $z$.  In particular, for
-$z_a(\epsilon) \equiv (12-\epsilon, d-6)$
+I assume that in a neighborhood of $z_d$ the eigenfunction is so
+smooth that for any $z$ in a neighborhood of $z_0$ the approximation
+\begin{equation*}
+  \rho(z) = \frac{\rho(z_d)}{\lambda} a(z) \equiv \rho_0  a(z),
+\end{equation*}
+where $a(z)$ is the area of the image of $z$ is accurate to first
+order.  In particular, for $z_a(\epsilon) \equiv (12-\epsilon, d-6)$
 \begin{align*}
   z_{a1} &= (-\epsilon, d - 12 + (12-\epsilon)) \\
   &= (-\epsilon, d - \epsilon) \\
@@ -405,7 +400,7 @@ And on the boundary with
   z_c & \equiv \left(12 - \epsilon , d - 6 + \epsilon -
   \frac{\epsilon^2}{24} \right) \\
   z_{c1} &= \left( -\epsilon, d - \frac{\epsilon^2}{24} \right) \\
-  rho(z_c(\epsilon) & = \frac{\epsilon^3}{72} \rho_0.
+  \rho(z_c(\epsilon)) & = \frac{\epsilon^3}{72} \rho_0.
 \end{align*}
 Note that since along the boundary at $z_0 = (12, d-6)$
 \begin{equation*}
@@ -452,6 +447,158 @@ $g$ decays as the flow moves through the intermediate $g$ regime and:
 \end{itemize}
 I don't know if the conjecture implies convergence to a measure on
 functions as $\Delta_y \rightarrow 0$.
+
+\subsection{Consistency and Convergence}
+\label{sec:con_con}
+
+\subsubsection{Notation}
+\label{sec:scaling_notation}
+
+\newcommand{\allowed}{\alpha}
+\newcommand{\preimage}{\tau}
+\newcommand{\scale}{\psi}
+\newcommand{\stationary}{\mu}
+\newcommand{\pair}{\beta}
+\newcommand{\triple}{\gamma}
+\newcommand{\Skip}{\delta}
+\newcommand{\PFop}{\Phi}      %Peron Frobenius operator
+\newcommand{\lefunc}{\rho_L}
+\newcommand{\refunc}{\rho_R}
+\newcommand{\eval}{\lambda}
+\begin{description}
+\item[$z\in D$] A point in the domain defined in \eqref{eq:domain}
+\item[$\allowed$] Indicator function
+  \begin{equation*}
+    \allowed(z_a,z_b) =
+    \begin{cases}
+      1 & \text{if }z_b \mapsto z_a \text{ is allowed}\\
+      0 & \text{otherwise}.
+    \end{cases}
+  \end{equation*}
+\item[$\PFop$, $\eval$, $\refunc$] The Peron Frobenius operator, its
+  eigenvalue and its right eigenfunction defined by
+  \begin{equation*}
+    \PFop(\refunc)(z) = \int \refunc(z') \allowed(z',z) dz' = \eval \refunc(z).
+  \end{equation*}
+  I assume that the right and left eigenfunctions $\refunc$, $\lefunc$
+  are normalized so that the joint probability function defined in
+  \eqref{eq:pairdef} integrates to one.
+\item[$\pair$] The joint probability density function for sequential
+  pairs of points.  Theorem 8 of Shannon's 1948 paper says
+  \begin{equation}
+    \label{eq:pairdef}
+    \pair(z_a,z_b) = \lefunc(z_a) \allowed(z_a,z_b) \refunc(z_b)
+  \end{equation}
+\item[$\stationary$] The stationary probability density
+  \begin{equation*}
+    \stationary(z_a) = \int \pair(z_a,z) dz = \int \pair(z,z_a) dz.
+  \end{equation*}
+
+\item[$\triple$] The joint probability density function for sequential
+  triples of points
+\item[$\Skip$] The joint denisty of a pair separated by a skipped
+  value, ie,
+  \begin{equation*}
+    \Skip(z_a,z_b) \equiv \int \triple(z_a,z,z_b) dz.
+  \end{equation*}
+
+\item[$\preimage$] The pre-image function
+  \begin{equation*}
+    \preimage(z_a) \equiv \set{z_b: \allowed(z_a,z_b) = 1}
+  \end{equation*}
+\item[$\scale$] A rescaling obtained by dividing $\Delta_y$ in half, ie,
+  replacing $d$ with $4d$.
+\item[$z', \allowed',\cdots, \preimage'$] Corresponding objects for
+  rescaled problem, eg, if $z=(h,g)$ then
+  \begin{equation*}
+    z' = \scale(z) = (2h, 4g).
+  \end{equation*}
+  Note that $\allowed' = \allowed$ except that $\allowed'$ operates on
+  a larger domain.
+\end{description}
+
+\subsubsection{Consistiency}
+\label{sec:consistiency}
+
+In the limit as $\lim d \rightarrow \infty$
+\begin{equation}
+  \label{eq:consistent}
+  \pair(z_a,z_b) = \Skip'(z_a',z_b')
+\end{equation}
+
+First show that the allowed transitions in one step at the original
+scale are the same as the allowed transiitons in two steps at the
+finer primed scale, ie,
+\begin{equation}
+  \label{eq:composition}
+  \allowed(z_a,z_b) =
+  \begin{cases}
+    1 & \text{if } \exists z :\,\allowed'(z_a',z) \allowed'(z,z_b') \\
+    0 & \text{otherwise}
+  \end{cases}
+\end{equation}
+which is equivalent to
+\begin{equation*}
+  \scale \circ \preimage = \preimage'^2 \circ \scale
+\end{equation*}
+Then from
+\begin{align}
+  \triple(z_a, z, z_b) &= \frac{\pair(z_a,z_b)\pair(z_b,z_c)}{\int
+                         \pair(z,z_b) dz} \nonumber \\
+  \Skip(z_a, z_b) &= \int \frac{
+                    \refunc(z_a) \allowed(z_a,z)
+                    \lefunc(z) \refunc(z) \allowed(z,z_b) \lefunc(z_b)
+                    }
+                    { \int \lefunc(z) \allowed(z,z_b) \refunc(z_b) dz}
+                    d z \nonumber \\
+  &= \frac{1}{\eval} \int \lefunc(z_a) \allowed(z_a, z) \allowed(z,
+    z_b) \refunc(z)b) dz
+\end{align}
+conclude that combined with \eqref{eq:composition}
+\begin{equation}
+  \label{eq:sufficient}
+  \lefunc'(z') = \sqrt{\eval'} \lefunc(z)  
+\end{equation}
+is sufficient.
+
+\onecolumn
+\begin{landscape}
+\newcommand{\rrrad}[3]{\sqrt{#1\left(#2-#3\right)}}
+The following calculations demonstrate \eqref{eq:composition}:
+\begin{equation*}
+  \begin{matrix}
+  \text{name} & \text{resolution }\Delta_y &\text{resolution }
+  \frac{\Delta_y}{2} & \text{ name} & \text{showing}\\
+  \hline
+  z_0 & (h_0,g_0) & (2h_0, 4g_0) & z_0'=\scale(z_0)\\
+  z_1=F(z_0) & (h_0-12,g_0+h_0-6) & (2h_0- 24, 4g_0 + 4h_0 -24) & z_1'
+  = \scale(z_1)  \\
+  && (2h_0-12, 4g_0+2h_0-6)& z_a'=F(z_0') \\
+  && (2h_0 - 24, 4g_0 + 4h_0 -24) & F^2(z_0') & F^2 \circ \scale =
+  \scale \circ F \\
+  z_2 & (\rrrad{24}{d}{g_0} -12,g_0+\rrrad{24}{d}{g_0} -6)
+  & (\rrrad{96}{d}{g_0} -24, 4g_0+\rrrad{192}{d}{g_0} -24) & z_2' =
+  \scale(z_2) \\
+  && (\rrrad{24}{4d}{4g_0} - 12, 4g_0 + \rrrad{24}{4d}{4g_0} - 6) &
+  z_{a2}' \\
+  && (\rrrad{96}{d}{g_0} - 24, 4g_0 + 2\rrrad{96}{d}{g_0} - 24 &
+  F(z_{a2}') \\
+  \scale^{-1}(F(z_{a2}')) & (\rrrad{24}{d}{g_0}
+  -12,g_0+\rrrad{24}{d}{g_0} -6) &&&  \scale^{-1}(F(z_{a2}')) = \scale(z_2)
+\end{matrix}
+\end{equation*}
+To do: Get sympy code in eric.py to calculate this and use results to make
+an illustrative plot.  Perhaps include brief results from sympy here
+rather than table above.
+\end{landscape}
+
+\twocolumn
+
+\subsubsection{Convergence}
+\label{sec:convergence}
+
+In addition to \eqref{eq:consistent} the stationary distribution must
+converge to a limit.
 
 \section{Integral Equations}
 \label{sec:integral-equations}
