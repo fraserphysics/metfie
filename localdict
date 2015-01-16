@@ -1,4 +1,4 @@
-personal_ws-1.1 en 74 
+personal_ws-1.1 en 76 
 dynes
 vis
 sympy
@@ -14,6 +14,7 @@ tangency
 Perron
 RMS
 Hixson
+rescaled
 ODEs
 noninteger
 polytope
@@ -24,14 +25,14 @@ Greeff
 eigenfunctions
 dt
 autocorrelation
-dv
 eq
+dv
 iff
 LAUR
 dx
 eigenvectors
-dy
 et
+dy
 Higdon
 affine
 eigenvector
@@ -52,6 +53,7 @@ eigenfunction
 invariance
 logarithmically
 Buescher
+tuple
 Los
 wrt
 quantization
