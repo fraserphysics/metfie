@@ -30,7 +30,11 @@
 \newcommand\Ddum{d\dum}
 \newcommand\lambdaPF{\lambda_{\rm{PF}}} % Peron Frobenius eigenvalue
 \newcommand\rhoPF{\rho_{\rm{PF}}} % Peron Frobenius eigenvector
+
+\newtheorem{conj}{Conjecture}
+
 \input{eric.latex} % newcommands from sympy calculations
+
 \title{Quadratic Approximation to First Order Integral Operator}
 
 \author{Andrew M.\ Fraser}
@@ -366,11 +370,12 @@ probability from Shannon.%
 \newcommand{\ptuple}[1]{\gamma_{#1}}%
 \newcommand{\Skip}[1]{\delta_{#1}}%
 \newcommand{\PFop}{\Phi} %Peron Frobenius operator
+\newcommand{\pfop}{\phi} %Continuum limit
 \newcommand{\lefunc}{\rho_L}%
 \newcommand{\refunc}{\rho_R}%
 \newcommand{\eval}{\lambda}
-\newcommand{\supn}{^{[n]}}
-\newcommand{\suptwo}{^{[2]}}
+\newcommand{\suparg}[1]{^{[#1]}}
+\newcommand{\supn}{\suparg{n}}
 \begin{description}
 \item[$z\in D$] A point in the domain defined in \eqref{eq:domain}
 \item[$\tuple{n}{m}$] A sequence $(z_n, z_{n+1}, \ldots, z_m)$
@@ -420,9 +425,9 @@ probability from Shannon.%
 \item[$\Skip{n}$] The joint density of pairs separated by $n$ skipped
   values, ie,
   \begin{align}
-    \label{eq:skip}
     \Skip{n}(z_a,z_b) &= \frac{\lefunc(z_a) \refunc(z_b)}{\eval^n}
                         \times \nonumber \\
+    \label{eq:skip}
                       & \int \allowed(z_a,z_1) \prod_{i=1}^{n-1}
                         \allowed(z_i,z_{i+1}) \allowed(z_n,z_b) d
                         \tuple{1}{n}.
@@ -449,16 +454,64 @@ probability from Shannon.%
   $\allowed\supn$ operates on a larger domain.
 \end{description}
 
-\section{Limits}
+\subsection{Conjecture}
+\label{sec:conjecture}
+
+From \eqref{eq:skip} it seems that I need some kind of convergence of
+$\PFop^n$.  I will define the required convergence in this section and
+make a formal conjecture that it exists.
+
+Let $\PFop\suparg{n,m}$ denote the map from functions on $D$ to
+functions on $D$ that operates on $u$ to yield $v$ as follows
+\begin{enumerate}
+\item Map $u$ to higher resolution ($\Delta_y \rightarrow
+\frac{\Delta_y}{n}$ or equivalently $d \rightarrow n^2 d$) with
+$u' = \scale{n}(u)$
+\item Apply the one step operator $\PFop$ appropriate for that scale
+  $m$ times to yield $v' = \PFop^m(u')$
+\item Map back to lower resolution with $v = \scale{\frac{1}{n}}(v')$
+\end{enumerate}
+
+Roughly, I want to define $\pfop(r)$ to be the continuum limit for
+$y_2 - y_1 =r$ with
+\begin{equation}
+  \label{eq:phir}
+  \pfop(r) = \lim_{n \rightarrow \infty} \PFop\suparg{n,rn}.
+\end{equation}
+
+In my description of $\PFop\suparg{n,m}$, I neglected to constrain the
+properties of $u$.  Since the functions with the form $f(z) =
+\allowed(z_0,z)$ are sufficient, I simply define
+\begin{equation}
+  \label{eq:def}
+  u_{n,m}(z_0,z) \equiv C \left[ \PFop\suparg{n,m} \left( \allowed\supn
+      \left( (z_0), \cdot \right) \right) \right](z),
+\end{equation}
+where $C$ is defined to ensure that
+\begin{equation*}
+  \int_D u_{n,m}(z_0,z) dz = 1.
+\end{equation*}
+For a particular $z_0$ the value of $u_{n,m}(z_0,\cdot)$ at $z$ is
+proportional to the number of paths from $z_0$ to $z$.  As $m$ and $n$
+get larger with a fixed ratio, the I hope that $u_{n,m}(z_0,\cdot)$
+converges.  The following conjecture is sufficient:
+\begin{conj}
+  \label{conj}
+  \begin{align*}
+    & \forall \epsilon > 0,~ \exists n_0 \text{ such that } \\
+    & \forall z_0 \in D ~\&~ \forall n > n_0 ~\&~ \forall m \geq n ~\&~
+              \forall z \in D\\
+    & \left| u_{n,n}(z_0,z) - u_{m,m}(z_0,z) \right| < \epsilon.
+  \end{align*}
+\end{conj}
+
+\section{Probabilities}
 \label{sec:limist}
 
 I want to describe the probability of functions of a real variable in
-terms of a stationary stochastic process.  I hope to define the
-process as the limit of processes with finite $\Delta_y$ as
-$\Delta_y \rightarrow 0$.  Rather than calculate in terms of
-$\Delta_y$, I use the rescaled coordinates, \eqref{eq:rescale}, in
-which the only parameter is $d$.  In such coordinates, I consider the
-limit $d \rightarrow \infty$.
+terms of the stationary stochastic process corresponding to
+\eqref{eq:phir}.  In this section I describe some key marginal
+probability distributions of that process.
 
 \subsection{Convergence of $\stationary$}
 \label{sec:convergence}
@@ -476,16 +529,24 @@ invariant under $\scale{}$ if and only if, for all $z$:
   \frac{\stationary\supn(z\supn)}{\stationary\supn(z\supn_d)} \nonumber\\
 %
   \frac{\lefunc(z)\refunc(z)}{\lefunc(z_d)\refunc(z_d)} &=
-  \frac{\lefunc\supn(z\supn)\refunc\supn(z\supn)}{\lefunc\supn(z_d\supn)\refunc\supn(z_d\supn)}
+  \frac{\lefunc\supn(z\supn)\refunc\supn(z\supn)}
+       {\lefunc\supn(z_d\supn)\refunc\supn(z_d\supn)}
   \nonumber \\ 
-  \label{eq:h_any}
-  \frac{\lefunc(z)\refunc(z)}{\lefunc\supn(z)\refunc\supn(z\supn)} &= C.
+  \label{eq:h_balance}
+  \frac{\lefunc(z)\refunc(z)}
+       {\lefunc\supn(z\supn)\refunc\supn(z\supn)} &= C.
 \end{align}
-Since $\lefunc((h,g)) = \refunc((-h,g))$, \eqref{eq:h_any} implies
+Since $\lefunc((h,g)) = \refunc((-h,g))$, it is necessary that
 \begin{equation}
   \label{eq:h_zero}
-  \frac{\lefunc((0,g))}{\lefunc\supn((0,g\supn))} = \sqrt{C} ~\forall g.
+  \frac{\lefunc((0,g))}{\lefunc\supn((0,g\supn))} = \sqrt{C} ~\forall g
 \end{equation}
+hold for \eqref{eq:h_balance} to be true, and
+\begin{equation}
+  \label{eq:h_any}
+  \frac{\lefunc(z)}{\lefunc\supn(z\supn)} = \sqrt{C} ~\forall z  
+\end{equation}
+is merely sufficient.
 
 \subsection{Convergence of $\Skip{}$}
 \label{sec:convergence_joint}
@@ -499,13 +560,13 @@ $y$, the probability function for joint events\footnote{Strictly, I
   P(z(y_1)=z_a, z(y_2)=z_b) = f_{y_2-y_1}(z_a,z_b).
 \end{equation}
 If $y_2-y_1 = m\Delta_y$, one may approximate the function $f$ in
-\eqref{eq:fdy} by $\Skip{m}(z_a,z_b)$.  After a rescaling $\scale{n}$
-the appropriate approximation is $\Skip{nm}\supn(z_a\supn,z_b\supn)$.
-I want to prove or find numerical evidence that the limit exists
-in\footnote{Defining
+\eqref{eq:fdy} by $\Skip{m}(z_a,z_b)$.  After a rescaling,
+$\scale{n}$, the appropriate approximation is
+$\Skip{nm}\supn(z_a\supn,z_b\supn)$.  I want to prove or find
+numerical evidence that the limit exists in\footnote{Defining
   \begin{equation*}
-    T(z_a,z_b) \equiv \int \allowed\suptwo(z_a\suptwo, z)
-    \allowed\suptwo (z, z_b\suptwo) dz
+    T(z_a,z_b) \equiv \int \allowed\suparg{2}(z_a\suparg{2}, z)
+    \allowed\suparg{2} (z, z_b\suparg{2}) dz
   \end{equation*}
   which is the area of the triangle of possible intermediate states
   between $z_a$ and $z_b$ under $\scale{2}$.  One can show that
@@ -514,7 +575,7 @@ in\footnote{Defining
   \end{equation*}
   And from that, one finds that
   \begin{equation*}
-  \pair(z_a,z_b) = \Skip{1}\suptwo(z_a\suptwo,z_b\suptwo)
+  \pair(z_a,z_b) = \Skip{1}\suparg{2}(z_a\suparg{2},z_b\suparg{2})
   \end{equation*}
   only holds where $T(z_a,z_b)$ is zero or one.}
 \begin{equation}
