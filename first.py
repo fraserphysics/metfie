@@ -1,16 +1,17 @@
-"""first.py: Code for eigenfunctions of integral operators for first
-order Markov process with 2-d states.  A state is an ordered pair
-(g,h).  g is the position and h is the derivative.  An allowed
+"""first.py: Python3 code for eigenfunctions of integral operators for
+first order Markov process with 2-d states.  A state is an ordered
+pair (g,h).  g is the position and h is the derivative.  An allowed
 sequential pair of states ((g_0,h_0),(g_1,h_1)) satisfies:
 
-\sqrt{24(u-g_0)} \geq \frac{\Delta_g}{\Delta_y} + 6\Delta_y \geq h_0
+\sqrt{24(d-g_0)} \geq \Delta_g + 6 \geq h_0
 
-\sqrt{24(u-g_1)} \geq h_1 \geq \frac{\Delta_g}{\Delta_y} - 6\Delta_y
+\sqrt{24(d-g_1)} \geq h_1 \geq \Delta_g - 6
 
 The first pair of inequalities constrains g_1 via g_1 - g_0 = \Delta_g,
 and the second pair of inequalities constrains h_1.  See equations
 UL_g and UL_h in notes.tex for the more complicated bounds that hold
-when (u-g_0) \leq 36 \Delta_y^2.
+when (d-g_0) \leq 36.
+
 """
 import numpy as np
 import numpy.linalg as LA
@@ -19,16 +20,14 @@ class LO(scipy.sparse.linalg.LinearOperator):
     ''' Custom version of LinearOperator that implements A*x for the
     adjacency matrix definied by the parameters:
 
-    u   The upper bound for g (-u is the lower bound).  0.01 is a
-        typical value.
-    dy  The step between y_n and y_{n+1}.  0.001 is typical
+    d   The scale u/(dy^2)
     n_g The number of quantization steps for g
     n_h The number of quantization steps for h
 
     Note: Cython code for this class in first_c.pyx
     
-    >>> u = .0001; dy = .002; n_g = 20; n_h = 40
-    >>> A = LO( u, dy, n_g, n_h)
+    >>> d = 25; n_g = 20; n_h = 40
+    >>> A = LO( d, n_g, n_h)
     >>> print('n_states=%d'%(A.n_states,))
     n_states=530
     >>> n_max = 6; step = 0.5; _min = -1.0; _max = 1.0
@@ -47,9 +46,9 @@ class LO(scipy.sparse.linalg.LinearOperator):
     def h_lim(self, g):
         '''Calculates the maximum possible slope h at position g.
         '''
-        d_g = self.g_max - g
+        d_g = self.d - g
         if d_g < 0:
-            assert (-d_g)/self.g_max < 1e-10
+            assert (-d_g)/self.d < 1e-10
             return 0.0
         return np.sqrt(24*(d_g))
     def ab(self, # LO instance
@@ -76,23 +75,24 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''
         g_0, h_0, G_0, H_0 = self.state_list[i]
         # Calculate float range of allowed g values
-        if g_0 > self.g_max - 6*self.dy**2:
-            U_g = self.g_max
+        if g_0 > self.d - 6:
+            U_g = self.d
         else:
-            U_g = min(self.g_max, g_0 + self.dy*self.h_lim(g_0) - 6*self.dy**2)
-        L_g = max(self.g_min,g_0 + h_0*self.dy - 6*self.dy**2)
+            U_g = min(self.d, g_0 + self.h_lim(g_0) - 6)
+        L_g = max(-self.d, g_0 + h_0 - 6)
         assert L_g <= U_g
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
-        # Calculate image in G
-        G_i = max(0, int(np.floor( (L_g-self.g_min)/self.g_step )))
-        G_f = min(self.n_g, 1+int(np.floor( (U_g-self.g_min)/self.g_step )))
+        # Calculate range of G in image
+        G_i = max(0, int(np.floor( (L_g+self.d)/self.g_step )))
+        G_f = min(self.n_g, 1+int(np.floor( (U_g+self.d)/self.g_step )))
+        
         for G_1 in range(G_i, G_f):
-            g_1 = self.g_min + G_1*self.g_step # Float g of image
+            g_1 = -self.d + G_1*self.g_step # Float g of image
             U_h = self.h_lim(g_1)
-            L_h = max( (g_1 - g_0)/self.dy - 6 * self.dy, -U_h)
+            L_h = max( (g_1 - g_0) - 6 , -U_h)
             # Given g_1, h is in [L_h,U_h)
             a,b = self.ab(L_h, U_h, G_1)
             if b > a:
@@ -113,8 +113,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.G2state = []   # G2state[G] is the corresponding pair of states
         dh = self.h_step    # Abbreviation
         for G in range(self.n_g):
-            g = self.g_min + G*self.g_step
-            assert self.g_max > g and g >= self.g_min
+            g = -self.d + G*self.g_step
+            assert self.d > g and g >= -self.d
             h_max = self.h_lim(g)
             H_lim = int(np.floor(h_max/dh) + 1)
             if (H_lim-1)*dh >= h_max or -H_lim*dh < dh-h_max:
@@ -129,6 +129,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
                                          dtype=np.int32))
         self.n_states = len(self.state_list)
         self.G2h_list = np.array(G2h_list, dtype=np.int32)
+        self.G2state = np.array(self.G2state, dtype=np.int32)
         return
     def pairs(self):
         '''Calculate allowed sequential pairs of states'''
@@ -142,28 +143,30 @@ class LO(scipy.sparse.linalg.LinearOperator):
             self.n_pairs += self.s_bounds(i) # Most build time here
         return
     def __init__(self,              # LO instance
-                 u,                 # Upper bound
-                 dy,                # Change in y
+                 d,                 # Scale = u/(dy^2)
                  n_g,               # Number of steps in position g
                  n_h,               # Number of steps in slope h
                  skip_pairs=False   # Call self.pairs if False
                  ):
         assert n_h%2 == 0
         self.dtype = np.dtype(np.float64)
-        self.dy = dy
+        self.d = d
         self.n_g = n_g
-        self.g_max = u
-        self.g_min = -u
-        self.g_step = 2*u/n_g
-        self.h_max = self.h_lim(-u)
+        self.g_step = 2*d/n_g
+        self.h_max = self.h_lim(-d)
         self.h_step = 2*self.h_max/n_h
         self.h_min = -self.h_max
         self.n_h = n_h
-        if self.h_step > 2*dy:
-            print('WARNING: h_step=%f, dy=%f'%(self.h_step, dy))
         self.allowed()
         if not skip_pairs: self.pairs()
         return
+    def conj(self,i):
+        ''' Conjugate: Get index for state with -h
+        '''
+        g,h,G,H1 = self.state_list[i]
+        H = -(H1+1)
+        assert (G,H) in self.state_dict
+        return self.state_dict[(G,H)]
     def symmetry(self, v, w=None):
         ''' Interchange h and -h.  Put result in w if passed, otherwise
         allocate new array for return value.
@@ -171,11 +174,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         if w == None:
             w = np.empty(self.n_states)
         for i in range(self.n_states):
-            g,h,G,H1 = self.state_list[i]
-            H = -(H1+1)
-            assert (G,H) in self.state_dict
-            j = self.state_dict[(G,H)]
-            w[j] = v[i]
+            w[i] = v[self.conj(i)]
         return w
     def calc_marginal(self):
         ''' Derive self.marginal from self.eigenvector.
@@ -193,7 +192,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             m_g = self.n_g
         if m_h == None:
             m_h = self.n_h
-        return (np.linspace(self.g_min, self.g_max, m_g, endpoint=False),
+        return (np.linspace(-self.d, self.d, m_g, endpoint=False),
                 np.linspace(self.h_min, self.h_max, m_h, endpoint=False))
     def vec2z(self,      # LO instance
                 v,       # vector  len(v.reshape(-1)) = self.n_states
@@ -224,7 +223,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             '''
             g_ = G[i_h,i_g]
             h_ = H[i_h,i_g]
-            if g_ > self.g_max or g_ < self.g_min:
+            if g_ > self.d or g_ < -self.d:
                 return True
             h_lim = self.h_lim(g_)
             if h_ > h_lim or h_ < - h_lim:
@@ -249,20 +248,26 @@ class LO(scipy.sparse.linalg.LinearOperator):
         for i in range(self.n_states):
             x = v[i]
             for j in range(len(self.bounds_a[i])):
+                # j is index for a line of constant g
                 a = self.bounds_a[i][j]
                 b = self.bounds_b[i][j]
-                rv[a:b] += x*dgdh
+                rv[a:b] += x*dgdh # a:b corresponds to a range of h values
         return rv
     def rmatvec(self, v, rv=None):
-        ''' Apply transpose of linear operator, self, to v and return.
-        Use matvec and symmetry to implement.  Use array rv if passed,
-        otherwise allocate rv.
+        '''Use array rv if passed, otherwise allocate rv.
+
         '''
         if rv == None:
-            rv = np.empty(self.n_states)
-        self.symmetry(v, rv)              # S(v) -> rv
-        temp = self.matvec(rv)            # L(rv) -> temp
-        rv = self.symmetry(temp, rv)      # S(temp) -> rv
+            rv = np.zeros(self.n_states)
+        else:
+            rv[:] = 0.0
+        dgdh = self.g_step*self.h_step
+        for i in range(self.n_states): # assign to rv[i]
+            for i_g in range(len(self.bounds_a[i])):
+                # i_g is index for a line of constant g
+                a = self.bounds_a[i][i_g]
+                b = self.bounds_b[i][i_g]
+                rv[i] += v[a:b].sum()*dgdh # a:b is for a range of h values
         return rv
     def __mul__(self,x):
         x = np.asarray(x)
@@ -277,7 +282,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''Calculate self.eigevalue and self.eigenvector for the
         largest eigenvalue of op.
         '''
-        if op == None: op = self.matvec
+        if op == None: op = self.rmatvec
         if v != None:
             v_old = v
         else:
@@ -411,8 +416,8 @@ def read_LO_step(filename, dirname='archive'):
     '''
     import pickle, os.path
     archive = pickle.load(open(os.path.join(dirname,filename),'rb'))
-    g_max, dy, g_step, h_step = archive['args']
-    A = LO_step(g_max, dy, g_step, h_step, skip_pairs=True)
+    d, g_step, h_step = archive['args']
+    A = LO_step(d, g_step, h_step, skip_pairs=True)
     A.set_eigenvector(np.fromfile(archive['vec_filename']),exact=True)
     return A
 class LO_step(LO):
@@ -420,25 +425,21 @@ class LO_step(LO):
     as arguments to __init__
     '''
     def __init__(self,              # LO_step instance
-                 u,                 # Upper bound
-                 dy,                # Change in y
+                 d,                 # Scale = u/(dy^2)
                  g_step,            # Size of steps in position g
                  h_step,            # Size of steps in slope h
                  skip_pairs=False   # Call self.pairs if False
                  ):
-        if h_step > 2*dy:
-            print('WARNING: h_step=%f, dy=%f'%(h_step, dy))
         self.dtype = np.dtype(np.float64)
-        self.dy = dy
-        self.g_max = u
-        self.g_min = -u
-        self.h_max = self.h_lim(self.g_min)
+        self.d = d
+        self.h_max = self.h_lim(-d)
         self.h_min = -self.h_max
         self.n_h = 2 * int(self.h_max/h_step) # Ensure that self.n_h is even
         self.h_step = 2*self.h_max/self.n_h
-        self.n_g = int(2*self.g_max/g_step + .5)
-        # + .5 makes marginal rough.  Resonance?
-        self.g_step = 2*u/self.n_g
+        self.n_g = int(2*self.d/g_step)
+        self.g_step = 2*d/self.n_g
+        #assert self.h_step == h_step
+        #assert self.g_step == g_step
 
         self.allowed()
         if not skip_pairs: self.pairs()
@@ -452,8 +453,7 @@ class LO_step(LO):
             prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
         self.eigenvector.tofile(vec_file)
         dict_ = {
-            'args':(float(self.g_max), float(self.dy), float(self.g_step),
-                     float(self.h_step)),
+            'args':(float(self.d), float(self.g_step), float(self.h_step)),
             'vec_filename':vec_file.name}
         dict_.update(more)
         pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )

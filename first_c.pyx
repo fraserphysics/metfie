@@ -102,11 +102,11 @@ class LO_step(LO_step):
                 a = bounds_a_i[k]
                 b = bounds_b_i[k]
                 for j in range(a,b):
-                    temp += v_[j] * dgdh
-            rv_[i] +=  temp
+                    temp += v_[j]
+            rv_[i] +=  temp * dgdh
         return rv
     def rebound(self):
-        '''Make numpy arrays for speed in matvec
+        '''Make numpy arrays for speed in rmatvec
         '''
         cdef int i, m, n = self.n_states
         cdef PTYPE_t [:] a_pointers = np.empty(n, dtype=np.int64)
@@ -136,11 +136,9 @@ class LO_step(LO_step):
         '''
         import numpy.linalg as LA
         assert op == None
-        mem = np.empty((2,self.n_states)) # Double buffer, no allocate in loop
+        mem = np.ones((2,self.n_states)) # Double buffer, no allocate in loop
         if v != None:
             mem[1,:] = v
-        else:
-            mem[1,:] = 1.0
         def step(s_old, # Last estimate of eigenvalue
                  v_old, # Last estimate of eigenvector.  Assume norm(v) = 1
                  v_new  # Storage for new eigenvector estimate
@@ -198,8 +196,7 @@ class LO_step(LO_step):
             self.pointerize_G2()
         cdef PTYPE_t [:] G2state = self.G2state_
         cdef ITYPE_t [:] G2h_list = self.G2h_list
-        cdef double g_max = self.g_max
-        cdef double dy = self.dy
+        cdef double g_max = self.d
         cdef double g_0, h_0, g_1, L_h, U_h, U_g, L_g
         cdef int G_0, G_1
 
@@ -208,16 +205,16 @@ class LO_step(LO_step):
         
         g_0, h_0, G_0, H_0 = self.state_list[state_n]
         # Calculate float range of allowed g values
-        if g_0 > g_max - 6*dy**2:
+        if g_0 > g_max - 6:
             U_g = g_max
         else:
             U_g = min(g_max,
-                g_0 + dy*self.h_lim(g_0) - 6*dy**2)
-        L_g = max(self.g_min,g_0 + h_0*dy - 6*dy**2)
+                g_0 + self.h_lim(g_0) - 6)
+        L_g = max(-self.d,g_0 + h_0 - 6)
         assert L_g <= U_g
         # Calculate image in G
-        G_i_ = max(0, int(np.floor( (L_g-self.g_min)/self.g_step )))
-        G_f_ = min(self.n_g, 1+int(np.floor( (U_g-self.g_min)/self.g_step )))
+        G_i_ = max(0, int(np.floor( (L_g+self.d)/self.g_step )))
+        G_f_ = min(self.n_g, 1+int(np.floor( (U_g+self.d)/self.g_step )))
         # Prepare for loop over g values in image.  Have no python
         # objects in the loop.
         cdef int n_pairs = 0
@@ -227,14 +224,14 @@ class LO_step(LO_step):
         cdef double h_i, h_f, Dh
         cdef int G_i = G_i_
         cdef int G_f = min(G_f_+1,self.n_g) # +1 cause f(G_0) <= g_0 < f(G_0+1)
-        cdef double g_step=self.g_step, g_min=self.g_min, h_step=self.h_step
+        cdef double g_step=self.g_step, g_min=-self.d, h_step=self.h_step
         cdef ITYPE_t *I_pointer
         cdef DTYPE_t *D_pointer
         # This loop compiles as pure c
         for G_1 in range(G_i, G_f):
             g_1 = g_min + G_1 * g_step
             U_h = (24*(g_max - g_1))**.5
-            L_h = max( (g_1 - g_0)/dy - 6 * dy, -U_h)
+            L_h = max( g_1 - g_0 - 6, -U_h)
             # Float h of image given g is [L_h,U_h)
 
             # Begin code segment that is self.ab() in first.py
