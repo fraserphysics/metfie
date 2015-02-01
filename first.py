@@ -16,124 +16,204 @@ when (d-g_0) \leq 36.
 import numpy as np
 import numpy.linalg as LA
 import scipy.sparse.linalg
-class LO(scipy.sparse.linalg.LinearOperator):
-    ''' Custom version of LinearOperator that implements A*x for the
+
+class LO_step(scipy.sparse.linalg.LinearOperator):
+    '''Custom version of LinearOperator that implements A*x for the
     adjacency matrix definied by the parameters:
 
-    d   The scale u/(dy^2)
-    n_g The number of quantization steps for g
-    n_h The number of quantization steps for h
+    d   The scale, that is u/(dy^2)
 
-    Note: Cython code for this class in first_c.pyx
-    
-    >>> d = 25; n_g = 20; n_h = 40
-    >>> A = LO( d, n_g, n_h)
-    >>> print('n_states=%d'%(A.n_states,))
-    n_states=530
-    >>> n_max = 6; step = 0.5; _min = -1.0; _max = 1.0
-
-    These tests of symmetry are vacuous for the way I do rmatvec().
-    >>> val,v = A.power(small=1e-6)
-    >>> u = A.symmetry(v)
-    >>> w = A.symmetry(u)
-    >>> print('norm(v)=%8.6f norm(v-S^2(v))=%8.6f'%(LA.norm(v), LA.norm(v-w)))
-    norm(v)=1.000000 norm(v-S^2(v))=0.000000
-    >>> wal, w = A.power(small=1e-6, op=A.rmatvec)
-    >>> print('delta val=%8.6f delta vec=%8.6f'%(abs(val-wal), LA.norm(u-w)))
-    delta val=0.000000 delta vec=0.000000
+    Note: Cython code for this class in first_c.pyx uses:
+    self.n_states, self.n_pairs self.G2state, self.G2h_list, self.d,
+    self.state_list, self.h_lim() self.g2G(), self.n_g, self.origin_g,
+    self.g_step, self.h_step, self.bounds_a, self.bounds_b
 
     '''
+    def h2H(self, h):
+        ''' Return integer index H for float coordinate h
+        '''
+        H = int(np.floor(h - self.origin_h)/self.h_step)
+        assert H >= 0
+        assert H < self.n_h
+        return H
+    def g2G(self, g):
+        ''' Return integer index G for float coordinate g
+        '''
+        G = min(self.n_g-1, int(np.floor(g - self.origin_g)/self.g_step))
+        assert G >= 0
+        assert G < self.n_g, 'g={0:f} d={1:f} G={2:d} n_g={3:d}'.format(
+            g, self.d, G, self.n_g)
+        return G
     def h_lim(self, g):
-        '''Calculates the maximum possible slope h at position g.
+        '''Calculates the maximum possible slope, h, at position g.  Boundary
+        equation is g(h) = d -h^2/24.
+
         '''
         d_g = self.d - g
         if d_g < 0:
             assert (-d_g)/self.d < 1e-10
             return 0.0
         return np.sqrt(24*(d_g))
-    def ab(self, # LO instance
-           low,  # Lower limit of h range
-           high, # Upper limit of h range
-           G     # Index of g, ie column number
+    def ab(self,        # LO instance
+           h_edge,      # Lower limit of h range
+           g_min,       # Lowest g in image
+           g_intercept, # g value on slope 1 line where it crosses h=0
+           G,           # Index of row
            ):
-        '''Return range of allowed state indices for given G.  Any H whose
-        image in h overlaps [low,high] should be included.
-
+        '''Return range of allowed state indices for given h interval and G.
+        Including any integer H whose image in h overlaps [low,high]
+        will include any H whose (H,G) cell intersects the domain.
         '''
-        s_i, s_f = self.G2state[G]  # Index of first and last+1 states for G
-        H_lim = self.G2h_list[G]    # Corresponding limit on H
-        assert s_f > s_i
-        H_low = H_lim + int(np.floor(low/self.h_step))
-        H_high = H_lim + int(np.floor(high/self.h_step)) + 1
-        return max( s_i, s_i + H_low),min( s_f, s_i + H_high)
+        if G == 0:
+            g_ = -self.d
+        else:
+            g_ = self.origin_g + G*self.g_step
+        g = max(g_,g_min)
+        high = self.h_lim(g)                           # Top of h range
+        low = max(-high, max(h_edge, (g-g_intercept))) # Bottom of h range
+        
+        s_i, s_f = self.G2state[G]  # Index of first and last+1 states in domain for G
+        H_lim = self.G2h_list[G]    # Number of steps from 0 to edge
+        assert s_f - s_i == H_lim*2
+        # Calculate integer steps from left edge
+        Low = int(np.floor(low/self.h_step)) + H_lim
+        High = int(np.ceil(high/self.h_step)) + H_lim
+
+        # Return clipped offsets from s_i
+        return max(s_i, s_i + Low), min(s_f, s_i + High)
+
+    def boundary_image(self, h_1, g_1, g_1_top):
+        '''Calculations for images when the upper left corner is outside of
+        the quadratic boundary
+        '''
+        _in_ = lambda x : x[1]<self.d-x[0]**2/24 # Is (h,g) inside boundary parabola?
+        def solve(a, b, corners):
+            '''Return intersection of boundary and line between a and b
+            '''
+            a,b = [corners[x] for x in (a,b)]
+            from scipy.optimize import brentq
+            def f(s):
+                '''Difference between g=c[1] and boundary at h=c[0]'''
+                c = s*a + (1-s)*b
+                return c[1] - (self.d - c[0]**2/24)
+            s = brentq(f, 0,1)
+            rv = s*a + (1-s)*b
+            return rv
+        
+        # Search over cell corners and intersections of boundary with cell edges
+        h_edge = self.h_lim(-self.d)   # Right extreme
+        g_min = self.d                 # Top extreme
+        g_intercept = -self.d - h_edge # Low extreme
+        points = []
+        corners = [np.array(x, dtype=np.float64) for x in [
+                (h_1,g_1),
+                (h_1+self.h_step, g_1+self.h_step),
+                (h_1+self.h_step, g_1_top+self.h_step),
+                (h_1,g_1_top)]]
+        edges = [(i-1,i) for i in range(4)]
+        for corner in corners:
+            if _in_(corner):
+                points.append(corner)
+        for a,b in edges:
+            if int(_in_(corners[a])) + int(_in_(corners[b])) == 1:
+                points.append(solve(a,b,corners))
+        assert len(points) >= 3
+        for h,g in points:
+            if h < h_edge:
+                h_edge = h
+            if g-h > g_intercept:
+                g_intercept = g-h
+            if g < g_min:
+                g_min = g
+        return h_edge, g_min, g_intercept
     def s_bounds(
             self,          # LO instance
             i,             # index of state in self.state_list
             ):
         '''Find legal successors of state i and save representations
         of them in the self.*bounds* arrays.
+
+        Notes:
+
+        * cell[i] is a rectangle with sides h_step and g_step
+        * state[i] is the intersection of cell[i] with the domain
+        * A((h,g)) = (h-12, g+h-6) is an affine function that maps
+            rectangles to parallelograms and maps a point z_0 in the
+            domain to z_1 the apex of it's pie slice image.
+        * The parabolic boundary is invariant under A
         '''
-        g_0, h_0, G_0, H_0 = self.state_list[i]
-        # Calculate float range of allowed g values
-        if g_0 > self.d - 6:
-            U_g = self.d
+        
+        H,G = self.state_list[i] # Indices of lower left corner of cell[i]
+        h_0 = H*self.h_step      # Float coordinate of left side of cell[i]
+        g_0 = self.origin_g + G*self.g_step # Bottom of cell[i]
+        g_0_top = g_0 + self.g_step
+        # g_0_top is the top of cell.  Grid is laid out so that
+        # state[i] goes all the way to g_0_top for some value of h.
+        if G == 0:
+            g_0 = -self.d # Cell[i] may extend below -d
+        h_1 = h_0 - 12
+        g_1, g_1_top = (g+h_0-6 for g in (g_0, g_0_top))
+        # (h_1,g_1) and (h_1,g_1_top) are the images under A of the
+        # left side of cell[i] (perhaps with g_0 truncated to -d)
+
+        if g_1_top < self.d - h_1*h_1/24: # Inside quadratic boundary
+            h_edge = h_1
+            g_min = g_1
+            g_intercept = g_1_top - h_1
         else:
-            U_g = min(self.d, g_0 + self.h_lim(g_0) - 6)
-        L_g = max(-self.d, g_0 + h_0 - 6)
-        assert L_g <= U_g
+            h_edge, g_min, g_intercept = self.boundary_image(h_1, g_1, g_1_top)
+                        
+        # Allocate arrays for result that are at least big enough
         bounds_a = np.zeros(self.n_g, dtype=np.int32)
         bounds_b = np.zeros(self.n_g, dtype=np.int32)
         len_bounds = 0
         n_pairs = 0
-        # Calculate range of G in image
-        G_i = max(0, int(np.floor( (L_g+self.d)/self.g_step )))
-        G_f = min(self.n_g, 1+int(np.floor( (U_g+self.d)/self.g_step )))
-        
-        for G_1 in range(G_i, G_f):
-            g_1 = -self.d + G_1*self.g_step # Float g of image
-            U_h = self.h_lim(g_1)
-            L_h = max( (g_1 - g_0) - 6 , -U_h)
-            # Given g_1, h is in [L_h,U_h)
-            a,b = self.ab(L_h, U_h, G_1)
-            if b > a:
-                bounds_a[len_bounds] = a
-                bounds_b[len_bounds] = b
-                len_bounds += 1
-                n_pairs += b - a
+
+        G_i = self.g2G(max(-self.d,g_min)) # Lowest G index in image
+        for G_ in range(G_i, self.n_g):
+            a,b = self.ab(h_edge, g_min, g_intercept, G_)
+            if a >= b:
+                break # End of pie slice
+            bounds_a[len_bounds] = a
+            bounds_b[len_bounds] = b
+            len_bounds += 1
+            n_pairs += b - a
+        # Trim unused parts of arrays
         self.bounds_a[i] = np.array(bounds_a[:len_bounds])
         self.bounds_b[i] = np.array(bounds_b[:len_bounds])
         assert n_pairs > 0
         return n_pairs
+    
     def allowed(self):
-        '''Calculate the allowed states.
+        '''Calculate the allowed states and other properties.
         '''
-        self.state_list = []# state_list[i] = (g,h,G,H)
-        self.state_dict = {}# state_dict[(G,H)] = index of state_list
-        G2h_list = []       # G2h_list[G] = number of h_steps from zero to edge
-        self.G2state = []   # G2state[G] is the corresponding pair of states
-        dh = self.h_step    # Abbreviation
+        # The folowing 4 objects are attached to self in this method
+        state_list = []      # state_list[i] = (H,G)
+        self.state_dict = {} # state_dict[(H,G)] = index of state_list
+        G2h_list = []        # G2h_list[G] = number of h_steps from zero to edge
+        G2state = []         # G2state[G] = (min_state, max_state+1)
+
         for G in range(self.n_g):
-            g = -self.d + G*self.g_step
-            assert self.d > g and g >= -self.d
-            h_max = self.h_lim(g)
-            H_lim = int(np.floor(h_max/dh) + 1)
-            if (H_lim-1)*dh >= h_max or -H_lim*dh < dh-h_max:
-                H_lim -= 1
-            s_i = len(self.state_list) # First allowed state for this g
-            for H in range(-H_lim, H_lim):
-                h = H*dh
-                self.state_dict[(G,H)] = len(self.state_list)
-                self.state_list.append((g,h,G,H))
+            if G == 0:
+                g = -self.d
+            else:
+                g = G*self.g_step + self.origin_g
+            # H_lim = number of different values of h2H(h): 0 < h < h_lim(g)
+            H_lim = int(np.ceil(self.h_lim(g)/self.h_step))
             G2h_list.append(H_lim)
-            self.G2state.append(np.array((s_i, len(self.state_list)),
-                                         dtype=np.int32))
-        self.n_states = len(self.state_list)
+            s_i = len(state_list) #index of first allowed state for this g
+            for H in range(-H_lim, H_lim):
+                self.state_dict[(H,G)] = len(state_list)
+                state_list.append((H,G))
+            G2state.append(np.array((s_i,len(state_list)),dtype=np.int32))
+        self.n_states = len(state_list)
+        self.state_list = np.array(state_list, dtype=np.int32)
         self.G2h_list = np.array(G2h_list, dtype=np.int32)
-        self.G2state = np.array(self.G2state, dtype=np.int32)
+        self.G2state = np.array(G2state, dtype=np.int32)
         return
     def pairs(self):
         '''Calculate allowed sequential pairs of states'''
-        n_states = self.n_states
+        n_states = len(self.state_list)
         self.shape = (n_states, n_states)
         self.n_pairs = 0
         self.bounds_a = np.empty((n_states), np.object)
@@ -142,31 +222,57 @@ class LO(scipy.sparse.linalg.LinearOperator):
             # Put bounds in self.bounds_a and self.bounds_b
             self.n_pairs += self.s_bounds(i) # Most build time here
         return
-    def __init__(self,              # LO instance
+    def __init__(self,              # LO_step instance
                  d,                 # Scale = u/(dy^2)
-                 n_g,               # Number of steps in position g
-                 n_h,               # Number of steps in slope h
+                 g_step,            # Size of steps in position g
+                 h_step,            # Size of steps in slope h
                  skip_pairs=False   # Call self.pairs if False
                  ):
-        assert n_h%2 == 0
         self.dtype = np.dtype(np.float64)
         self.d = d
-        self.n_g = n_g
-        self.g_step = 2*d/n_g
-        self.h_max = self.h_lim(-d)
-        self.h_step = 2*self.h_max/n_h
-        self.h_min = -self.h_max
-        self.n_h = n_h
+        self.g_step = g_step
+        self.h_step = h_step
+        h_max = self.h_lim(-d)
+
+        # Make h=0 align with quantization boundary
+        n = int(np.floor(h_max/h_step))
+        if n*h_step < h_max:
+            n += 1
+        self.origin_h = -n*h_step
+        self.n_h = 2*n
+        
+        # Make g=d align with quantization boundary
+        n = int(np.floor(d*2.0/g_step))
+        if n*g_step < 2*d:
+            n += 1
+        self.origin_g = d-n*g_step
+        self.n_g = n
+
         self.allowed()
-        if not skip_pairs: self.pairs()
+        if not skip_pairs:
+            self.pairs()
+        return
+    def archive(self, filename, more={}, dirname='archive'):
+        import tempfile
+        import pickle
+        import os.path
+
+        vec_file = tempfile.NamedTemporaryFile(
+            prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
+        self.eigenvector.tofile(vec_file)
+        dict_ = {
+            'args':(float(self.d), float(self.g_step), float(self.h_step)),
+            'vec_filename':vec_file.name}
+        dict_.update(more)
+        pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )
         return
     def conj(self,i):
         ''' Conjugate: Get index for state with -h
         '''
-        g,h,G,H1 = self.state_list[i]
+        H1, G = self.state_list[i]
         H = -(H1+1)
-        assert (G,H) in self.state_dict
-        return self.state_dict[(G,H)]
+        assert (H,G) in self.state_dict
+        return self.state_dict[(H,G)]
     def symmetry(self, v, w=None):
         ''' Interchange h and -h.  Put result in w if passed, otherwise
         allocate new array for return value.
@@ -192,10 +298,11 @@ class LO(scipy.sparse.linalg.LinearOperator):
             m_g = self.n_g
         if m_h == None:
             m_h = self.n_h
+        h_max = self.h_lim(-self.d)
         return (np.linspace(-self.d, self.d, m_g, endpoint=False),
-                np.linspace(self.h_min, self.h_max, m_h, endpoint=False))
+                np.linspace(-h_max, h_max, m_h, endpoint=False))
     def vec2z(self,      # LO instance
-                v,       # vector  len(v.reshape(-1)) = self.n_states
+                v,       # vector with component for each state
                 g=None,  # 1-d array of g values at sample points
                 h=None,  # 1-d array of h values at sample points
                 floor=0
@@ -209,15 +316,15 @@ class LO(scipy.sparse.linalg.LinearOperator):
             # This case simply returns v + floor at legal (G,H) pairs
             # and floor elsewhere.
             assert h == None
-            rv = np.zeros((self.n_g, self.n_h)) + floor
+            rv = np.zeros((self.n_h, self.n_g)) + floor
             for i in range(self.n_states):
-                g,h,G,H = self.state_list[i]
-                rv[G,H+self.n_h/2] = max(v[i],floor)
+                H,G = self.state_list[i]
+                rv[H+self.n_h/2,G] = max(v[i],floor)
             return rv
         self.spline(v)
-        G, H = np.meshgrid(g, h)
+        H,G = np.meshgrid(g, h)
         assert G.shape == ( len(h), len(g) )
-        rv = np.fmax(self.bs.ev(G.reshape(-1), H.reshape(-1)), floor)
+        rv = np.fmax(self.bs.ev(H.reshape(-1)), G.reshape(-1), floor)
         def _test(i_h,i_g):
             '''Return True if out of bounds, False otherwise.
             '''
@@ -235,7 +342,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             for i_g in range(I_g):
                 if _test(i_h,i_g):
                     rv[i_h,i_g] = floor
-        return rv.T #,G,H
+        return rv.T
     def matvec(self, v, rv=None):
         ''' Apply linear operator, self, to v and return.  Use array
         rv if passed, otherwise allocate rv.
@@ -246,12 +353,12 @@ class LO(scipy.sparse.linalg.LinearOperator):
             rv[:] = 0.0
         dgdh = self.g_step*self.h_step
         for i in range(self.n_states):
-            x = v[i]
-            for j in range(len(self.bounds_a[i])):
-                # j is index for a line of constant g
-                a = self.bounds_a[i][j]
-                b = self.bounds_b[i][j]
-                rv[a:b] += x*dgdh # a:b corresponds to a range of h values
+            x = v[i]*dgdh
+            for i_g in range(len(self.bounds_a[i])):
+                # i_g is index for a line of constant g
+                a = self.bounds_a[i][i_g]
+                b = self.bounds_b[i][i_g]
+                rv[a:b] += x # a:b are states that correspond to a range of h values
         return rv
     def rmatvec(self, v, rv=None):
         '''Use array rv if passed, otherwise allocate rv.
@@ -262,12 +369,13 @@ class LO(scipy.sparse.linalg.LinearOperator):
         else:
             rv[:] = 0.0
         dgdh = self.g_step*self.h_step
-        for i in range(self.n_states): # assign to rv[i]
+        for i in range(self.n_states): # add to rv[i]
             for i_g in range(len(self.bounds_a[i])):
                 # i_g is index for a line of constant g
                 a = self.bounds_a[i][i_g]
                 b = self.bounds_b[i][i_g]
-                rv[i] += v[a:b].sum()*dgdh # a:b is for a range of h values
+                # a:b are states that correspond to a range of h values
+                rv[i] += v[a:b].sum()*dgdh
         return rv
     def __mul__(self,x):
         x = np.asarray(x)
@@ -321,6 +429,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             assert len(v) == self.n_states
         x = np.empty((3,self.n_states))
         for i in range(self.n_states):
+            raise RuntimeError #FixMe: Use new state_list format'
             x[0,i],x[1,i] = self.state_list[i][:2] # x[0] = g, x[1] = h
             x[2,i] = v[i]
         return x
@@ -336,8 +445,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         
         '''Create arrays g, h, and z for RectBivariateSpline.  g and h
         are 1-d arrays of floats with integer indices G and H.  For
-        legal pairs, (G,H), self.state_dict maps to i(G,H) an index
-        of v.  So, z[G,H] <- v[i(G,H)] for legal pairs (G,H).  For
+        legal pairs, (H,G), self.state_dict maps to i(H,G) an index
+        of v.  So, z[H,G] <- v[i(H,G)] for legal pairs (H,G).  For
         illegal pairs, the code uses linear extrapolation.  The
         extrapolation makes the splines smoother in the legal region
         than they would be if the illegal region were set to zero.
@@ -351,23 +460,23 @@ class LO(scipy.sparse.linalg.LinearOperator):
             for H in range(H_0):
                 # Block for 0 <= h = H*h_step, H_0 <= H_i < 2*H_0
                 H_i = H_0 + H  # Index
-                if (G,H) in self.state_dict:
-                    i = self.state_dict[(G,H)]
-                    z[G,H_i] = v[i]
-                    dzdh = last_z - z[G,H_i]
-                    last_z = z[G,H_i]
+                if (H,G) in self.state_dict:
+                    i = self.state_dict[(H,G)]
+                    z[H_i,G] = v[i]
+                    dzdh = last_z - z[H_i,G]
+                    last_z = z[H_i,G]
                 else:
-                    z[G,H_i] = last_z - dzdh
+                    z[H_i,G] = last_z - dzdh
                 # Block for 0 > h = -(H+1)*h_step, 0 <= H_i < H_0
                 H_ = -(H+1)
                 H_i = H_0 + H_
                 if (G,H_) in self.state_dict:
-                    i = self.state_dict[(G,H_)]
-                    z[G,H_i] = v[i]
-                    dzdh_ = last_z_ - z[G,H_i]
-                    last_z_ = z[G,H_i]
+                    i = self.state_dict[(H_,G)]
+                    z[H_i,G] = v[i]
+                    dzdh_ = last_z_ - z[H_i,G]
+                    last_z_ = z[H_i,G]
                 else:
-                    z[G,H_i] = last_z_ - dzdh_
+                    z[H_i,G] = last_z_ - dzdh_
         from scipy.interpolate import RectBivariateSpline
         self.bs = RectBivariateSpline(g, h, z, kx=3, ky=3)
         return
@@ -386,6 +495,7 @@ class LO(scipy.sparse.linalg.LinearOperator):
             return
         x = np.empty((2,self.n_states))
         for i in range(self.n_states):
+            raise RuntimeError#,'FixMe: Use new state_list format'
             x[0,i],x[1,i] = self.state_list[i][:2] # x[0] = g, x[1] = h
         A.spline()
         self.eigenvector = A.bs.ev(x[0],x[1])
@@ -420,44 +530,6 @@ def read_LO_step(filename, dirname='archive'):
     A = LO_step(d, g_step, h_step, skip_pairs=True)
     A.set_eigenvector(np.fromfile(archive['vec_filename']),exact=True)
     return A
-class LO_step(LO):
-    '''Variant of LO that uses g_step and h_step rather than n_h and n_g
-    as arguments to __init__
-    '''
-    def __init__(self,              # LO_step instance
-                 d,                 # Scale = u/(dy^2)
-                 g_step,            # Size of steps in position g
-                 h_step,            # Size of steps in slope h
-                 skip_pairs=False   # Call self.pairs if False
-                 ):
-        self.dtype = np.dtype(np.float64)
-        self.d = d
-        self.h_max = self.h_lim(-d)
-        self.h_min = -self.h_max
-        self.n_h = 2 * int(self.h_max/h_step) # Ensure that self.n_h is even
-        self.h_step = 2*self.h_max/self.n_h
-        self.n_g = int(2*self.d/g_step)
-        self.g_step = 2*d/self.n_g
-        #assert self.h_step == h_step
-        #assert self.g_step == g_step
-
-        self.allowed()
-        if not skip_pairs: self.pairs()
-        return
-    def archive(self, filename, more={}, dirname='archive'):
-        import tempfile
-        import pickle
-        import os.path
-
-        vec_file = tempfile.NamedTemporaryFile(
-            prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
-        self.eigenvector.tofile(vec_file)
-        dict_ = {
-            'args':(float(self.d), float(self.g_step), float(self.h_step)),
-            'vec_filename':vec_file.name}
-        dict_.update(more)
-        pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )
-        return
 def sym_diff(A, B):
         '''
         Calculate difference between eigenvectors of LO instances A and B.

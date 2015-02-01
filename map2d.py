@@ -22,11 +22,11 @@ def main(argv=None):
         help='element size')
     parser.add_argument(
         '--points', type=float, nargs='*', default=(
-                -0.98, 0.9,
-                 -0.4, -0.8,
+                -0.9, 0.98,
+                 -0.8, -0.4,
                     0, 0,
-                   .5, 0.9,
-                0.995, 0.0),
+                   .9, 0.5,
+                   0.0, 0.995),
                         help='Plot these points and their images')
     parser.add_argument('--backward', action='store_true',
         help='Use transpose of operator')
@@ -59,17 +59,17 @@ def main(argv=None):
     A = LO_step( args.d, args.d_h, args.d_g)
     v = np.zeros(A.n_states)
     i_sources = []         # For tagging sources in plot
-    for g_,h_ in f_sources:
+    for h_,g_ in f_sources:
         g = A.d * g_
         h_max = np.sqrt(24*(A.d-g))
         h = h_max * h_
         G = int(np.floor((g+A.d)/A.g_step + .5))
         H = int(np.floor(h/A.h_step + .5))
-        if not (G,H) in A.state_dict:
+        if not (H,G) in A.state_dict:
             print('skipping ({0}, {1})'.format(G,H))
             continue
-        i_sources.append((G, H+A.n_h/2))
-        k = A.state_dict[(G,H)]  # get index of state vector
+        i_sources.append((H+A.n_h/2,G))
+        k = A.state_dict[(H,G)]  # get index of state vector
         v[k] = 1                 # Set component for (g, h) to 1.0
     if args.backward:
         image = A.rmatvec(v)
@@ -89,20 +89,20 @@ def main(argv=None):
         m = u.max()
         w = u*z + m*z
         return w
-    fig = plt.figure(figsize=(10,5))
+    fig = plt.figure(figsize=(8,10))
     fig.suptitle(suptitle)
     h_max = np.sqrt(24*(2*A.d))
     ax = fig.add_subplot(1,1,1)
     data = two_d(image)
-    for G,H in i_sources:
-        t = data[G,H]
-        data[G-1:G+2,H-2:H+3] = 0 # Make big markers for source points
-        data[G,H] = t
+    for H,H in i_sources:
+        t = data[H,G]
+        data[H-2:H+3,G-1:G+2] = 0 # Make big markers for source points
+        data[H,G] = t
     ax.imshow(
         data.T[-1::-1,:], interpolation="nearest",
         extent=[-A.d,A.d,-h_max,h_max], aspect='auto')
-    ax.set_xlabel('$g$')
-    ax.set_ylabel('$h$')
+    ax.set_ylabel('$g$')
+    ax.set_xlabel('$h$')
     if args.out == None:
         plt.show()
     else:
