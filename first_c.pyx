@@ -168,20 +168,6 @@ class LO_step(first.LO_step):
         self.eigenvector = v_new
         return s,v_new
     
-    def pointerize_G2(self):
-        '''Get array of pointers to np.arrays in self.G2state.  In the main
-        loop in s_bounds, those pointers are accessed as c objects for
-        speed.
-
-        '''
-        cdef int i, n = len(self.G2state)
-        cdef PTYPE_t [:] G2state = np.empty(n, dtype=np.int64)
-        cdef ITYPE_t [:] i_view
-        for i in range(n):
-            i_view = self.G2state[i]
-            G2state[i] = <PTYPE_t>(&(i_view[0]))
-        self.G2state_ = G2state
-
     @cython.boundscheck(False)
     @cython.wraparound(False)
     @cython.cdivision(True)
@@ -193,22 +179,15 @@ class LO_step(first.LO_step):
         find sequences of state indices for allowed successors and append
         them to bounds.  This is where LO_step build spends most time.
         '''
-        if not 'G2state_' in self.__dict__:
-            self.pointerize_G2()
-        cdef PTYPE_t [:] G2state = self.G2state_
-        cdef ITYPE_t [:] G2h_list = self.G2h_list
+        cdef ITYPE_t [:] G2state = self.G2state
         cdef double d = self.d, h_step =  self.h_step, g_step = self.g_step
         cdef double origin_g = self.origin_g
         cdef int G_, n_g = self.n_g
 
         H,G = self.state_list[i_] # Indices of lower left corner of cell[i]
-        h_0 = H*h_step      # Float coordinate of left side of cell[i]
-        g_0 = origin_g + G*g_step # Bottom of cell[i]
-        g_0_top = g_0 + g_step
-        # g_0_top is the top of cell.  Grid is laid out so that
-        # state[i] goes all the way to g_0_top for some value of h.
-        if G == 0:
-            g_0 = -d # Cell[i] may extend below -d
+        h_0 = self.H2h(H)        # Float coordinate of left side of cell[i]
+        g_0 = self.G2g(G)        # Bottom of cell[i]
+        g_0_top = self.G2g(G+1)
         h_1 = h_0 - 12
         g_1, g_1_top = (g+h_0-6 for g in (g_0, g_0_top))
         # (h_1,g_1) and (h_1,g_1_top) are the images under A of the
@@ -248,10 +227,9 @@ class LO_step(first.LO_step):
                 low = h_edge
             if low < -high:
                 low = -high # max(-high, max(h_edge, (g-g_intercept)))
-            I_pointer = <ITYPE_t *>(G2state[G_])
-            s_i = I_pointer[0]
-            s_f = I_pointer[1]
-            H_lim = G2h_list[G_]
+            s_i = G2state[G_]
+            s_f = G2state[G_+1]
+            H_lim = (s_f-s_i)/2
             a = s_i + H_lim + <ITYPE_t>(floor(low/h_step))
             b = s_i + H_lim + <ITYPE_t>(ceil(high/h_step))
             if s_i > a:

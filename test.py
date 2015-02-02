@@ -85,15 +85,6 @@ def check_simple(A,B):
         assert a == b, \
             '{1}=A.{0} != B.{0}={2}'.format(name, a, b)
 
-def check_G2_arrays(A,B):
-    '''Assert G2state and G2h_list match for A and B
-    '''
-    import numpy.testing as npt
-    for name in 'G2state G2h_list'.split():
-        a,b = (getattr(x,name) for x in (A,B))
-        npt.assert_allclose(a,b,
-            err_msg='{0:s} fails to match'.format(name))
-
 def check_bounds(A,B):
     '''Assert bounds_a and bounds_b match for A and B
     '''
@@ -136,7 +127,6 @@ def test_first_c():
     B = first_c.LO_step(A.d, A.g_step, A.h_step)
     
     check_state_list(A,B)
-    check_G2_arrays(A,B)
     check_bounds(A,B)
     check_simple(A,B)
     check_images(A,B)

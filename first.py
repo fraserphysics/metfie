@@ -24,9 +24,9 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
     d   The scale, that is u/(dy^2)
 
     Note: Cython code for this class in first_c.pyx uses:
-    self.n_states, self.n_pairs self.G2state, self.G2h_list, self.d,
-    self.state_list, self.h_lim() self.g2G(), self.n_g, self.origin_g,
-    self.g_step, self.h_step, self.bounds_a, self.bounds_b
+    self.n_states, self.n_pairs self.G2state, self.d, self.state_list,
+    self.h_lim() self.g2G(), self.n_g, self.origin_g, self.g_step,
+    self.h_step, self.bounds_a, self.bounds_b
 
     '''
     def h2H(self, h):
@@ -39,11 +39,23 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
     def g2G(self, g):
         ''' Return integer index G for float coordinate g
         '''
-        G = min(self.n_g-1, int(np.floor(g - self.origin_g)/self.g_step))
+        G = min(self.n_g-1, np.floor(g - self.origin_g)/self.g_step)
         assert G >= 0
         assert G < self.n_g, 'g={0:f} d={1:f} G={2:d} n_g={3:d}'.format(
             g, self.d, G, self.n_g)
-        return G
+        return int(G)
+    def H2h(self, H):
+        '''Return float position corresponding to integer index H
+
+        '''
+        return self.origin_h + H*self.h_step
+    def G2g(self, G):
+        '''Return float position corresponding to integer index G
+
+        '''
+        if G == 0:
+            return -self.d
+        return self.origin_g + G*self.g_step
     def h_lim(self, g):
         '''Calculates the maximum possible slope, h, at position g.  Boundary
         equation is g(h) = d -h^2/24.
@@ -54,7 +66,7 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             assert (-d_g)/self.d < 1e-10
             return 0.0
         return np.sqrt(24*(d_g))
-    def ab(self,        # LO instance
+    def ab(self,        # LO_step instance
            h_edge,      # Lower limit of h range
            g_min,       # Lowest g in image
            g_intercept, # g value on slope 1 line where it crosses h=0
@@ -64,29 +76,32 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         Including any integer H whose image in h overlaps [low,high]
         will include any H whose (H,G) cell intersects the domain.
         '''
-        if G == 0:
-            g_ = -self.d
-        else:
-            g_ = self.origin_g + G*self.g_step
-        g = max(g_,g_min)
-        high = self.h_lim(g)                           # Top of h range
-        low = max(-high, max(h_edge, (g-g_intercept))) # Bottom of h range
+        g = max(g_min, self.G2g(G))# Float g of this row
+        s_i, s_f = self.G2state[G:G+2] # Range of states in domain for this row
+        H_lim = (s_f-s_i)/2        # Number of steps from h=0 to quad boundary
+        high = self.h_lim(g)       # Top of h range
+        low = max(-high, h_edge, (g-g_intercept)) # Bottom of h range
         
-        s_i, s_f = self.G2state[G]  # Index of first and last+1 states in domain for G
-        H_lim = self.G2h_list[G]    # Number of steps from 0 to edge
-        assert s_f - s_i == H_lim*2
-        # Calculate integer steps from left edge
-        Low = int(np.floor(low/self.h_step)) + H_lim
+        # Low is integer steps from center (h=0) to beginning of image
+        # states.  Would be (-H_lim,H_lim) if low = (high,-high)
+        # respectively.
+        Low = int(np.floor(low/self.h_step))
+        Low += H_lim # Now Low is integer steps from left quadratic boundary
         High = int(np.ceil(high/self.h_step)) + H_lim
 
         # Return clipped offsets from s_i
         return max(s_i, s_i + Low), min(s_f, s_i + High)
 
-    def boundary_image(self, h_1, g_1, g_1_top):
+    def boundary_image(
+            self,   # LO_step instance     
+            h_1,    # z_1=(h_1,g_1) is apex of pie slice for image of
+            g_1,    # lower left corner z_0
+            g_1_top # Apex for image of upper left z_0
+    ):
         '''Calculations for images when the upper left corner is outside of
         the quadratic boundary
         '''
-        _in_ = lambda x : x[1]<self.d-x[0]**2/24 # Is (h,g) inside boundary parabola?
+        _in_ = lambda x : x[1]<self.d-x[0]**2/24 # Inside boundary parabola?
         def solve(a, b, corners):
             '''Return intersection of boundary and line between a and b
             '''
@@ -101,9 +116,9 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             return rv
         
         # Search over cell corners and intersections of boundary with cell edges
-        h_edge = self.h_lim(-self.d)   # Right extreme
-        g_min = self.d                 # Top extreme
-        g_intercept = -self.d - h_edge # Low extreme
+        h_edge = self.h_lim(-self.d)   # Seed search for left boundary
+        g_min = self.d                 # Seed search for bottom
+        g_intercept = -self.d - h_edge # Seed search for slope 1 boundary
         points = []
         corners = [np.array(x, dtype=np.float64) for x in [
                 (h_1,g_1),
@@ -144,13 +159,9 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         '''
         
         H,G = self.state_list[i] # Indices of lower left corner of cell[i]
-        h_0 = H*self.h_step      # Float coordinate of left side of cell[i]
-        g_0 = self.origin_g + G*self.g_step # Bottom of cell[i]
-        g_0_top = g_0 + self.g_step
-        # g_0_top is the top of cell.  Grid is laid out so that
-        # state[i] goes all the way to g_0_top for some value of h.
-        if G == 0:
-            g_0 = -self.d # Cell[i] may extend below -d
+        h_0 = self.H2h(H)        # Float coordinate of left side of cell[i]
+        g_0 = self.G2g(G)        # Bottom of cell[i]
+        g_0_top = self.G2g(G+1)
         h_1 = h_0 - 12
         g_1, g_1_top = (g+h_0-6 for g in (g_0, g_0_top))
         # (h_1,g_1) and (h_1,g_1_top) are the images under A of the
@@ -190,26 +201,20 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         # The folowing 4 objects are attached to self in this method
         state_list = []      # state_list[i] = (H,G)
         self.state_dict = {} # state_dict[(H,G)] = index of state_list
-        G2h_list = []        # G2h_list[G] = number of h_steps from zero to edge
-        G2state = []         # G2state[G] = (min_state, max_state+1)
+        self.G2state = np.zeros(self.n_g+1, dtype=np.int32)
 
         for G in range(self.n_g):
-            if G == 0:
-                g = -self.d
-            else:
-                g = G*self.g_step + self.origin_g
+            g = self.G2g(G)
             # H_lim = number of different values of h2H(h): 0 < h < h_lim(g)
             H_lim = int(np.ceil(self.h_lim(g)/self.h_step))
-            G2h_list.append(H_lim)
             s_i = len(state_list) #index of first allowed state for this g
-            for H in range(-H_lim, H_lim):
+            for H_ in range(-H_lim, H_lim):
+                H = H_ + self.n_h/2
                 self.state_dict[(H,G)] = len(state_list)
                 state_list.append((H,G))
-            G2state.append(np.array((s_i,len(state_list)),dtype=np.int32))
+            self.G2state[G+1] = len(state_list)
         self.n_states = len(state_list)
         self.state_list = np.array(state_list, dtype=np.int32)
-        self.G2h_list = np.array(G2h_list, dtype=np.int32)
-        self.G2state = np.array(G2state, dtype=np.int32)
         return
     def pairs(self):
         '''Calculate allowed sequential pairs of states'''
@@ -224,8 +229,8 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         return
     def __init__(self,              # LO_step instance
                  d,                 # Scale = u/(dy^2)
-                 g_step,            # Size of steps in position g
                  h_step,            # Size of steps in slope h
+                 g_step,            # Size of steps in position g
                  skip_pairs=False   # Call self.pairs if False
                  ):
         self.dtype = np.dtype(np.float64)
@@ -269,10 +274,10 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
     def conj(self,i):
         ''' Conjugate: Get index for state with -h
         '''
-        H1, G = self.state_list[i]
-        H = -(H1+1)
-        assert (H,G) in self.state_dict
-        return self.state_dict[(H,G)]
+        H, G = self.state_list[i]
+        H_c = self.n_h - H -1
+        assert (H_c,G) in self.state_dict
+        return self.state_dict[(H_c,G)]
     def symmetry(self, v, w=None):
         ''' Interchange h and -h.  Put result in w if passed, otherwise
         allocate new array for return value.
@@ -319,7 +324,7 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             rv = np.zeros((self.n_h, self.n_g)) + floor
             for i in range(self.n_states):
                 H,G = self.state_list[i]
-                rv[H+self.n_h/2,G] = max(v[i],floor)
+                rv[H,G] = max(v[i],floor)
             return rv
         self.spline(v)
         H,G = np.meshgrid(g, h)
