@@ -77,8 +77,8 @@ class GUN:
 
         '''
         # N points and N-1 intervals equal spacing on log scale
-        log_x = np.linspace(np.log(self.xi/stretch),np.log(self.xf*stretch),N)
-        self.x = np.exp(log_x)
+        self.x = np.logspace(
+            np.log(self.xi/stretch), np.log(self.xf*stretch), N, base=np.e)
         self.set_eos(self.x, self.C/self.x**3)
         c = self.eos.get_c()
         c_sq = c*c
@@ -395,11 +395,10 @@ def main():
     plot_data = {'initial':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
     
     # Select samples in x for perturbation
-    log_x = np.linspace(
+    x = np.logspace(
         np.log(gun.xi/magic.stretch),
         np.log(gun.xf*magic.stretch),
-        magic.n_x_pert)
-    x = np.exp(log_x)
+        magic.n_x_pert, base=np.e)
     
     # Create perturbed gun
     f = gun.eos(x)
