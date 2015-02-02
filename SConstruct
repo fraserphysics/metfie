@@ -129,8 +129,9 @@ notes.Command(
     ('explore.py', 'first_c.cpython-33m.so'),
     'python3 explore.py --dy 5e-5 --n_g 400 --n_h 400 --eigenfunction eigenfunction.pdf --Av Av.pdf'
     )
-u = 48.0
-dy = 0.3
+d = 500
+d_g = 1
+d_h = 1
 points_ = (
           -0.9 , 0.25,
            -0.4, -0.8,
@@ -141,23 +142,25 @@ points = (len(points_)*'%.3f ')%points_
 notes.Command(
     ('Av1.pdf'),
     ('map2d.py', 'first_c.cpython-33m.so'),
-    'python3 map2d.py --u %f --dy %f --out Av1.pdf --points %s'%(
-        u, dy, points)
+    'python3 map2d.py --d %f --d_g %f --d_h %f --out Av1.pdf --points %s'%(
+        d, d_g, d_h, points)
     )
-m,b = 1/dy, u/dy - 6*dy
+
 notes.Command(
     ('Av2.pdf'),
     ('map2d.py', 'first_c.cpython-33m.so'),
-    'python3 map2d.py --u %f --dy %f --out Av2.pdf --backward --line %f %f --points %s'%(u, dy, m,b,points)
+    'python3 map2d.py --d %f --d_g %f --d_h %f --out Av2.pdf --backward --points %s'%(
+        d, d_g, d_h, points)
     )
-dy = .05
-m,b = 1/dy, u/dy - 6*dy
+
 points_ = points_[2:] + (-.92, 0.99, -.995, 0.99)
 points = (len(points_)*'%.3f ')%points_
+d = 2000
 notes.Command(
     ('Av3.pdf'),
     ('map2d.py', 'first_c.cpython-33m.so'),
-    'python3 map2d.py --u %f --dy %f --out Av3.pdf --backward --line %f %f --points %s'%(u, dy, m,b,points)
+    'python3 map2d.py --d %f --d_g %f --d_h %f --out Av3.pdf --backward --points %s'%(
+        d, d_g, d_h, points)
     )
 
 n_g = 800

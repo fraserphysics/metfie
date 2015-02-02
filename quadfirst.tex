@@ -47,16 +47,11 @@
   integral operator.\\
   \textbf{To do:}
   \begin{itemize}
-  \item Figure out if the conjecture in Section~\ref{sec:speculation}
-    implies convergence, and make alternative plans if not
-  \item Try to extend the work in Section~\ref{sec:boundary} to yield
-    an analytic description of the eigenfunction along the right edge
-    of the boundary
-  \item Revise simulation code to assume $\Delta_y = 1$ and do
-    simulations to test/support the conjecture.
+  \item Revise simulation code to assume $\Delta_y = 1$, and
+    numerically check Conjecture~\ref{conj}
+  \item Make alternative plans if conjecture not true
   \item Refactor and submit for publication.
   \end{itemize}
-
 \end{abstract}
 \section{Introduction}
   \label{sec:introduction}
@@ -292,7 +287,15 @@ $D$.  In Figure~\ref{fig:eric}, I've labeled the points\footnote{I
 where $z_1$ is the wedge apex and $z_2$/$z_3$ is the intersection of
 the upper/lower edge of the wedge with the boundary
 respectively\footnote{Note that since the diagonal edge of each wedge
-  goes through $(-6,g_0)$, $z_2$ depends on $g_0$ but not $h_0$.}.
+  goes through $(-6,g_0)$, $z_2$ depends on $g_0$ but not $h_0$.}.  In
+summary, $z_1$ is an allowed successor of $z_0$ if both
+\begin{subequations}
+  \label{eq:symallowed}
+  \begin{align}
+    g_0 + h_0 -6 &\leq g_1 \leq g_0 + \sqrt{24(d-g_0)} - 6 \\
+    g_1 - g_0 &\leq h_1 \leq \sqrt{24(d-g_1)}
+  \end{align}
+\end{subequations}
 
 In Figure~\ref{fig:eric}, I use the ellipses that are the level sets
 \begin{equation}
@@ -356,8 +359,8 @@ and since
 The distance to the boundary in the $g$ direction, namely $c$, is
 preserved.
 
-\section{Eigenfunctions and Measures}
-\label{sec:eigenfunctions}
+\section{The Volume of Allowed Paths}
+\label{sec:volume}
 
 Here, I define some notation and quote an expression for joint
 probability from Shannon.%
@@ -379,34 +382,42 @@ probability from Shannon.%
 \begin{description}
 \item[$z\in D$] A point in the domain defined in \eqref{eq:domain}
 \item[$\tuple{n}{m}$] A sequence $(z_n, z_{n+1}, \ldots, z_m)$
-\item[$\allowed$] Indicator function\marginpar{allowed}
+\item[$\allowed$] Indicator function
+  \marginpar{allowed}
   \begin{equation*}
     \allowed(z_a,z_b) =
     \begin{cases}
-      1 & \text{if }z_b \mapsto z_a \text{ is allowed}\\
+      1 & \text{if }z_a \mapsto z_b
+      \text{ is allowed (See \eqref{eq:symallowed})}\\
       0 & \text{otherwise}.
     \end{cases}
   \end{equation*}
-\item[$\PFop$] The Peron Frobenius operator which operates on a
+\item[$\PFop$] The Peron Frobenius operator which acts on a
   function $f:D\mapsto \REAL$ by \marginpar{PFop}
-  \begin{equation*}
-    \PFop(f)(z) \equiv \int f(z') \allowed(z',z) dz'.
-  \end{equation*}
+  \begin{subequations}
+    \label{eq:PFop}
+    \begin{align}
+      \left[f \cdot \PFop \right] (z) &\equiv \int f(z') \allowed(z',z)
+      dz' \\
+      \left[ \PFop \cdot f \right] (z) &\equiv \int \allowed(z,z')
+      f(z') dz'.
+    \end{align}
+  \end{subequations}
   See \eqref{eq:domain} for the definition of $D$. 
 \item[$\eval$, $\refunc$] The eigenvalue and the right eigenfunction
   of $\PFop$ defined by
   \begin{equation*}
-    \PFop(\refunc)(z) = \eval \refunc(z)
+    [\PFop \cdot \refunc] (z) = \eval \refunc(z)
   \end{equation*}
   I assume that the right and left eigenfunctions $\refunc$, $\lefunc$
   are normalized so that the joint probability function defined in
   \eqref{eq:pairdef} integrates to one.
 \item[$\pair$] The joint probability density function for sequential
-  pairs of points.  Theorem 8 of Shannon's 1948 paper says\marginpar{pair}
+  pairs of points.  Theorem 8 of Shannon's 1948 paper says
   \begin{equation}
     \label{eq:pairdef}
     \pair(z_a,z_b) = \lefunc(z_a) \allowed(z_a,z_b) \refunc(z_b)
-  \end{equation}
+  \end{equation}\marginpar{pair}
 \item[$\stationary$] The stationary probability density
   \begin{align}
     \stationary(z_a) &= \int \pair(z_a,z) dz = \int \pair(z,z_a) dz
@@ -433,19 +444,18 @@ probability from Shannon.%
                         \tuple{1}{n}.
   \end{align}
   Note that the integral in \eqref{eq:skip} can be written as
-  \begin{equation*}
-    \int \left[ \PFop^{n-1}(\allowed(z_a,\cdot)) \right] (z_n)~
-    \allowed(z_n,z_b)~ dz_n.
-  \end{equation*}
+  \begin{align}
+    V_n(z_a,z_b) &\equiv \int \left[ \allowed(z_a,\cdot) \cdot
+      \PFop^{n-1} \right] (z)~ \allowed(z,z_b)~ dz \nonumber \\
+    \label{eq:volume}
+    &= \left[ \allowed(z_a,\cdot) \cdot \PFop^{n} \right] (z_b),
+  \end{align}
+  and that it is the volume in $\REAL^n$ of the allowed paths from
+  $z_a$ $z_b$ in $n$ steps.
   \marginpar{Skip[1]}
-\item[$\preimage$] The pre-image function
-  \begin{equation*}
-    \preimage(z_a) \equiv \set{z_b: \allowed(z_a,z_b) = 1}
-  \end{equation*}
-  \marginpar{preimage}
 \item[$\scale{n}$] A rescaling obtained by dividing $\Delta_y$ in $n$,
   ie, replacing $d$ with $n^2d$.\marginpar{scale[1]}
-\item[$z\supn, \allowed\supn,\cdots, \preimage\supn$] Corresponding objects for
+\item[$z\supn, \allowed\supn,\cdots $] Corresponding objects for
   rescaled problem, eg, if $z=(h,g)$ then
   \begin{equation*}
     z\supn = \scale{n}(z) = (nh, n^2g).
@@ -479,41 +489,44 @@ $y_2 - y_1 =r$ with
   \pfop(r) = \lim_{n \rightarrow \infty} \PFop\suparg{n,rn}.
 \end{equation}
 
-In my description of $\PFop\suparg{n,m}$, I neglected to constrain the
-properties of $u$.  Since the functions with the form $f(z) =
-\allowed(z_0,z)$ are sufficient, I simply define
+Although I neglected to constrain the properties of $u$ in my
+description of $\PFop\suparg{n,m}$, I only use the operator to
+calculate volumes as in \eqref{eq:volume}.  So I simply define
 \begin{equation}
   \label{eq:def}
-  u_{n,m}(z_0,z) \equiv C \left[ \PFop\suparg{n,m} \left( \allowed\supn
-      \left( (z_0), \cdot \right) \right) \right](z),
+  v_{n,m}(z_0,z) \equiv C \left[
+    \allowed\supn \left( (z_0), \cdot \right)
+    \cdot \PFop\suparg{n,m}
+  \right](z),
 \end{equation}
 where $C$ is defined to ensure that
 \begin{equation*}
-  \int_D u_{n,m}(z_0,z) dz = 1.
+  \int_D v_{n,m}(z_0,z) dz = 1.
 \end{equation*}
-For a particular $z_0$ the value of $u_{n,m}(z_0,\cdot)$ at $z$ is
-proportional to the number of paths from $z_0$ to $z$.  As $m$ and $n$
-get larger with a fixed ratio, the I hope that $u_{n,m}(z_0,\cdot)$
-converges.  The following conjecture is sufficient:
+For a particular $z_0$ the value of $v_{n,m}(z_0,\cdot)$ at $z$ is
+proportional to the volume in $\REAL^m$ that corresponds to allowed
+paths from $z_0$ to $z$.  As $m$ and $n$ get larger with a fixed
+ratio, the I hope that $v_{n,m}(z_0,\cdot)$ converges.  The following
+conjecture is sufficient:
 \begin{conj}
   \label{conj}
   \begin{align*}
     & \forall \epsilon > 0,~ \exists n_0 \text{ such that } \\
     & \forall z_0 \in D ~\&~ \forall n > n_0 ~\&~ \forall m \geq n ~\&~
               \forall z \in D\\
-    & \left| u_{n,n}(z_0,z) - u_{m,m}(z_0,z) \right| < \epsilon.
+    & \left| v_{n,n}(z_0,z) - v_{m,m}(z_0,z) \right| < \epsilon.
   \end{align*}
 \end{conj}
 
-\section{Probabilities}
-\label{sec:limist}
+\section{Marginal Distributions}
+\label{sec:marginal}
 
-I want to describe the probability of functions of a real variable in
-terms of the stationary stochastic process corresponding to
-\eqref{eq:phir}.  In this section I describe some key marginal
+I want to describe the probability of sets of functions of a real
+variable in terms of the stationary stochastic process corresponding
+to \eqref{eq:phir}.  In this section I describe some marginal
 probability distributions of that process.
 
-\subsection{Convergence of $\stationary$}
+\subsection{The Stationary Distribution $\stationary$}
 \label{sec:convergence}
 
 Does the stationary distribution $\stationary_d$ converge to a limit
@@ -544,11 +557,11 @@ Since $\lefunc((h,g)) = \refunc((-h,g))$, it is necessary that
 hold for \eqref{eq:h_balance} to be true, and
 \begin{equation}
   \label{eq:h_any}
-  \frac{\lefunc(z)}{\lefunc\supn(z\supn)} = \sqrt{C} ~\forall z  
+  \frac{\lefunc(z)}{\lefunc\supn(z\supn)} = \sqrt{C} ~\forall z,
 \end{equation}
-is merely sufficient.
+which Conjecture \ref{conj} implies, is sufficient.
 
-\subsection{Convergence of $\Skip{}$}
+\subsection{Joint Distributions $\Skip{}$}
 \label{sec:convergence_joint}
 
 For a stationary stochastic process indexed by a continuous variable
@@ -562,26 +575,12 @@ $y$, the probability function for joint events\footnote{Strictly, I
 If $y_2-y_1 = m\Delta_y$, one may approximate the function $f$ in
 \eqref{eq:fdy} by $\Skip{m}(z_a,z_b)$.  After a rescaling,
 $\scale{n}$, the appropriate approximation is
-$\Skip{nm}\supn(z_a\supn,z_b\supn)$.  I want to prove or find
-numerical evidence that the limit exists in\footnote{Defining
-  \begin{equation*}
-    T(z_a,z_b) \equiv \int \allowed\suparg{2}(z_a\suparg{2}, z)
-    \allowed\suparg{2} (z, z_b\suparg{2}) dz
-  \end{equation*}
-  which is the area of the triangle of possible intermediate states
-  between $z_a$ and $z_b$ under $\scale{2}$.  One can show that
-  \begin{equation*}
-    \allowed(z_a,z_b) = 1 \iff T(z_a,z_b) \neq 0.
-  \end{equation*}
-  And from that, one finds that
-  \begin{equation*}
-  \pair(z_a,z_b) = \Skip{1}\suparg{2}(z_a\suparg{2},z_b\suparg{2})
-  \end{equation*}
-  only holds where $T(z_a,z_b)$ is zero or one.}
+$\Skip{nm}\supn(z_a\supn,z_b\supn)$.  Combining \eqref{eq:skip},
+\eqref{eq:h_any} and Conjecture~\ref{conj} yields
 \begin{equation}
   \label{eq:flim}
   f_{y_2-y_1}(z_a,z_b) \equiv \lim_{n\rightarrow \infty}
-  \Skip{nm}\supn(z_a\supn,z_b\supn).
+  \lefunc\supn(z_a\supn) \pfop(y_2-y_1) \refunc\supn(z_b\supn).
 \end{equation}
 
 \section{Miscellaneous Properties}
@@ -771,6 +770,45 @@ rather than table above.
 \twocolumn
 
 \end{document}
+
+first.py:    Code for eigenfunctions of integral operators for first
+             order Markov process with 2-d states.
+
+first_c.pyx: Cython version of LO from first.py
+
+archive.py:  Initialize LO_step instance, calculate eigenfuction and
+             store in archive directory
+
+converge.py: Study convergence of numerical eigenfunction estimates
+
+diff.py:     Plots the difference between two estimates of the Perron
+             Frobenius function.  (Calculates the functions)
+
+explore.py:  For looking at sensitivity of time and results to u, dy,
+             n_g, n_h
+
+map2d.py:    For making plots in 2d of regions to which points map and
+             regions that map to points.
+
+test.py:     Make sure that first.py and first_c.pyx make the same
+             LO.  Uses archive
+
+view.py:     Displays marginal densities and eigenfunctions using
+             mayavi.  Uses archive
+-----------------------------------------------------------------
+Plan:
+
+Symmetry is probably failing in s_bounds or ab.
+
+Rethink grid.  Perhaps make (h=0, g=d) the reference point for the
+grid
+
+Get nosetest to call functions in test.py that ensure first and
+first_c produce archive results and identical results to each other
+
+Rewrite diff.py to use new LO_step class and write options for
+comparing path integral calculations of relative volumes of paths from
+a state to a pie slice.
 
 %%%---------------
 %%% Local Variables:

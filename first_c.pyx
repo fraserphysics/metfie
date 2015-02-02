@@ -17,13 +17,15 @@ ctypedef np.int32_t ITYPE_t
 PTYPE = np.int64               # For pointers
 ctypedef np.int64_t PTYPE_t
 
-from first import LO_step
+import first
 from cython.parallel import prange
 
 cdef extern from "math.h":
     double floor(double x)
+    double ceil(double x)
+    double sqrt(double x)
 
-class LO_step(LO_step):
+class LO_step(first.LO_step):
     ''' 
     '''
     @cython.boundscheck(False)
@@ -102,11 +104,11 @@ class LO_step(LO_step):
                 a = bounds_a_i[k]
                 b = bounds_b_i[k]
                 for j in range(a,b):
-                    temp += v_[j] * dgdh
-            rv_[i] +=  temp
+                    temp += v_[j]
+            rv_[i] +=  temp * dgdh
         return rv
     def rebound(self):
-        '''Make numpy arrays for speed in matvec
+        '''Make numpy arrays for speed in rmatvec
         '''
         cdef int i, m, n = self.n_states
         cdef PTYPE_t [:] a_pointers = np.empty(n, dtype=np.int64)
@@ -136,11 +138,9 @@ class LO_step(LO_step):
         '''
         import numpy.linalg as LA
         assert op == None
-        mem = np.empty((2,self.n_states)) # Double buffer, no allocate in loop
+        mem = np.ones((2,self.n_states)) # Double buffer, no allocate in loop
         if v != None:
             mem[1,:] = v
-        else:
-            mem[1,:] = 1.0
         def step(s_old, # Last estimate of eigenvalue
                  v_old, # Last estimate of eigenvector.  Assume norm(v) = 1
                  v_new  # Storage for new eigenvector estimate
@@ -168,96 +168,89 @@ class LO_step(LO_step):
         self.eigenvector = v_new
         return s,v_new
     
-    def pointerize_G2(self):
-        '''Get array of pointers to np.arrays in self.G2state.  In the main
-        loop in s_bounds, those pointers are accessed as c objects for
-        speed.
-
-        '''
-        cdef int i, n = len(self.G2state)
-        cdef PTYPE_t [:] G2state = np.empty(n, dtype=np.int64)
-        cdef ITYPE_t [:] i_view
-        for i in range(n):
-            i_view = self.G2state[i]
-            G2state[i] = <PTYPE_t>(&(i_view[0]))
-        self.G2state_ = G2state
-
     @cython.boundscheck(False)
     @cython.wraparound(False)
+    @cython.cdivision(True)
     def s_bounds(
-            self,         # LO instance
-            int state_n,  # index of state in self.state_list
+            self,      # LO instance
+            int i_,    # index of state in self.state_list
             ):
         '''Given g_0 and (L_g, U_g), limits on g_1 derived from g_0 and h_0,
         find sequences of state indices for allowed successors and append
-        them to bounds.
+        them to bounds.  This is where LO_step build spends most time.
         '''
-        # "return 1" here reduces LO build time (n_g=500, n_h=500)
-        # from 9.8 seconds to 0.3 seconds.
-        if not 'G2state_' in self.__dict__:
-            self.pointerize_G2()
-        cdef PTYPE_t [:] G2state = self.G2state_
-        cdef ITYPE_t [:] G2h_list = self.G2h_list
-        cdef double g_max = self.g_max
-        cdef double dy = self.dy
-        cdef double g_0, h_0, g_1, L_h, U_h, U_g, L_g
-        cdef int G_0, G_1
+        cdef ITYPE_t [:] G2state = self.G2state
+        cdef double d = self.d, h_step =  self.h_step, g_step = self.g_step
+        cdef double origin_g = self.origin_g
+        cdef int G_, n_g = self.n_g
 
-        # "return 1" here reduces LO build time (n_g=500, n_h=500)
-        # from 9.8 seconds to 0.4 seconds.
-        
-        g_0, h_0, G_0, H_0 = self.state_list[state_n]
-        # Calculate float range of allowed g values
-        if g_0 > g_max - 6*dy**2:
-            U_g = g_max
+        H,G = self.state_list[i_] # Indices of lower left corner of cell[i]
+        h_0 = self.H2h(H)        # Float coordinate of left side of cell[i]
+        g_0 = self.G2g(G)        # Bottom of cell[i]
+        g_0_top = self.G2g(G+1)
+        h_1 = h_0 - 12
+        g_1, g_1_top = (g+h_0-6 for g in (g_0, g_0_top))
+        # (h_1,g_1) and (h_1,g_1_top) are the images under A of the
+        # left side of cell[i] (perhaps with g_0 truncated to -d)
+
+        if g_1_top < d - h_1*h_1/24: # Inside quadratic boundary
+            h_edge = h_1
+            g_min = g_1
+            g_intercept = g_1_top - h_1
         else:
-            U_g = min(g_max,
-                g_0 + dy*self.h_lim(g_0) - 6*dy**2)
-        L_g = max(self.g_min,g_0 + h_0*dy - 6*dy**2)
-        assert L_g <= U_g
-        # Calculate image in G
-        G_i_ = max(0, int(np.floor( (L_g-self.g_min)/self.g_step )))
-        G_f_ = min(self.n_g, 1+int(np.floor( (U_g-self.g_min)/self.g_step )))
+            h_edge, g_min, g_intercept = self.boundary_image(h_1, g_1, g_1_top)
+
         # Prepare for loop over g values in image.  Have no python
         # objects in the loop.
         cdef int n_pairs = 0
         cdef ITYPE_t [:] bounds_a = np.zeros(self.n_g, dtype=np.int32)
         cdef ITYPE_t [:] bounds_b = np.zeros(self.n_g, dtype=np.int32)
-        cdef int i, j, s_i, s_f, Ds, a, b, len_bounds = 0
+        cdef int i = i_, j, s_i, s_f, Ds, a, b, len_bounds = 0
         cdef double h_i, h_f, Dh
-        cdef int G_i = G_i_
-        cdef int G_f = min(G_f_+1,self.n_g) # +1 cause f(G_0) <= g_0 < f(G_0+1)
-        cdef double g_step=self.g_step, g_min=self.g_min, h_step=self.h_step
         cdef ITYPE_t *I_pointer
         cdef DTYPE_t *D_pointer
-        # This loop compiles as pure c
-        for G_1 in range(G_i, G_f):
-            g_1 = g_min + G_1 * g_step
-            U_h = (24*(g_max - g_1))**.5
-            L_h = max( (g_1 - g_0)/dy - 6 * dy, -U_h)
-            # Float h of image given g is [L_h,U_h)
-
+        cdef int G_i = self.g2G(max(-d,g_min))#self.g2G(max(-self.d,g_min))
+        # Want this loop to compile as pure c
+        for G_ in range(G_i, n_g):
             # Begin code segment that is self.ab() in first.py
-            I_pointer = <ITYPE_t *>(G2state[G_1])
-            s_i = I_pointer[0]
-            s_f = I_pointer[1]
-            H_lim = G2h_list[G_1]
-            a = s_i + H_lim + <ITYPE_t>(floor(L_h/h_step))
-            b = s_i + H_lim + <ITYPE_t>(floor(U_h/h_step)) + 1
+            if G_ == 0:
+                g_ = -d
+            else:
+                g_ = origin_g + G_*g_step
+            if g_min < g_: #g = max(g_,g)
+                g = g_
+            else:
+                g = g_min
+            high = sqrt((24*(d - g))) #self.h_lim(g)
+            low = g - g_intercept
+            if low < h_edge:
+                low = h_edge
+            if low < -high:
+                low = -high # max(-high, max(h_edge, (g-g_intercept)))
+            s_i = G2state[G_]
+            s_f = G2state[G_+1]
+            H_lim = (s_f-s_i)/2
+            a = s_i + H_lim + <ITYPE_t>(floor(low/h_step))
+            b = s_i + H_lim + <ITYPE_t>(ceil(high/h_step))
             if s_i > a:
                 a = s_i
             if s_f < b:
                 b = s_f
             # End code segment that is self.ab() in first.py
+            # Uncomment to check
+            #assert (a,b) == self.ab(h_edge, g_min, g_intercept, G_)
 
-            if b <= a:
-                continue              # No successors for G_1
+            if a >= b:
+                break # End of pie slice
             bounds_a[len_bounds] = a
             bounds_b[len_bounds] = b
             len_bounds += 1
             n_pairs += b - a
-        self.bounds_a[state_n] = np.array(bounds_a[:len_bounds])
-        self.bounds_b[state_n] = np.array(bounds_b[:len_bounds])
+
+        # Trim unused parts of arrays
+        self.bounds_a[i] = np.array(bounds_a[:len_bounds])
+        self.bounds_b[i] = np.array(bounds_b[:len_bounds])
+        assert n_pairs > 0
         return n_pairs
     
 #---------------

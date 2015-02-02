@@ -1,3 +1,7 @@
+'''archive.py: Initialize LO_step instance, calculate eigenfuction and
+store in archive directory
+
+'''
 import sys
                                   # Clock time, 200x200 on watcher
 from first_c import LO_step as LO #   4.3 sec
