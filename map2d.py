@@ -5,11 +5,12 @@ regions that map to points.
 import sys
 import numpy as np
 import matplotlib as mpl
-def two_d(w,A):
+def two_d(w,A, uniform=True):
     'return 2-d version of state vector suitable for plotting'
-    # Next line makes images have same color regardless of overlap 
+    if uniform:
+        # Next line makes images have same color regardless of overlap 
+        w = np.minimum(A.h_step*A.g_step, w)
     z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
-    w = np.minimum(A.h_step*A.g_step, w)
     u = A.vec2z(w.reshape((A.n_states,)))
     m = u.max()
     w = u*z + m*z
@@ -30,6 +31,8 @@ def main(argv=None):
         help='element size')
     parser.add_argument('--d_h', type=float, default=1,
         help='element size')
+    parser.add_argument('--iterations', type=int, default=1,
+        help='Apply operator n times and scale d, d_h and d_g')
     parser.add_argument(
         '--points', type=float, nargs='*', default=(
                 -0.9, 0.98,
@@ -43,6 +46,11 @@ def main(argv=None):
     parser.add_argument('--out', type=str, default=None,
         help="Write result to this file")
     args = parser.parse_args(argv)
+    if args.iterations == 1:
+        uniform = True
+        iterations_string = ''
+    else:
+        raise RuntimeError,'Rethink this'
 
     assert len(args.points)%2 == 0
     f_sources = ((args.points[2*i], args.points[2*i+1]) for i in 
@@ -64,7 +72,7 @@ def main(argv=None):
     from first_c import LO_step
     #from first import LO_step
 
-    A = LO_step( args.d, args.d_h, args.d_g)
+    A = LO_step( d, d_h, d_g)
     v = np.zeros(A.n_states)
     i_sources = []           # For tagging sources in plot
     for h_,g_ in f_sources:
@@ -77,15 +85,22 @@ def main(argv=None):
         k = A.state_dict[(H,G)]  # get index of state vector
         v[k] = 1                 # Set component for (g, h) to 1.0
     if args.backward:
-        image = A.rmatvec(v)
-        suptitle = 'Points and images under $A$ for $d$=%.2f'%A.d
+        op = A.rmatvec
+        op_string = '$A^T$'
     else:
-        image = A.matvec(v)
-        suptitle = 'Points and images under $A^T$ for $d$=%.2f'%A.d
+        op = A.matvec
+        op_string = '$A$'
+    suptitle = 'Points and images under %s%s'%(
+        op_string, iterations_string)
+    for i in range(args.iterations):
+        v = op(v)
+        v /= v.max()
+    else:
+        uniform = False
+    data = two_d(v,A, uniform)
     fig = plt.figure(figsize=(8,10))
     fig.suptitle(suptitle)
     ax = fig.add_subplot(1,1,1)
-    data = two_d(image,A)
     for H,G in i_sources:
         t = data[H,G]
         data[H-2:H+3,G-1:G+2] = 0 # Make big markers for source points

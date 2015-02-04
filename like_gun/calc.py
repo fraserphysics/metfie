@@ -127,7 +127,11 @@ class GUN:
             '''
             if t<0:
                 return np.zeros(2)
-            return np.array([x[1], f(min(x[0],xf))/m])
+            if x[0] > xf:
+                acceleration = 0.0
+            else:
+                acceleration = f(x[0])/m
+            return np.array([x[1], acceleration])
         t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
         self.t_max = t[-1]
         xv = odeint(F,[self.xi,0],t, atol=1.0e-11, rtol=1.0e-11)
