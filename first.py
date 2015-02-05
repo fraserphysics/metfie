@@ -83,15 +83,15 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         low = max(-high, h_edge, (g-g_intercept)) # Bottom of h range
         
         # Low is integer steps from center (h=0) to beginning of image
-        # states.  Would be (-H_lim,H_lim) if low = (high,-high)
+        # states.  It would be (-H_lim,H_lim) if low = (high,-high)
         # respectively.
         Low = int(np.floor(low/self.h_step))
         Low += H_lim # Now Low is integer steps from left quadratic boundary
+        assert Low >=0
         High = int(np.ceil(high/self.h_step)) + H_lim
-
-        # Return clipped offsets from s_i
-        return max(s_i, s_i + Low), min(s_f, s_i + High)
-
+        assert High <= s_f - s_i
+        return s_i + Low, s_i + High
+    
     def boundary_image(
             self,   # LO_step instance     
             h_1,    # z_1=(h_1,g_1) is apex of pie slice for image of

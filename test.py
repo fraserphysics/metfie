@@ -166,11 +166,6 @@ def check_symmetry(A):
 
     l_vec = np.zeros(A.n_states)
     r_vec = np.zeros(A.n_states)
-    for i in range(A.n_states): # state[i] = (g,h)
-        l_vec[i] = 1.0
-        L = A.matvec(l_vec)
-        print(L/L.max())
-        l_vec[i] = 0
     for i in range(A.n_states):
         j = A.conj(i)  # (g,h) in state[i] <=> (g,-h) in state[j]
         
@@ -179,11 +174,11 @@ def check_symmetry(A):
         r_vec[j] = 1.0
         R = A.rmatvec(r_vec)    # Operate to right
         
-# Check A.symmetry()
+        # Check A.symmetry()
         npt.assert_array_equal(l_vec, A.symmetry(r_vec), err_msg=
         'conj inconsistent with symmetry.  i={} j={}\n'.format(i,j))
 
-# Check matvec(x) = S(rmatvec(S(x))), where S is A.symmetry
+        # Check matvec(x) = S(rmatvec(S(x))), where S is A.symmetry
         npt.assert_allclose(L, A.symmetry(R),
             err_msg='''
 matvec(%s)  = %s
