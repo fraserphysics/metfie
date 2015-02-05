@@ -6,6 +6,7 @@ import sys
 import numpy as np
 import matplotlib as mpl
 def two_d(w,A, uniform=True):
+    print('uniform={0}'.format(uniform))
     'return 2-d version of state vector suitable for plotting'
     if uniform:
         # Next line makes images have same color regardless of overlap 
@@ -50,7 +51,7 @@ def main(argv=None):
         uniform = True
         iterations_string = ''
     else:
-        raise RuntimeError,'Rethink this'
+        raise RuntimeError
 
     assert len(args.points)%2 == 0
     f_sources = ((args.points[2*i], args.points[2*i+1]) for i in 
@@ -72,7 +73,7 @@ def main(argv=None):
     from first_c import LO_step
     #from first import LO_step
 
-    A = LO_step( d, d_h, d_g)
+    A = LO_step( args.d, args.d_h, args.d_g)
     v = np.zeros(A.n_states)
     i_sources = []           # For tagging sources in plot
     for h_,g_ in f_sources:
@@ -95,9 +96,10 @@ def main(argv=None):
     for i in range(args.iterations):
         v = op(v)
         v /= v.max()
+    if args.iterations > 1:
+        data = two_d(v,A, uniform=False)
     else:
-        uniform = False
-    data = two_d(v,A, uniform)
+        data = two_d(v,A, uniform=True)
     fig = plt.figure(figsize=(8,10))
     fig.suptitle(suptitle)
     ax = fig.add_subplot(1,1,1)
