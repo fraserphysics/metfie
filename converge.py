@@ -1,132 +1,119 @@
 '''converge.py study convergence of numerical estimates of the
-eigenfunction corresponding to the largest eigenvector of the first
-order Markov integral operator.
-
-After calculating errors, look at them with converge_plot.py
-
-Default arguments have n_g and n_h take values 200 and 225.  With the
-default arguments, script calls LO.power() 5 times and on watcher, the
-run time is
-
-real    2m57.357s
-user    2m56.151s
-sys     0m0.820s
+conditional distribution given an initial point.  In particular for
+studying convergence as dy gets small.  order Markov integral
+operator.
 
 '''
 import sys
-from first_c import LO_step as LO
+import numpy as np
+import matplotlib as mpl
+from first_c import LO_step
+#from first import LO_step
 def main(argv=None):
+    '''For looking at the probability distribution over the image of a
+    point under A
+    '''
     import argparse
-    import numpy as np
-    import time
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
 
-    t_start = time.time()
-    parser = argparse.ArgumentParser(description=
-    '''Calculate eigenvalues and eigenfuction errors for ranges of resolution
-in g and h''')
-    parser.add_argument('--u', type=float, default=(2.0e-5),
-                       help='log fractional deviation')
-    parser.add_argument('--dy', type=float, default=3.2e-4,
-                       help='y_1-y_0 = log(x_1/x_0)')
-    parser.add_argument('--n_g0', type=int, default=200,
-                       help='number of integration elements in value')
-    parser.add_argument('--n_h0', type=int, default=200, help=
-'number of integration elements in slope.  Require n_h > 192 u/(dy^2).')
-    parser.add_argument('--n_g_step', type=int, default=2, help=
-                        'Number of different delta_gs')
-    parser.add_argument('--n_h_step', type=int, default=2, help=
-                        'Number of different delta_hs')
-    parser.add_argument('--n_g_final', type=int, default=225)
-    parser.add_argument('--n_h_final', type=int, default=225)
-    parser.add_argument('--ref_frac', type=float, default=0.9, help=
-                        'Fraction of finest resoultion used for reference')
-    parser.add_argument('--out_file', type=str, default='result_converge',
-        help="where to write result")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--d', type=float, default=100,
+        help='Max g')
+    parser.add_argument('--d_g', type=float, default=4,
+        help='element size')
+    parser.add_argument('--d_h', type=float, default=4,
+        help='element size')
+    parser.add_argument('--iterations', type=int, default=2,
+        help='Apply operator n times and scale d, d_h and d_g')
+    parser.add_argument(
+        '--point', type=float, nargs=2, default=(0.0, 0.0),
+        help='Analyze the image of this point (h and g as fractions of maxima')
+    parser.add_argument('--out', type=str, default=None,
+        help="Write plot to this file")
+    parser.add_argument('--archive', type=str, default=None,
+                        help="Write self and vectors to archive/name")
     args = parser.parse_args(argv)
 
-    d_g_small = 2*args.u/args.n_g_final
-    if args.n_g0 == args.n_g_final or args.n_g_step == 1:
-        d_g_big = 1.1*d_g_small 
-        dd_g = 0.2*d_g_small
+    params = {'axes.labelsize': 18,     # Plotting parameters for latex
+              'text.fontsize': 15,
+              'legend.fontsize': 15,
+              'text.usetex': True,
+              'font.family':'serif',
+              'font.serif':'Computer Modern Roman',
+              'xtick.labelsize': 15,
+              'ytick.labelsize': 15}
+    mpl.rcParams.update(params)
+    if args.out != None:
+        mpl.use('PDF')
+    import matplotlib.pyplot as plt  # must be after mpl.use
+    
+    # Initialize operator
+    A = LO_step( args.d*args.iterations**2, args.d_h, args.d_g)
+
+    # Create unit vector with one component specified by args.point
+    h_,g_ = args.point
+    g = A.d * g_
+    h_max = A.h_lim(g)
+    h = h_max * h_
+    # Get integer indices of cell and set corresponding component
+    H = A.h2H(h)
+    G = A.g2G(g)
+    h_0,g_0 = A.H2h(H),A.G2g(G) # Actual point used
+    point_index = A.state_dict[(H,G)]
+    v = np.zeros(A.n_states)
+    v[point_index] = 1.0
+
+    h_1,g_1 = h_0, g_0
+    for i in range(args.iterations):
+        v = A.matvec(v)
+        v /= v.max()
+        h_1,g_1 = A.affine(h_1,g_1)
+    h_3 = A.h_lim(g_1)
+    g_3 = g_1
+    # z_1: apex of pie slice, z_3: lower right corner
+
+    G_t, H_t = A.g2G(g_3)-2, A.h2H(h_3)-2
+    while v[A.state_dict[(H_t,G_t)]] == 0.0 :
+        assert G_t < A.n_g
+        G_t += 1
+    G_3 = G_1 = G_t
+    assert abs(A.g2G(g_3) - G_3) < 3
+    
+    edge = []
+    for G in range(G_1, A.n_g):
+        g = A.G2g(G)
+        H_G = int(np.ceil(A.h_lim(g)/A.h_step) + A.n_h/2 -1)
+        h = A.H2h(H_G)
+        v_ = v[A.state_dict[H_G,G]]
+        if v_ == 0:
+            d_g = (g-g_1)/args.iterations
+            d_h = h-h_1
+            assert abs(d_g-d_h) < 2*(A.g_step + A.h_step)
+            break
+        slope = (g-g_1)/(h-h_1)
+        edge.append( (g, h, slope, v_))
+    edge = np.array(edge)
+
+    line = []
+    dz = np.array((1.0, args.iterations/2.0))*A.h_step/5.0
+    z = np.array((h_1, g_1),np.float64)
+    HG = lambda z: (A.h2H(z[0]), A.g2G(z[1]))
+    while HG(z) in A.state_dict:
+        assert len(line) < A.n_h*5
+        line.append(v[A.state_dict[HG(z)]])
+        z += dz
+    line = np.array(line,np.float64)
+    fig = plt.figure()
+    ax = fig.add_subplot(2,1,1)
+    ax.plot(edge[:,2]/args.iterations, np.log(edge[:,3]))
+    ax = fig.add_subplot(2,1,2)
+    ax.plot(np.log(line))
+    if args.out == None:
+        plt.show()
     else:
-        d_g_big = 2*args.u/args.n_g0
-        dd_g = (d_g_big - d_g_small)/args.n_g_step
-    d_g_ref = args.ref_frac*d_g_small
-
-    h_lim = np.sqrt(48*args.u)
-    d_h_big = 2*h_lim/args.n_h0
-    d_h_small = 2*h_lim/args.n_h_final
-    dd_h = (d_h_big - d_h_small)/args.n_h_step
-    d_h_ref = args.ref_frac*d_h_small
-    
-    from first import sym_diff
-    import pickle
-    
-    tol = 5e-6
-    maxiter = 2000
-    error = {}
-    text = ''
-
-    ref_LO = LO( args.u, args.dy, d_g_ref, d_h_ref)
-    ref_LO.power(small=tol, n_iter=maxiter,verbose=True)
-    text += 'For ref, n_g=%d, n_h=%d and e_val=%9.3e\n'%(
-        ref_LO.n_g,ref_LO.n_h, ref_LO.eigenvalue)
-    for d_g in np.arange(d_g_small, d_g_big, dd_g):
-        for d_h in np.arange(d_h_small, d_h_big, dd_h):
-            key = 'd_g=%g d_h=%g'%(d_g, d_h)
-            assert not key in error
-            A = LO( args.u, args.dy, d_g, d_h)
-            A.power(small=tol, n_iter=maxiter,verbose=True)
-            d = sym_diff(A,ref_LO)
-            error[key] = (d,A.eigenvalue)
-            text += 'n_g=%5d and n_h=%4d, error=%6.4f, e_val=%9.3e\n'%(
-                A.n_g,A.n_h,d, A.eigenvalue)
-    A.set_eigenvector(ref_LO)
-    x = A.xyz()
-    print('''interpolate error = %e
-Next, calculate stationary density.'''%(A.diff(x[0],x[1],x[2]),))
-    elapsed = time.time() - t_start
-    pickle.dump((args,text,error,elapsed), open( args.out_file, "wb" ) )
+        fig.savefig( open(args.out, 'wb'), format='pdf')
     return 0
-def read_study(file_name, verbose=1):
-    '''Get data from pickled dict.
-    '''
-    import pickle
-    import numpy as np
-    from datetime import timedelta
-    
-    args,text,dict_,elapsed = pickle.load( open( file_name, "rb" ) )
-    if verbose>0:
-        print('%-16s= %s'%('time',timedelta(seconds=elapsed)))
-        arg_dict = vars(args)
-        keys = list(arg_dict.keys())
-        keys.sort()
-        for key in keys:
-            print('%-16s= %s'%(key,arg_dict[key]))
-    if verbose>1:
-        print('%s'%(text,))
-    gs = set([])
-    hs = set([])
-    for key in dict_:
-        d_g,d_h = (s.split('=')[-1] for s in key.split())
-        gs.add((float(d_g),d_g))
-        hs.add((float(d_h),d_h))
-    gs = sorted(set(gs)) # Sort on floats and keep strings for keys
-    hs = sorted(set(hs))
-    error = np.empty((len(hs), len(gs)))
-    eigenvalue = np.zeros((len(hs), len(gs)))
-    for i in range(len(hs)):
-        for j in range(len(gs)):
-            val = dict_['d_g=%s d_h=%s'%(gs[j][1], hs[i][1])]
-            if type(val) == type((1,2)): # Test handles old files wo eigenvalues
-                error[i,j], eigenvalue[i,j] = val
-            else:
-                error[i,j] = val
-    h = [x[0] for x in hs]
-    g = [x[0] for x in gs]
-    return g,h,error,eigenvalue
 
 if __name__ == "__main__":
     rv = main()

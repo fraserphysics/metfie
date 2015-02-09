@@ -53,6 +53,8 @@ class LO_step(first.LO_step):
 
         for i in range(n_states): # prange is slower
             t = v_[i] * dgdh
+            if t == 0.0:
+                continue
             n = n_bounds[i]
             bounds_a_i = <ITYPE_t *>(a_pointers[i])
             bounds_b_i = <ITYPE_t *>(b_pointers[i])

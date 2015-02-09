@@ -448,8 +448,8 @@ probability from Shannon.%
     \label{eq:volume}
     &= \left[ \allowed(z_a,\cdot) \cdot \PFop^{n} \right] (z_b),
   \end{align}
-  and that it is the volume in $\REAL^n$ of the allowed paths from
-  $z_a$ $z_b$ in $n$ steps.
+  and that it is the volume in $\Z^n \subset \REAL^{2n}$ of the set of
+  allowed paths from $z_a$ to $z_b$ in $n$ steps.
 \item[$\scale{n}$] A rescaling obtained by dividing $\Delta_y$ by $n$,
   ie, replacing $d$ with $n^2d$.
 \item[$z\supn, \allowed\supn,\cdots $] Corresponding objects for
@@ -519,6 +519,19 @@ conjecture is sufficient:
 \subsection{Numerical Evidence}
 \label{sec:evidence}
 
+Figure with image of (0,0) in one step
+
+Figures with areas corresponding to $V_n$ in \eqref{eq:volume} for two
+possible images of (0,0) with $n=2$.
+
+Figure of $V_2((0,0),z_b)$ vs $z_b$ indicated by color
+
+Figure of $V_{5}((0,0),z_b)$ vs $z_b$ indicated by color
+
+Figure with lines of $V_{5}((0,0),z_b)$ vs $z_b$ along the boundary
+and along the diagonal that goes to the maximum on the boundary.
+
+Repeat previous two figures for $V_{10}$
 
 \section{Marginal Distributions}
 \label{sec:marginal}
@@ -727,8 +740,8 @@ from~\eqref{eq:rescale}.
 
 \begin{figure}
   \centering
-    \resizebox{1.0\columnwidth}{!}{
-      \includegraphics{figs/2000_g_800_h_2_y_vec_log.png}}
+    %\resizebox{1.0\columnwidth}{!}{
+      %\includegraphics{figs/2000_g_800_h_2_y_vec_log.png}}
     \caption{The $\text{log}_{10}$ of the amplitude of a numerically
       estimated eigenfunction.}
   \label{fig:eigenfunction}

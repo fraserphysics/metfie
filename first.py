@@ -252,19 +252,23 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             n += 1
         self.origin_g = d-n*g_step
         self.n_g = n
+        # Map from z_0 to z_1 apex of pie slice
+        self.affine = lambda h,g: (h-12, h+g-6)
 
         self.allowed()
         if not skip_pairs:
             self.pairs()
         return
-    def archive(self, filename, more={}, dirname='archive'):
+    def archive(self, filename, more={}, dirname='archive', v=None):
         import tempfile
         import pickle
         import os.path
 
+        if v == None:
+            v = self.eigenvector
         vec_file = tempfile.NamedTemporaryFile(
-            prefix='%s.e_vec_'%filename,dir=dirname,delete=False)
-        self.eigenvector.tofile(vec_file)
+            prefix='%s._vec_'%filename,dir=dirname,delete=False)
+        v.tofile(vec_file)
         dict_ = {
             'args':(float(self.d), float(self.g_step), float(self.h_step)),
             'vec_filename':vec_file.name}
