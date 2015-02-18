@@ -121,8 +121,19 @@ c+3=%s
     '''%(str(a), str(c), str(d)))
     for i in range(6):
         a += i/2
+    return 0
+def demo():
+    import calc
+
+    vt = calc.experiment()
+    fit,e = calc.best_fit(vt)
+    print("provenance of the components of simulated gun:")
+    for key in sorted(fit.components):
+        print('component {0}: {1}'.format(key, getattr(fit, key)))
+    return 0
 if __name__ == "__main__":
-    test()
+    demo()
+    #test()
 
 #---------------
 # Local Variables:

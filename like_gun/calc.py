@@ -82,19 +82,19 @@ class GUN:
     experiment.    
     '''
     def __init__(self,      # GUN instance
-                 C=2.56e10, # Constant in nominal equation of state
-                 xi=0.4,    # Initial position of projectile / cm
-                 xf=4.0,    # Final/muzzle position of projectile /cm
-                 m=100.0,   # Mass of projectile / g
+                 C=2.56e10, xi=0.4, xf=4.0, m=100.0,
                  N=400,     # Number of intervals between xi and xf
                  sigma_sq_v=1.0e5, # Variance attributed to v measurements
                  ):
-        self.C = C
-        self.xi = xi
-        self.xf = xf
-        self.m = m
+        from cmf_models import Float
+        self.C = Float(C,'Constant in nominal equation of state')
+        self.xi = Float(xi,'Initial position of projectile / cm')
+        self.xf = Float(xf,'Final/muzzle position of projectile /cm')
+        self.m = Float(m,'Mass of projectile / g')
         self._set_N(N)
         self.sigma_sq_v = sigma_sq_v
+        self.components = set(('C','xi','xf','m'))#Component instance names
+        self.C = self.C + 0.0 # Vacuous demonstration of Float + float
         return
     def _set_N(
             self,                 # GUN instance
@@ -106,14 +106,18 @@ class GUN:
         '''
         # N points and N-1 intervals equal spacing on log scale
         self.x = np.logspace(
-            np.log(self.xi/stretch), np.log(self.xf*stretch), N, base=np.e)
-        self.set_eos(self.x, self.C/self.x**3)
+            np.log(self.xi.value/stretch),
+            np.log(self.xf.value*stretch), N, base=np.e)
+        self.set_eos(lambda x:self.C.value/x**3)
         return
-    def set_eos(self, x, f):
+    def set_eos(self, func):
+        self.eos = func
+    def set_eos_spline(self, x, f):
         s = '''Initialize the eos with a spline fit to the arrays x
 and f with elements that are positions along the gun
 barrel and the forces at those positons respectively.'''
         self.eos = Spline(x, f, s)
+        self.components.add('eos')
         return
     def E(self, # GUN instance
           x     # Scalar position at which to calculate energy
@@ -121,7 +125,7 @@ barrel and the forces at those positons respectively.'''
         ''' Integrate eos between xi and x using numpy.integrate.quad
         to get energy of projectile at position x.
         '''
-        rv, err = quad(self.eos,self.xi, min(x,self.xf))
+        rv, err = quad(self.eos,self.xi.value, min(x,self.xf.value))
         assert rv == rv # test for nan
         return rv
     def x_dot(self, # GUN instance
@@ -133,18 +137,18 @@ barrel and the forces at those positons respectively.'''
         if isinstance(x, np.ndarray):
             return np.array([self.x_dot(x_) for x_ in x])
         elif isinstance(x, np.float):
-            if x <= self.xi:
+            if x <= self.xi.value:
                 return 0.0
             assert(self.E(x)>=0.0),'E(%s)=%s'%(x,self.E(x))
-            return np.sqrt(2*self.E(x)/self.m) # Invert E = (mv^2)/2
+            return np.sqrt(2*self.E(x)/self.m.value) # Invert E = (mv^2)/2
         else:
             raise RuntimeError('x has type %s'%(type(x),))
     def set_t2v(self):
         '''Run a simulation to build a spline for mapping times to velocities
         '''
-        m = self.m   # mass
+        m = self.m.value   # mass
         f = self.eos # force
-        xf = self.xf # end of gun barrel, muzzle
+        xf = self.xf.value # end of gun barrel, muzzle
         def F(x,t):
             '''return x dot for x = (position,velocity)
             '''
@@ -157,7 +161,7 @@ barrel and the forces at those positons respectively.'''
             return np.array([x[1], acceleration])
         t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
         self.t_max = t[-1]
-        xv = odeint(F,[self.xi,0],t, atol=1.0e-11, rtol=1.0e-11)
+        xv = odeint(F,[self.xi.value,0],t, atol=1.0e-11, rtol=1.0e-11)
         assert xv.shape == (len(t),2)
         # xv is array of calculated positions and velocities at times in t
         self.t2v = Spline(t,xv[:,1])
@@ -176,7 +180,7 @@ barrel and the forces at those positons respectively.'''
             c_f = c_f_nom.copy()
             # Next set size of finite difference for derivative approximation
             if c_f[i] == 0.0: # Funny end point knots
-                d_f = fraction*float(c_f.max())*(self.xi/self.xf)**3
+                d_f=fraction*float(c_f.max())*(self.xi.value/self.xf.value)**3
             else:
                 d_f = float(c_f[i]*fraction)
             c_f[i] += d_f
@@ -290,10 +294,11 @@ barrel and the forces at those positons respectively.'''
         L = -np.dot(d,g)/2
         h = -1.0/self.sigma_sq_v
         return L, g, h
-def plot_f_v_e(gun, data, t, e, fig):
+def plot_f_v_e(data, vt, e, fig):
     '''Plot nominal, perturbed and fit eoses and the consequent
     velocities.  Also plot the errors used for fitting.
     '''
+    v,t = vt
     cm = r'$x/(\rm{cm})$'
     mu_sec = r'$t/(\mu\rm{sec})$'
     v_key = r'$v/(\rm{km/s})$'
@@ -380,75 +385,85 @@ def plot_dv_df(gun, x, fig):
             else:
                 ax.plot(x_, y_[i])
     fig.subplots_adjust(wspace=0.3) # Make more space for label
-        
-def main():
-    ''' Diagnostic plots
+
+def experiment(plot_data=None):
+    '''Make "experimental" data from gun with eos f(x) =
+    C/x^3 + 2 sin(freq*(x-x_0)) * e^{(x-x_0)^2/(2*w^2)} * C/(freq*(x-x_0)^3)
+    
+    Also put samples of that eos and the consequent velocity in the dict
+    "plot_data" if it is provided.
     '''
-    # Unperturbed gun
-    gun = GUN()
-    f_nom = gun.eos(gun.x)
-    v_nom = gun.x_dot(gun.x)
-
-    # Plot study of derivatives
-    fig_d = plt.figure('derivatives', figsize=(14,16))
-    plot_dv_df(GUN(N=10), gun.x, fig_d)
-
-    plot_data = {'initial':((gun.x, f_nom, 'f'),(gun.x, v_nom/1e5, 'v'))}
-    
-    # Select samples in x for perturbation
-    x = np.logspace(
-        np.log(gun.xi/magic.stretch),
-        np.log(gun.xf*magic.stretch),
-        magic.n_x_pert, base=np.e)
-    
-    # Create perturbed gun
-    f = gun.eos(x)
-    x_off = 0.6
-    y = x-x_off
-    freq=.2
-    w = .2
-    D = 2*np.sin(freq*y)*np.exp(-y**2/(2*w**2))*gun.eos(x_off)/freq
-    gun_p = GUN(N=magic.n_x_pert)
-    gun_p.set_eos(x,f+D)
-    # plot f(x) and v(x) for perturbed gun
-    f_p = gun_p.eos(gun_p.x)
-    v_p = gun_p.x_dot(gun_p.x)
-    plot_data['actual'] = (
-        (gun_p.x, f_p, 'f'),(gun_p.x, v_p/magic.cm2km, 'v'))
+    x_0 = 0.6   # Location of maximum of Gaussian envelope
+    freq=.2     # Frequency of oscillation
+    w = .2      # Width of Gaussian envelope
+    gun = GUN(N=magic.n_x_pert)
+    pert = lambda x : 2*np.sin(freq*(x-x_0))*np.exp(-(x-x_0)**2/(2*w**2))
+    f = lambda x : gun.C.value/x**3 + pert(x) * gun.C.value/(freq*x_0**3)
+    gun.set_eos(f)
     # Make simulated measurements
-    t2v = gun_p.set_t2v()
-    t = np.linspace(0,gun_p.t_max,magic.n_t_sim)
+    t2v = gun.set_t2v()
+    t = np.linspace(0,gun.t_max,magic.n_t_sim)
     v = t2v(t)
-    vt= (v, t)
-    # Set gun for fitting and derivative
-    gun_fit = GUN(N=magic.fit_dim)
-    last, g,h = gun_fit.log_like(vt)
+    if plot_data:
+        # Select samples in x for perturbation
+        x = np.logspace(
+            np.log(gun.xi.value/magic.stretch),
+            np.log(gun.xf.value*magic.stretch),
+            magic.n_x_pert, base=np.e)
+        # plot f(x) and v(x) for perturbed gun
+        f_p = gun.eos(gun.x)
+        v_p = gun.x_dot(gun.x)
+        plot_data['experimental'] = (
+            (gun.x, f_p, 'f'),(gun.x, v_p/magic.cm2km, 'v'))
+    return (v, t)
+def best_fit(vt):
+    '''Create new gun, adjust spline description of eos to make simulated
+    velocities match vt and return adjusted gun.
+    '''
+    gun = GUN(N=magic.fit_dim)
+    # Start with spline approximation to nominal eos
+    gun.set_eos_spline(gun.x, gun.eos(gun.x))
+    last, g,h = gun.log_like(vt)
     print('L[-1]=%e'%(last,))
     e = []
     for i in range(magic.like_iter):
-        old_eos = gun_fit.eos
-        gun_fit.opt(vt)
-        e.append(gun_fit.e)
-        L, g, h = gun_fit.log_like(vt)
+        old_eos = gun.eos
+        gun.opt(vt)
+        e.append(gun.e)
+        L, g, h = gun.log_like(vt)
         Delta = L - last
-        print('L[%d]=%e, delta=%e'%(i,L,Delta))
+        print('L[%2d]=%e, delta=%e'%(i,L,Delta))
         if Delta <= abs(L)*magic.converge:
-            gun_fit.eos = old_eos
+            gun.eos = old_eos
             e.pop()
-            break
+            return gun,e
         last=L
-    print("provenance of fitted eos: {0}".format(gun_fit.eos.provenance))
-    f_hat = gun_fit.eos(gun.x)
-    v_hat = gun_fit.x_dot(gun.x)
-    plot_data['fit'] = (
-        (gun.x, f_hat, 'f'),
-        (gun.x, v_hat/magic.cm2km, 'v'))
-    # Plot fit, nominal, perturbed and fit and dL
-    L, g, h = gun.log_like(vt)
-    fig_fve = plt.figure('fve',figsize=(8,10))
-    plot_f_v_e(gun, plot_data, t, e, fig_fve)
+    raise RuntimeError('best_fit failed to converge')
+def main():
+    ''' Diagnostic plots
+    '''
+    # Make nominal gun and get data for plotting
+    nom = GUN()
+    x = nom.x    # Positions for plots
+    plot_data = {'nominal':((x, nom.eos(x), 'f'),(x, nom.x_dot(x)/1e5, 'v'))}
+    
+    # Get "experimental" data and data for plotting "true" eos
+    vt = experiment(plot_data)
 
-    if True:
+    # Calculate best fit to experiment and get data for plotting
+    fit,e = best_fit(vt)
+    plot_data['fit']=((x, fit.eos(x), 'f'),(x, fit.x_dot(x)/magic.cm2km, 'v'))
+
+    fig_fve = plt.figure('fve',figsize=(8,10))
+    plot_f_v_e(plot_data, vt, e, fig_fve)
+
+    # Plot study of derivatives
+    fig_d = plt.figure('derivatives', figsize=(14,16))
+    study = GUN(N=10)
+    study.set_eos_spline(study.x, study.eos(study.x))
+    plot_dv_df(study, x, fig_d)
+
+    if False:
         fig_d.savefig('fig_d.pdf', format='pdf')
         fig_fve.savefig('fig_fve.pdf', format='pdf')
     else:
