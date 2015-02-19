@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib as mpl
 from first_c import LO_step
 #from first import LO_step
+from first import Archive
 def main(argv=None):
     '''For looking at the probability distribution over the image of a
     point under A
@@ -31,8 +32,6 @@ def main(argv=None):
         help='Analyze the image of this point (h and g as fractions of maxima')
     parser.add_argument('--out', type=str, default=None,
         help="Write plot to this file")
-    parser.add_argument('--archive', type=str, default=None,
-                        help="Write self and vectors to archive/name")
     args = parser.parse_args(argv)
 
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
@@ -47,9 +46,14 @@ def main(argv=None):
     if args.out != None:
         mpl.use('PDF')
     import matplotlib.pyplot as plt  # must be after mpl.use
-    
+
+    archive = Archive(LO_step)
     # Initialize operator
-    A = LO_step( args.d*args.iterations**2, args.d_h, args.d_g)
+    d = args.d*args.iterations**2
+    A,read = archive.create( d, args.d_h, args.d_g)
+    if not read:
+        A.power(small=1.0e-8)
+        print('{0:d} iterations'.format(A.iterations))
 
     # Create unit vector with one component specified by args.point
     h_,g_ = args.point
@@ -69,6 +73,8 @@ def main(argv=None):
         v = A.matvec(v)
         v /= v.max()
         h_1,g_1 = A.affine(h_1,g_1)
+    if not read:
+        A.archive({(H,G):v})
     h_3 = A.h_lim(g_1)
     g_3 = g_1
     # z_1: apex of pie slice, z_3: lower right corner
@@ -101,14 +107,25 @@ def main(argv=None):
     HG = lambda z: (A.h2H(z[0]), A.g2G(z[1]))
     while HG(z) in A.state_dict:
         assert len(line) < A.n_h*5
-        line.append(v[A.state_dict[HG(z)]])
+        i = A.state_dict[HG(z)]
+        ev_i = A.eigenvector[i]
+        line.append((v[i], ev_i, v[i]*ev_i))
         z += dz
     line = np.array(line,np.float64)
-    fig = plt.figure()
-    ax = fig.add_subplot(2,1,1)
-    ax.plot(edge[:,2]/args.iterations, np.log(edge[:,3]))
-    ax = fig.add_subplot(2,1,2)
-    ax.plot(np.log(line))
+    line /= line.max(axis=0)
+    x = np.linspace(0,1,len(line))
+    
+    fig = plt.figure(figsize=(6,7))
+    ax = fig.add_subplot(4,1,1)
+    ax.plot(edge[:,2]/args.iterations, np.log10(edge[:,3]))
+    ax.set_ylim(-10,0)
+    ax = fig.add_subplot(4,1,2)
+    ax.plot(x, np.log10(line[:,0]))
+    ax = fig.add_subplot(4,1,3)
+    ax.plot(x, np.log10(line[:,1]))
+    ax = fig.add_subplot(4,1,4)
+    ax.plot(x, np.log10(line[:,2]))
+    ax.set_ylim(-10,0)
     if args.out == None:
         plt.show()
     else:

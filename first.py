@@ -231,7 +231,8 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
                  d,                 # Scale = u/(dy^2)
                  h_step,            # Size of steps in slope h
                  g_step,            # Size of steps in position g
-                 skip_pairs=False   # Call self.pairs if False
+                 skip_pairs=False,  # Call self.pairs if False
+                 archive_dict=None
                  ):
         self.dtype = np.dtype(np.float64)
         self.d = d
@@ -255,26 +256,58 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         # Map from z_0 to z_1 apex of pie slice
         self.affine = lambda h,g: (h-12, h+g-6)
 
-        self.allowed()
-        if not skip_pairs:
-            self.pairs()
+        if archive_dict == None: # Create without reading archive
+            self.allowed()
+            if not skip_pairs:
+                self.pairs()
+            return
+        # Read from archive
+        for key,value in archive_dict['self'].items():
+            setattr(self, key, value)
+        for key,value in np.load(archive_dict['self_arrays']).items():
+            setattr(self, key, value)
+        self.n_states = len(self.state_list)
+        self.state_dict = {}
+        for i, state in enumerate(self.state_list):
+            self.state_dict[tuple(state)] = i
+        if'eigenvector' in archive_dict:
+            self.eigenvector = np.fromfile(archive_dict['eigenvector'])
         return
-    def archive(self, filename, more={}, dirname='archive', v=None):
-        import tempfile
+    def archive(self, images={}, dirname='archive'):
+        from tempfile import NamedTemporaryFile as NTF
         import pickle
         import os.path
 
-        if v == None:
-            v = self.eigenvector
-        vec_file = tempfile.NamedTemporaryFile(
-            prefix='%s._vec_'%filename,dir=dirname,delete=False)
-        v.tofile(vec_file)
-        dict_ = {
-            'args':(float(self.d), float(self.g_step), float(self.h_step)),
-            'vec_filename':vec_file.name}
-        dict_.update(more)
-        pickle.dump(dict_, open( os.path.join(dirname,filename), "wb" ),2 )
-        return
+        self_file = NTF(prefix='self_', dir=dirname, delete=False)
+        np.savez(
+            self_file,
+            bounds_a=self.bounds_a,
+            bounds_b=self.bounds_b,
+            G2state=self.G2state,
+            state_list=self.state_list)
+        dict_ = {'self_arrays':self_file.name}
+
+        if len(images) > 0:
+            image_dict = {}
+            for key, value in images.items():
+                vec_file = NTF(prefix='image_',dir=dirname,delete=False)
+                value.tofile(vec_file)
+                image_dict[key] = vec_file.name
+            dict_['image_dict'] = image_dict
+
+        if hasattr(self, 'eigenvector'):
+            vec_file = NTF(prefix='evec_',dir=dirname,delete=False)
+            self.eigenvector.tofile(vec_file)
+            dict_['eigenvector'] = vec_file.name
+        s = {}
+        for key in 'd h_step g_step n_states n_pairs'.split():
+            s[key] = getattr(self,key)
+        dict_['self'] = s
+        prefix = 'LO_{0:.1f}_{1:.2f}_{2:.2f}_'.format(
+            self.d, self.h_step, self.g_step)
+        file_ = NTF(prefix=prefix, dir=dirname, delete=False)
+        pickle.dump(dict_, file_)
+        return file_.name
     def conj(self,i):
         ''' Conjugate: Get index for state with -h
         '''
@@ -395,7 +428,7 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             return self.matvec(self, x[0])
         else:
             raise ValueError('expected x.shape = (n,) or (n,1)')
-    def power(self, n_iter=1000, small=1.0e-5, v=None, op=None, verbose=False):
+    def power(self, n_iter=3000, small=1.0e-6, v=None, op=None, verbose=False):
         '''Calculate self.eigevalue and self.eigenvector for the
         largest eigenvalue of op.
         '''
@@ -529,6 +562,28 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         d = LA.norm(u)
         if rv: return d, u
         else: return d
+class Archive:
+    def __init__(self, LO, dirname='archive'):
+        import glob
+        import pickle
+        self.LO = LO
+        self.op_dict = {}
+        for name in glob.glob(dirname+'/LO*'):
+            s = pickle.load(open(name,'rb'))['self']
+            key = tuple([s[x] for x in 'd h_step g_step'.split()])
+            if key in self.op_dict:
+                print('WARNING {0} and {1} have same key: {2}'.format(
+                    self.op_dict[key], name, key))
+            self.op_dict[key] = name
+    def read(self, key):
+        import pickle
+        dict_ = pickle.load(open(self.op_dict[key],'rb'))
+        return self.LO(*key, archive_dict=dict_)
+    def create(self, d, h_step, g_step):
+        key = (d, h_step, g_step)
+        if key in self.op_dict:
+            return self.read(key),True
+        return self.LO(*key),False
 def read_LO_step(filename, dirname='archive'):
     '''From an archive build an LO_step instance and read its eigenvector
     from disk.

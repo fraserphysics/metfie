@@ -98,6 +98,7 @@ def check_bounds(A,B):
 def check_state_list(A,B):
     import numpy.testing as npt
     npt.assert_array_equal( A.state_list, B.state_list)
+    npt.assert_array_equal( A.G2state, B.G2state)
 
 def check_images(A,B):
     import numpy as np
@@ -218,9 +219,29 @@ def test_shape():
     A = first.LO_step(d, d_g, d_h)
     check_grid(A, d, d_g, d_h)
     check_symmetry(A)
-    
+
+def test_archive():
+    import pickle
+    from first import Archive
+    from first_c import LO_step
+    d, h_step, g_step = 100.0, 4.0, 4.0
+    key = (d, h_step, g_step)
+    A,read = Archive(LO_step, dirname='test').create(*key)
+    if not read:
+        A.power()
+        A.archive(dirname='test')
+        print('made new LO')
+    else:
+        print('read old LO')
+    B = Archive(LO_step, dirname='test').read(key)
+    check_state_list(A,B)
+    check_bounds(A,B)
+    check_simple(A,B)
+                    
 if __name__ == "__main__":
     from time import time
+    test_archive()
+    sys.exit(0)
     test_shape()
     t_1 = time()
     test_first_c()
