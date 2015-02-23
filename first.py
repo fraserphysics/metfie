@@ -1,7 +1,7 @@
 """first.py: Python3 code for eigenfunctions of integral operators for
 first order Markov process with 2-d states.  A state is an ordered
-pair (g,h).  g is the position and h is the derivative.  An allowed
-sequential pair of states ((g_0,h_0),(g_1,h_1)) satisfies:
+pair (h,g).  g is the position and h is the derivative.  An allowed
+sequential pair of states ((h_0,g_0),(h_1,g_1)) satisfies:
 
 \sqrt{24(d-g_0)} \geq \Delta_g + 6 \geq h_0
 
@@ -11,23 +11,18 @@ The first pair of inequalities constrains g_1 via g_1 - g_0 = \Delta_g,
 and the second pair of inequalities constrains h_1.  See equations
 UL_g and UL_h in notes.tex for the more complicated bounds that hold
 when (d-g_0) \leq 36.
-
 """
 import numpy as np
 import numpy.linalg as LA
 import scipy.sparse.linalg
 
 class LO_step(scipy.sparse.linalg.LinearOperator):
-    '''Custom version of LinearOperator that implements A*x for the
-    adjacency matrix definied by the parameters:
+    '''Custom version of LinearOperator that implements A*x and x*A for
+    the adjacency matrix definied by the parameters:
 
-    d   The scale, that is u/(dy^2)
-
-    Note: Cython code for this class in first_c.pyx uses:
-    self.n_states, self.n_pairs self.G2state, self.d, self.state_list,
-    self.h_lim() self.g2G(), self.n_g, self.origin_g, self.g_step,
-    self.h_step, self.bounds_a, self.bounds_b
-
+    d        The scale, that is u/(dy^2)
+    h_step   Quantization in h
+    g_step   Quantization in g
     '''
     def h2H(self, h):
         ''' Return integer index H for float coordinate h
@@ -146,7 +141,7 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             i,             # index of state in self.state_list
             ):
         '''Find legal successors of state i and save representations
-        of them in the self.*bounds* arrays.
+        of them in the arrays self.bounds_a and self.bounds_b.
 
         Notes:
 
@@ -196,7 +191,10 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         return n_pairs
     
     def allowed(self):
-        '''Calculate the allowed states and other properties.
+        '''Calculate the allowed states.  Set the following attributes of
+        self: state_list, state_dict, G2state and n_states.  States
+        with each value of G are contiguous in state_list and start at
+        G2state[G].
         '''
         # The folowing 4 objects are attached to self in this method
         state_list = []      # state_list[i] = (H,G)
@@ -231,7 +229,6 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
                  d,                 # Scale = u/(dy^2)
                  h_step,            # Size of steps in slope h
                  g_step,            # Size of steps in position g
-                 skip_pairs=False,  # Call self.pairs if False
                  archive_dict=None
                  ):
         self.dtype = np.dtype(np.float64)
@@ -258,56 +255,14 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
 
         if archive_dict == None: # Create without reading archive
             self.allowed()
-            if not skip_pairs:
-                self.pairs()
+            self.pairs()
             return
         # Read from archive
-        for key,value in archive_dict['self'].items():
+        for key,value in archive_dict.items():
             setattr(self, key, value)
-        for key,value in np.load(archive_dict['self_arrays']).items():
-            setattr(self, key, value)
-        self.n_states = len(self.state_list)
         self.state_dict = {}
         for i, state in enumerate(self.state_list):
             self.state_dict[tuple(state)] = i
-        if'eigenvector' in archive_dict:
-            self.eigenvector = np.fromfile(archive_dict['eigenvector'])
-        return
-    def archive(self, images={}, dirname='archive'):
-        from tempfile import NamedTemporaryFile as NTF
-        import pickle
-        import os.path
-
-        self_file = NTF(prefix='self_', dir=dirname, delete=False)
-        np.savez(
-            self_file,
-            bounds_a=self.bounds_a,
-            bounds_b=self.bounds_b,
-            G2state=self.G2state,
-            state_list=self.state_list)
-        dict_ = {'self_arrays':self_file.name}
-
-        if len(images) > 0:
-            image_dict = {}
-            for key, value in images.items():
-                vec_file = NTF(prefix='image_',dir=dirname,delete=False)
-                value.tofile(vec_file)
-                image_dict[key] = vec_file.name
-            dict_['image_dict'] = image_dict
-
-        if hasattr(self, 'eigenvector'):
-            vec_file = NTF(prefix='evec_',dir=dirname,delete=False)
-            self.eigenvector.tofile(vec_file)
-            dict_['eigenvector'] = vec_file.name
-        s = {}
-        for key in 'd h_step g_step n_states n_pairs'.split():
-            s[key] = getattr(self,key)
-        dict_['self'] = s
-        prefix = 'LO_{0:.1f}_{1:.2f}_{2:.2f}_'.format(
-            self.d, self.h_step, self.g_step)
-        file_ = NTF(prefix=prefix, dir=dirname, delete=False)
-        pickle.dump(dict_, file_)
-        return file_.name
     def conj(self,i):
         ''' Conjugate: Get index for state with -h
         '''
@@ -329,27 +284,29 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         '''
         self.marginal = self.symmetry(self.eigenvector) * self.eigenvector
         self.marginal /= self.marginal.sum()*self.g_step*self.h_step
-    def gh(self,      # LO instance
+    def hg(self,      # LO instance
+           m_h=None,  # Number of sample points in h
            m_g=None,  # Number of sample points in g
-           m_h=None   # Number of sample points in h
            ):
         '''Return two vectors of coordinates (g and h) that span the range
         of allowed values.  Useful for plotting state vectors.
         '''
-        if m_g == None:
-            m_g = self.n_g
         if m_h == None:
             m_h = self.n_h
+        if m_g == None:
+            m_g = self.n_g
         h_max = self.h_lim(-self.d)
-        return (np.linspace(-self.d, self.d, m_g, endpoint=False),
-                np.linspace(-h_max, h_max, m_h, endpoint=False))
+        return (
+            np.linspace(-h_max, h_max, m_h, endpoint=False),
+            np.linspace(-self.d, self.d, m_g, endpoint=False),
+        )
     def vec2z(self,      # LO instance
                 v,       # vector with component for each state
-                g=None,  # 1-d array of g values at sample points
                 h=None,  # 1-d array of h values at sample points
+                g=None,  # 1-d array of g values at sample points
                 floor=0
                 ):
-        ''' Use spline to estimate z(g[i,j],h[i,j]) on the basis of v.
+        ''' Use spline to estimate z(h[i,j],g[i,j]) on the basis of v.
         Return 2-d arrays of z values, g values, and h values.
         '''
         v = v.reshape(-1)
@@ -366,7 +323,8 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         self.spline(v)
         H,G = np.meshgrid(g, h)
         assert G.shape == ( len(h), len(g) )
-        rv = np.fmax(self.bs.ev(H.reshape(-1)), G.reshape(-1), floor)
+        rv = self.bs.ev(H.reshape(-1), G.reshape(-1)) # Evaluate bv spline
+        rv = np.fmax(rv, floor)
         def _test(i_h,i_g):
             '''Return True if out of bounds, False otherwise.
             '''
@@ -386,8 +344,8 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
                     rv[i_h,i_g] = floor
         return rv.T
     def matvec(self, v, rv=None):
-        ''' Apply linear operator, self, to v and return.  Use array
-        rv if passed, otherwise allocate rv.
+        '''Calculate rv= A*v and return.  Use array rv if passed, otherwise
+        allocate rv.
         '''
         if rv == None:
             rv = np.zeros(self.n_states)
@@ -400,11 +358,11 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
                 # i_g is index for a line of constant g
                 a = self.bounds_a[i][i_g]
                 b = self.bounds_b[i][i_g]
-                rv[a:b] += x # a:b are states that correspond to a range of h values
+                rv[a:b] += x # a:b corresponds to a range of h values
         return rv
     def rmatvec(self, v, rv=None):
-        '''Use array rv if passed, otherwise allocate rv.
-
+        '''Calculate rv = v*A and return.  Use array rv if passed, otherwise
+        allocate rv.
         '''
         if rv == None:
             rv = np.zeros(self.n_states)
@@ -493,56 +451,39 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         extrapolation makes the splines smoother in the legal region
         than they would be if the illegal region were set to zero.
         '''
-        z = np.empty((self.n_g, self.n_h))
-        g,h = self.gh()
-        last_z = 0
-        last_z_ = 0
-        H_0 = int(self.n_h/2)
+        z = np.zeros((self.n_h, self.n_g))
         for G in range(self.n_g):
-            for H in range(H_0):
-                # Block for 0 <= h = H*h_step, H_0 <= H_i < 2*H_0
-                H_i = H_0 + H  # Index
+            for H in range(self.n_h):
                 if (H,G) in self.state_dict:
                     i = self.state_dict[(H,G)]
-                    z[H_i,G] = v[i]
-                    dzdh = last_z - z[H_i,G]
-                    last_z = z[H_i,G]
-                else:
-                    z[H_i,G] = last_z - dzdh
-                # Block for 0 > h = -(H+1)*h_step, 0 <= H_i < H_0
-                H_ = -(H+1)
-                H_i = H_0 + H_
-                if (G,H_) in self.state_dict:
-                    i = self.state_dict[(H_,G)]
-                    z[H_i,G] = v[i]
-                    dzdh_ = last_z_ - z[H_i,G]
-                    last_z_ = z[H_i,G]
-                else:
-                    z[H_i,G] = last_z_ - dzdh_
+                    z[H,G] = v[i]
+        for G in range(self.n_g):
+            h = self.h_lim(self.G2g(G))
+            H_plus = self.h2H(h)
+            if (H_plus,G) not in self.state_dict:
+                H_plus -= 1
+            H_minus = self.h2H(-h)
+            if (H_minus,G) not in self.state_dict:
+                H_minus += 1
+            if H_plus <= H_minus + 1:
+                print('H_plus={0}, H_minus={1}'.format(H_plus, H_minus))
+                continue
+            # extrapolate on the +h side
+            z_last = v[self.state_dict[(H_plus,G)]]
+            dz_dh = z_last - v[self.state_dict[(H_plus-1,G)]]
+            for H in range(H_plus+1, self.n_h):
+                z_last += dz_dh
+                z[H,G] = z_last
+            # extrapolate on the -h side
+            z_last = v[self.state_dict[(H_minus,G)]]
+            dz_dh = v[self.state_dict[(H_minus+1,G)]] - z_last
+            for H in range(H_minus-1, -1, -1):
+                z_last -= dz_dh
+                z[H,G] = z_last
+        h,g = self.hg() # linspaces for ranges of g and h values
         from scipy.interpolate import RectBivariateSpline
-        self.bs = RectBivariateSpline(g, h, z, kx=3, ky=3)
+        self.bs = RectBivariateSpline(h, g, z, kx=3, ky=3)
         return
-    def set_eigenvector(
-            self,        # LO instance
-            A,           # Other LO instance or np array
-            exact=False  # Use np array A without interpolation
-    ):
-        '''For self.eigenvector, use eigenvector of other LO instance or use
-        array.
-
-        '''
-        if exact:
-            assert A.shape == (self.n_states,)
-            self.eigenvector = A
-            return
-        x = np.empty((2,self.n_states))
-        for i in range(self.n_states):
-            raise RuntimeError#,'FixMe: Use new state_list format'
-            x[0,i],x[1,i] = self.state_list[i][:2] # x[0] = g, x[1] = h
-        A.spline()
-        self.eigenvector = A.bs.ev(x[0],x[1])
-        self.eigenvector /= LA.norm(self.eigenvector)
-        self.spline() # Fit to new self.eigenvector
     def diff(self,     #LO instance
              g,        #List(like) of g values
              h,        #List(like) of h values
@@ -563,37 +504,120 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         if rv: return d, u
         else: return d
 class Archive:
-    def __init__(self, LO, dirname='archive'):
+    '''self.op_dict has keys that are tuples (d, h_step, g_step). Values
+    are file names.  Those files are pickled dicts with the following
+    key/value pairs:
+
+    'self': dict with the following keys (d, h_step, g_step, n_states,
+        n_pairs, iterations).  Values are corresponding floats or
+        ints.  Note: iterations is the from eigenvector calculation.
+
+    'self_arrays': The name of a file created by numpy.savez that
+        contains the arrays G2state, state_list and eigenvector
+
+    'image_dict': A dict with keys that are triples (G,H,iterations)
+        and values names of files created by numpy.tofile.
+
+    '''
+    
+    def __init__(self, LO, dir_name='archive'):
+        '''Read relevant files in dir_name and build self.op_dict which has keys
+        (d, h_step, g_step).
+        '''
         import glob
         import pickle
         self.LO = LO
+        self.dir_name = dir_name
         self.op_dict = {}
-        for name in glob.glob(dirname+'/LO*'):
+        for name in glob.glob(dir_name+'/LO*'):
             s = pickle.load(open(name,'rb'))['self']
             key = tuple([s[x] for x in 'd h_step g_step'.split()])
             if key in self.op_dict:
                 print('WARNING {0} and {1} have same key: {2}'.format(
                     self.op_dict[key], name, key))
             self.op_dict[key] = name
-    def read(self, key):
-        import pickle
-        dict_ = pickle.load(open(self.op_dict[key],'rb'))
-        return self.LO(*key, archive_dict=dict_)
-    def create(self, d, h_step, g_step):
+    def get(self, d, h_step, g_step, sources=[], make_pairs=False):
+        ''' Read or calculate
+
+        sources is a list of triples (frac_h,frac_g,iterations)
+
+        Return LO, image_dict
+        '''
+        def read_operator(args,file_name):
+            import pickle
+            dict_ = pickle.load(open(file_name,'rb'))
+            arg_dict = dict_['self'].copy() # For call to LO
+            for key,value in np.load(dict_['self_arrays']).items():
+                arg_dict[key] = value
+            return self.LO(*args, archive_dict=arg_dict), dict_
+        def fractions2indices(sources, A):
+            int_sources = []
+            h_max = A.h_lim(-A.d)
+            for frac_h,frac_g,iterations in sources:
+                H = A.h2H(h_max*frac_h)
+                G = A.g2G(A.d*frac_g)
+                int_sources.append((H,G,iterations))
+            return int_sources
+        def write_archive(A, image_dict):
+            from tempfile import NamedTemporaryFile as NTF
+            import pickle
+            import os.path
+
+            self_file = NTF(prefix='self_', dir=self.dir_name, delete=False)
+            np.savez(
+                self_file,
+                G2state=A.G2state,
+                state_list=A.state_list,
+                eigenvector=A.eigenvector,
+            )
+            dict_ = {'self_arrays':self_file.name}
+
+            for key, value in image_dict.items():
+                vec_file = NTF(prefix='image_',dir=self.dir_name,delete=False)
+                value.tofile(vec_file)
+                image_dict[key] = vec_file.name
+            dict_['image_dict'] = image_dict
+
+            s = {}
+            for key in '''d h_step g_step
+            n_states n_pairs shape n_g n_h origin_h origin_g'''.split():
+                s[key] = getattr(A,key)
+            dict_['self'] = s
+            prefix = 'LO_{0:.1f}_{1:.2f}_{2:.2f}_'.format(
+                A.d, A.h_step, A.g_step)
+            file_ = NTF(prefix=prefix, dir=self.dir_name, delete=False)
+            pickle.dump(dict_, file_, 2)
+            return
+
+        # Read or create linear operator A and eigenvector
         key = (d, h_step, g_step)
+        image_dict = {}
         if key in self.op_dict:
-            return self.read(key),True
-        return self.LO(*key),False
-def read_LO_step(filename, dirname='archive'):
-    '''From an archive build an LO_step instance and read its eigenvector
-    from disk.
-    '''
-    import pickle, os.path
-    archive = pickle.load(open(os.path.join(dirname,filename),'rb'))
-    d, g_step, h_step = archive['args']
-    A = LO_step(d, g_step, h_step, skip_pairs=True)
-    A.set_eigenvector(np.fromfile(archive['vec_filename']),exact=True)
-    return A
+            A, dict_ = read_operator(key, self.op_dict[key])
+            if make_pairs:
+                A.pairs() # bounds_a and bounds_b get too big to store
+        else:
+            A = self.LO(*key)
+            A.power()
+        int_sources = fractions2indices(sources,A) # Get integer indices
+        if key in self.op_dict: # Read images and return if in archive
+            for image_key,value in dict_['image_dict'].items():
+                image_dict[image_key] = np.fromfile(value)
+            assert set(dict_['image_dict'].keys()) == set(int_sources)
+            # FixMe: Need more code to handle failure of assert
+            return A, image_dict
+        # Calculate because archive file doesn't exist
+        for image_key in int_sources:
+            H,G,iterations = image_key
+            point_index = A.state_dict[(H,G)]
+            v = np.zeros(A.n_states)
+            v[point_index] = 1.0
+            for i in range(iterations):
+                v = A.matvec(v)
+                v /= v.max()
+            image_dict[image_key] = v
+        write_archive(A,image_dict.copy())
+        return A, image_dict
 def sym_diff(A, B):
         '''
         Calculate difference between eigenvectors of LO instances A and B.

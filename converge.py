@@ -50,31 +50,19 @@ def main(argv=None):
     archive = Archive(LO_step)
     # Initialize operator
     d = args.d*args.iterations**2
-    A,read = archive.create( d, args.d_h, args.d_g)
-    if not read:
-        A.power(small=1.0e-8)
-        print('{0:d} iterations'.format(A.iterations))
-
-    # Create unit vector with one component specified by args.point
     h_,g_ = args.point
-    g = A.d * g_
-    h_max = A.h_lim(g)
-    h = h_max * h_
-    # Get integer indices of cell and set corresponding component
-    H = A.h2H(h)
-    G = A.g2G(g)
+    A,image_dict = archive.get( d, args.d_h, args.d_g,
+                                [(h_, g_, args.iterations)])
+    keys = list(image_dict.keys())
+    assert len(keys) == 1
+    H,G,iterations = keys[0]
+    assert iterations == args.iterations
+    v = image_dict[keys[0]]
+    
     h_0,g_0 = A.H2h(H),A.G2g(G) # Actual point used
-    point_index = A.state_dict[(H,G)]
-    v = np.zeros(A.n_states)
-    v[point_index] = 1.0
-
     h_1,g_1 = h_0, g_0
     for i in range(args.iterations):
-        v = A.matvec(v)
-        v /= v.max()
         h_1,g_1 = A.affine(h_1,g_1)
-    if not read:
-        A.archive({(H,G):v})
     h_3 = A.h_lim(g_1)
     g_3 = g_1
     # z_1: apex of pie slice, z_3: lower right corner

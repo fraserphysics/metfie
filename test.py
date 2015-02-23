@@ -222,18 +222,19 @@ def test_shape():
 
 def test_archive():
     import pickle
+    import os
+    import glob
     from first import Archive
     from first_c import LO_step
+    test_dir = 'test'
+    
+    for name in glob.glob(test_dir+'/*'): # rm test/*
+        os.remove(name)
+        
     d, h_step, g_step = 100.0, 4.0, 4.0
     key = (d, h_step, g_step)
-    A,read = Archive(LO_step, dirname='test').create(*key)
-    if not read:
-        A.power()
-        A.archive(dirname='test')
-        print('made new LO')
-    else:
-        print('read old LO')
-    B = Archive(LO_step, dirname='test').read(key)
+    A,x = Archive(LO_step, dir_name=test_dir).get(*key, make_pairs=True)
+    B,x = Archive(LO_step, dir_name=test_dir).get(*key, make_pairs=True)
     check_state_list(A,B)
     check_bounds(A,B)
     check_simple(A,B)
