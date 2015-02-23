@@ -68,7 +68,8 @@ def main(argv=None):
     z_3 = z_1*z_2
     for f,name in ((z_1,'e_vec'),(z_3,'conditional')):
         if args.fig_files == None:
-            plots.append(plot(A, f, log=True, log_floor=args.log_floor, m_h=m_h,m_g=m_g))
+            plots.append(plot(A, f, log=True, log_floor=args.log_floor,
+                              m_h=m_h,m_g=m_g))
             plots.append(plot(A, f, m_h=m_h,m_g=m_g, log=False))
         else:
             plot(A, f, m_h=m_h,m_g=m_g, log=False)
