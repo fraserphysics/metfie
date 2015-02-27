@@ -1,14 +1,13 @@
 '''converge.py study convergence of numerical estimates of the
-conditional distribution given an initial point.  In particular for
-studying convergence as dy gets small.  order Markov integral
-operator.
+conditional distribution given an initial point.  Either d_h or d_g or
+both can be varied.  To study dependence on the number of iterations,
+use conditional.py
 
 '''
 import sys
 import numpy as np
 import matplotlib as mpl
 from first_c import LO_step
-#from first import LO_step
 from first import Archive
 def main(argv=None):
     '''For looking at the probability distribution over the image of a
@@ -21,10 +20,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--d', type=float, default=100,
         help='Max g')
-    parser.add_argument('--d_g', type=float, default=4,
-        help='element size')
-    parser.add_argument('--d_h', type=float, default=4,
-        help='element size')
+    parser.add_argument('--d_h', nargs='*', type=float, default=(4,),
+        help='list of element sizes')
+    parser.add_argument('--d_g', nargs='*', type=float, default=(4,),
+        help='list of element sizes')
     parser.add_argument('--iterations', type=int, default=2,
         help='Apply operator n times and scale d, d_h and d_g')
     parser.add_argument(
@@ -50,70 +49,29 @@ def main(argv=None):
     archive = Archive(LO_step)
     # Initialize operator
     d = args.d*args.iterations**2
-    h_,g_ = args.point
-    A,image_dict = archive.get( d, args.d_h, args.d_g,
-                                [(h_, g_, args.iterations)])
-    keys = list(image_dict.keys())
-    assert len(keys) == 1
-    H,G,iterations = keys[0]
-    assert iterations == args.iterations
-    v = image_dict[keys[0]]
+    d_h_list = args.d_h
+    d_g_list = args.d_g
+    n_d_h = len(d_h_list)
+    n_d_g = len(d_g_list)
     
-    h_0,g_0 = A.H2h(H),A.G2g(G) # Actual point used
-    h_1,g_1 = h_0, g_0
-    for i in range(args.iterations):
-        h_1,g_1 = A.affine(h_1,g_1)
-    h_3 = A.h_lim(g_1)
-    g_3 = g_1
-    # z_1: apex of pie slice, z_3: lower right corner
-
-    G_t, H_t = A.g2G(g_3)-2, A.h2H(h_3)-2
-    while v[A.state_dict[(H_t,G_t)]] == 0.0 :
-        assert G_t < A.n_g
-        G_t += 1
-    G_3 = G_1 = G_t
-    assert abs(A.g2G(g_3) - G_3) < 3
+    from level import ellipse
+    from conditional import fit
+    fig = plt.figure(figsize=(10,5))
+    ax = fig.add_subplot(1,1,1, aspect='equal')
+    ax.set_xlabel(r'$h$')
+    ax.set_ylabel(r'$g$')
+    for i,d_h in enumerate(d_h_list):
+        args.d_h = d_h
+        for j,d_g in enumerate(d_g_list):
+            args.d_g = d_g
+            print('working on {0}, {1}'.format(d_h, d_g))
+            mu, sigma, vals, theta_sigma, A = fit(
+                args, archive, args.iterations)
+            h,g = ellipse(sigma)
+            ax.plot( h+mu[0], g+mu[1], label=
+                     r'$d_h={0:.2f}, d_g={1:.2f}$'.format(d_h,d_g))
+    ax.legend(loc='upper left')
     
-    edge = []
-    for G in range(G_1, A.n_g):
-        g = A.G2g(G)
-        H_G = int(np.ceil(A.h_lim(g)/A.h_step) + A.n_h/2 -1)
-        h = A.H2h(H_G)
-        v_ = v[A.state_dict[H_G,G]]
-        if v_ == 0:
-            d_g = (g-g_1)/args.iterations
-            d_h = h-h_1
-            assert abs(d_g-d_h) < 2*(A.g_step + A.h_step)
-            break
-        slope = (g-g_1)/(h-h_1)
-        edge.append( (g, h, slope, v_))
-    edge = np.array(edge)
-
-    line = []
-    dz = np.array((1.0, args.iterations/2.0))*A.h_step/5.0
-    z = np.array((h_1, g_1),np.float64)
-    HG = lambda z: (A.h2H(z[0]), A.g2G(z[1]))
-    while HG(z) in A.state_dict:
-        assert len(line) < A.n_h*5
-        i = A.state_dict[HG(z)]
-        ev_i = A.eigenvector[i]
-        line.append((v[i], ev_i, v[i]*ev_i))
-        z += dz
-    line = np.array(line,np.float64)
-    line /= line.max(axis=0)
-    x = np.linspace(0,1,len(line))
-    
-    fig = plt.figure(figsize=(6,7))
-    ax = fig.add_subplot(4,1,1)
-    ax.plot(edge[:,2]/args.iterations, np.log10(edge[:,3]))
-    ax.set_ylim(-10,0)
-    ax = fig.add_subplot(4,1,2)
-    ax.plot(x, np.log10(line[:,0]))
-    ax = fig.add_subplot(4,1,3)
-    ax.plot(x, np.log10(line[:,1]))
-    ax = fig.add_subplot(4,1,4)
-    ax.plot(x, np.log10(line[:,2]))
-    ax.set_ylim(-10,0)
     if args.out == None:
         plt.show()
     else:
