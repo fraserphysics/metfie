@@ -503,6 +503,18 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         d = LA.norm(u)
         if rv: return d, u
         else: return d
+        
+def fractions2indices(sources, A):
+    ''' Translate fractions (h_frac,g_frac) to integers (H,G).
+    '''
+    int_sources = []
+    h_max = A.h_lim(-A.d)
+    for frac_h,frac_g,iterations in sources:
+        H = A.h2H(h_max*frac_h)
+        G = A.g2G(A.d*frac_g)
+        int_sources.append((H,G,iterations))
+    return int_sources
+
 class Archive:
     '''self.op_dict has keys that are tuples (d, h_step, g_step). Values
     are file names.  Those files are pickled dicts with the following
@@ -526,98 +538,134 @@ class Archive:
         '''
         import glob
         import pickle
+        import os.path
         self.LO = LO
         self.dir_name = dir_name
         self.op_dict = {}
-        for name in glob.glob(dir_name+'/LO*'):
-            s = pickle.load(open(name,'rb'))['self']
+        for dir_ in glob.glob(dir_name+'/LO*'):
+            path = os.path.join(dir_,'dict.pickle')
+            s = pickle.load(open(path,'rb'))['self']
             key = tuple([s[x] for x in 'd h_step g_step'.split()])
             if key in self.op_dict:
                 print('WARNING {0} and {1} have same key: {2}'.format(
                     self.op_dict[key], name, key))
-            self.op_dict[key] = name
-    def get(self, d, h_step, g_step, sources=[], make_pairs=False):
-        ''' Read or calculate
+            self.op_dict[key] = dir_
+        return
+    
+    def update(
+            self,       # Archive instance
+            key_0,      # (d, d_h, d_g)
+            dict_,      # Dictionary for operator key_0
+            new_images):
+        
+        from tempfile import NamedTemporaryFile as NTF
+        import pickle
+        import os.path
 
-        sources is a list of triples (frac_h,frac_g,iterations)
+        dir_ = self.op_dict[key_0] # EG archive/LO_100.0_4.00_4.00_bgqmlrrj/
+        image_dict = dict_['image_dict']
+        for key, value in new_images.items():
+            vec_file = NTF(prefix='image_{0}'.format(key),
+                           dir=dir_, delete=False)
+            value.tofile(vec_file)
+            image_dict[key] = os.path.basename(vec_file.name)
+        file_ = open(os.path.join(dir_, 'dict.pickle'), 'wb')
+        pickle.dump(dict_, file_, 2)
+        return
+    def write(self, A, image_vector_dict):
+        
+        from tempfile import NamedTemporaryFile as NTF
+        from tempfile import mkdtemp
+        import pickle
+        import os.path
 
-        Return LO, image_dict
+        prefix = 'LO_{0:.1f}_{1:.2f}_{2:.2f}_'.format(A.d, A.h_step, A.g_step)
+        dir_ = mkdtemp(prefix=prefix, dir=self.dir_name)
+        np.savez(
+            os.path.join(dir_, 'arrays'),
+            G2state=A.G2state,
+            state_list=A.state_list,
+            eigenvector=A.eigenvector,
+        )
+
+        image_dict = {}
+        for key, value in image_vector_dict.items():
+            vec_file = NTF(prefix='image_{0}'.format(key),
+                           dir=dir_, delete=False)
+            value.tofile(vec_file)
+            image_dict[key] = os.path.basename(vec_file.name)
+        dict_ = {'image_dict':image_dict}
+        
+        # Use s for attributes of LO that are not np.arrays so that d,
+        # h_step, g_step can be read quickly for dictionary key
+        s = {}
+        for key in '''d h_step g_step
+        n_states n_pairs shape n_g n_h origin_h origin_g'''.split():
+            s[key] = getattr(A,key)
+        dict_['self'] = s
+        file_ = open(os.path.join(dir_,'dict.pickle'),'wb')
+        pickle.dump(dict_, file_, 2)
+        return
+    
+    def get(
+        self,             # Archive instance
+        d, h_step, g_step,
+        sources=[],       # List of triples (frac_h,frac_g,iterations)
+        ):
+        '''Read or calculate.  Note that bounds_a and bounds_b are not stored
+        or read because they get too big to store on disk.
+
+        Return LO, image_vector_dict
+
         '''
-        def read_operator(args,file_name):
+        import os.path
+        def read_operator(args, dir_name):
             import pickle
-            dict_ = pickle.load(open(file_name,'rb'))
+            dict_ = pickle.load(open(os.path.join(dir_name,'dict.pickle'),'rb'))
             arg_dict = dict_['self'].copy() # For call to LO
-            for key,value in np.load(dict_['self_arrays']).items():
+            for key,value in np.load(os.path.join(dir_name,'arrays.npz')).items():
                 arg_dict[key] = value
             return self.LO(*args, archive_dict=arg_dict), dict_
-        def fractions2indices(sources, A):
-            int_sources = []
-            h_max = A.h_lim(-A.d)
-            for frac_h,frac_g,iterations in sources:
-                H = A.h2H(h_max*frac_h)
-                G = A.g2G(A.d*frac_g)
-                int_sources.append((H,G,iterations))
-            return int_sources
-        def write_archive(A, image_dict):
-            from tempfile import NamedTemporaryFile as NTF
-            import pickle
-            import os.path
+        def make_images(sources, A):
+            rv = {}
+            for key in sources:
+                H,G,iterations = key
+                point_index = A.state_dict[(H,G)]
+                v = np.zeros(A.n_states)
+                v[point_index] = 1.0
+                for i in range(iterations):
+                    v = A.matvec(v)
+                    v /= v.max()
+                rv[key] = v
+            return rv
 
-            self_file = NTF(prefix='self_', dir=self.dir_name, delete=False)
-            np.savez(
-                self_file,
-                G2state=A.G2state,
-                state_list=A.state_list,
-                eigenvector=A.eigenvector,
-            )
-            dict_ = {'self_arrays':self_file.name}
-
-            for key, value in image_dict.items():
-                vec_file = NTF(prefix='image_',dir=self.dir_name,delete=False)
-                value.tofile(vec_file)
-                image_dict[key] = vec_file.name
-            dict_['image_dict'] = image_dict
-
-            s = {}
-            for key in '''d h_step g_step
-            n_states n_pairs shape n_g n_h origin_h origin_g'''.split():
-                s[key] = getattr(A,key)
-            dict_['self'] = s
-            prefix = 'LO_{0:.1f}_{1:.2f}_{2:.2f}_'.format(
-                A.d, A.h_step, A.g_step)
-            file_ = NTF(prefix=prefix, dir=self.dir_name, delete=False)
-            pickle.dump(dict_, file_, 2)
-            return
-
-        # Read or create linear operator A and eigenvector
+        # To start, read or create linear operator A and eigenvector
         key = (d, h_step, g_step)
-        image_dict = {}
         if key in self.op_dict:
             A, dict_ = read_operator(key, self.op_dict[key])
-            if make_pairs:
-                A.pairs() # bounds_a and bounds_b get too big to store
         else:
             A = self.LO(*key)
             A.power()
-        int_sources = fractions2indices(sources,A) # Get integer indices
-        if key in self.op_dict: # Read images and return if in archive
+        int_sources = fractions2indices(sources,A)
+
+        if key in self.op_dict: # Read images
+            dir_ = self.op_dict[key]
+            image_vector_dict = {}
             for image_key,value in dict_['image_dict'].items():
-                image_dict[image_key] = np.fromfile(value)
-            assert set(dict_['image_dict'].keys()) == set(int_sources)
-            # FixMe: Need more code to handle failure of assert
-            return A, image_dict
-        # Calculate because archive file doesn't exist
-        for image_key in int_sources:
-            H,G,iterations = image_key
-            point_index = A.state_dict[(H,G)]
-            v = np.zeros(A.n_states)
-            v[point_index] = 1.0
-            for i in range(iterations):
-                v = A.matvec(v)
-                v /= v.max()
-            image_dict[image_key] = v
-        write_archive(A,image_dict.copy())
-        return A, image_dict
+                image_vector_dict[image_key] = np.fromfile(
+                    os.path.join(dir_,value))
+            # Calculate set of additional images required by int_sources
+            need = set(int_sources) - set(image_vector_dict.keys())
+            if need: # Calculate missing images
+                A.pairs()
+                new_images =  make_images(need, A)
+                self.update(key, dict_, new_images)
+                image_vector_dict.update(new_images)
+        # Calculate whole archive file because it doesn't exist
+        else:
+            image_vector_dict = make_images(int_sources, A)
+            self.write(A, image_vector_dict)
+        return A, image_vector_dict
 def sym_diff(A, B):
         '''
         Calculate difference between eigenvectors of LO instances A and B.
