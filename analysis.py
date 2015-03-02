@@ -5,7 +5,7 @@ approximations as functions of h at fixed g=0.
 import numpy as np
 import matplotlib as mpl
 import sys
-import first
+import first_c
 def main(argv=None):
     import argparse
     if argv is None:                    # Usual case
@@ -51,7 +51,7 @@ def main(argv=None):
             print('%-16s= %e'%(key,_dict[key]))
             continue
         print('%-16s= %s'%(key,_dict[key]))
-    LO = first.read_LO_step(args.file, args.dir)
+    LO = first_c.read_LO_step(args.file, args.dir)
     fig = line_plot(LO, _dict['dy'], _dict['eigenvalue'], plt)
     if args.out == None:
         plt.show()

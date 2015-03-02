@@ -56,7 +56,9 @@ def main(argv=None):
     
     from level import ellipse
     from conditional import fit
-    fig = plt.figure(figsize=(10,5))
+    title = 'd:{0:.2f}'.format(args.d)
+    fig = plt.figure(title,figsize=(10,5))
+    fig.suptitle(title)
     ax = fig.add_subplot(1,1,1, aspect='equal')
     ax.set_xlabel(r'$h$')
     ax.set_ylabel(r'$g$')
@@ -69,7 +71,7 @@ def main(argv=None):
                 args, archive, args.iterations)
             h,g = ellipse(sigma)
             ax.plot( h+mu[0], g+mu[1], label=
-                     r'$d_h={0:.2f}, d_g={1:.2f}$'.format(d_h,d_g))
+                     r'$d_h:{0:.2f}, d_g:{1:.2f}$'.format(d_h,d_g))
     ax.legend(loc='upper left')
     
     if args.out == None:

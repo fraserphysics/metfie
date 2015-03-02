@@ -6,7 +6,6 @@ import matplotlib as mpl
 import sys
 from first_c import LO_step
 #from first import LO_step
-from first import Archive
 def main(argv=None):
     import argparse
     if argv is None:                    # Usual case
