@@ -30,7 +30,7 @@ def fit(args, archive, iterations):
     vals,vecs = LA.eigh(sigma)
     assert mu.shape == (2,)
     assert sigma.shape == (2,2)
-    print('mu={2}\nvals={0}\nvecs={1}\n'.format(vals,vecs,mu))
+    #print('mu={2}\nvals={0}\nvecs={1}\n'.format(vals,vecs,mu))
     theta_mu = np.arctan(mu[1]/mu[0])*(180/np.pi)
     theta_sigma = np.arctan(vecs[1,1]/vecs[1,0])*(180/np.pi)
     return mu, sigma, vals, theta_sigma, A

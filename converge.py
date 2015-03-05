@@ -66,9 +66,10 @@ def main(argv=None):
         args.d_h = d_h
         for j,d_g in enumerate(d_g_list):
             args.d_g = d_g
-            print('working on {0}, {1}'.format(d_h, d_g))
+            print('working on {0}, {1}: '.format(d_h, d_g),end='')
             mu, sigma, vals, theta_sigma, A = fit(
                 args, archive, args.iterations)
+            print('eigenvector in {0} iterations'.format(A.iterations))
             h,g = ellipse(sigma)
             ax.plot( h+mu[0], g+mu[1], label=
                      r'$d_h:{0:.2f}, d_g:{1:.2f}$'.format(d_h,d_g))

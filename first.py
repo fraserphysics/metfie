@@ -599,7 +599,7 @@ class Archive:
         # Use s for attributes of LO that are not np.arrays so that d,
         # h_step, g_step can be read quickly for dictionary key
         s = {}
-        for key in '''d h_step g_step
+        for key in '''d h_step g_step iterations
         n_states n_pairs shape n_g n_h origin_h origin_g'''.split():
             s[key] = getattr(A,key)
         dict_['self'] = s
