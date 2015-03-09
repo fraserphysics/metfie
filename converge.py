@@ -5,14 +5,14 @@ use conditional.py
 
 '''
 import sys
-import numpy as np
-import matplotlib as mpl
-from first_c import LO_step
-from first import Archive
 def main(argv=None):
     '''For looking at the probability distribution over the image of a
     point under A
     '''
+    import numpy as np
+    from first_c import LO_step
+    from first import Archive
+    import matplotlib as mpl
     import argparse
     if argv is None:                    # Usual case
         argv = sys.argv[1:]
@@ -34,7 +34,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
+              'font.size': 15,
               'legend.fontsize': 15,
               'text.usetex': True,
               'font.family':'serif',
@@ -69,7 +69,10 @@ def main(argv=None):
             print('working on {0}, {1}: '.format(d_h, d_g),end='')
             mu, sigma, vals, theta_sigma, A = fit(
                 args, archive, args.iterations)
-            print('eigenvector in {0} iterations'.format(A.iterations))
+            try:
+                print('eigenvector in {0} iterations'.format(A.iterations))
+            except AttributeError:
+                print('No iteration count for eigenvector')
             h,g = ellipse(sigma)
             ax.plot( h+mu[0], g+mu[1], label=
                      r'$d_h:{0:.2f}, d_g:{1:.2f}$'.format(d_h,d_g))

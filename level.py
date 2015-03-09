@@ -11,9 +11,9 @@
 """
 
 import sys
-import numpy as np, numpy.random as nr, matplotlib as mpl
-mpl.use('Qt4Agg')
-import matplotlib.pyplot as plt, numpy.linalg as LA
+import numpy as np
+import numpy.random as nr
+import numpy.linalg as LA
 
 def ellipse(C,M=500):
     ''' Find M points on the level set x CI x = 1
@@ -32,6 +32,9 @@ def ellipse(C,M=500):
 
 def main(argv=None):
 
+    import matplotlib.pyplot as plt
+    import matplotlib as mpl
+    mpl.use('Qt4Agg')
     def test(z,CI,r=1.0):
         ''' Return True/False if the Mahalinobis distance from z to
         the origin is less/greater than r

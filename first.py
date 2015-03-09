@@ -88,7 +88,7 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
         return s_i + Low, s_i + High
     
     def boundary_image(
-            self,   # LO_step instance     
+            self,   # LO_step instance
             h_1,    # z_1=(h_1,g_1) is apex of pie slice for image of
             g_1,    # lower left corner z_0
             g_1_top # Apex for image of upper left z_0
@@ -205,9 +205,13 @@ class LO_step(scipy.sparse.linalg.LinearOperator):
             g = self.G2g(G)
             # H_lim = number of different values of h2H(h): 0 < h < h_lim(g)
             H_lim = int(np.ceil(self.h_lim(g)/self.h_step))
+            H_first = int(self.n_h/2) - H_lim
+            H_last = int(self.n_h/2) + H_lim
+            h_last = self.H2h(H_last-1)
+            if self.d-h_last**2/24 >= g: # Check for boundary kissing lower left corner
+                H_last -= 1
             s_i = len(state_list) #index of first allowed state for this g
-            for H_ in range(-H_lim, H_lim):
-                H = H_ + self.n_h/2
+            for H in range(H_first, H_last):
                 self.state_dict[(H,G)] = len(state_list)
                 state_list.append((H,G))
             self.G2state[G+1] = len(state_list)
