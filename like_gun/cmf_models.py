@@ -149,27 +149,8 @@ class Float(Component):
         rv = self.__join__(self.value+x_value, comment, branches)
         return rv
 
-def test():
-    comment = '''This is a long
-multi line explanation
-of the value 2.7
-which is b in test'''
-    a = Float(1)
-    b = Float(27,comment)
-    c = a+b
-    d = c + 3
-    print('''
-a=%s
------------------------------------------------------------------
-a+b=%s
------------------------------------------------------------------
-c+3=%s
-    '''%(str(a), str(c), str(d)))
-    for i in range(6):
-        a += i/2
-    return 0
 def make_html(component_dict, sorted_names=None, title='Simulation'):
-    '''
+    '''Returns a markup.page instance suitable for writing to an html file.
     '''
     import markup
     if sorted_names == None:
@@ -201,23 +182,46 @@ def make_html(component_dict, sorted_names=None, title='Simulation'):
     page.dl.close()
     return page
 def demo():
+    ''' Fit an eos and write an html file
+    '''
     import calc
 
     vt = calc.experiment()
     fit,e = calc.best_fit(vt)
-    keys = sorted(fit.components)
-    component_dict = dict((key,getattr(fit, key)) for key in keys)
-    page = make_html(component_dict, keys, 'Simulated Gun')
-    file_ = open('gun.html','wt')
-    file_.write(page.__str__())
+    make_page(fit, 'gun.html')
     return 0
-    print("provenance of the components of simulated gun:")
-    for key in keys:
-        print('component {0}: {1}'.format(key, component_dict[key]))
+def make_page(gun,file_name):
+    keys = sorted(gun.components)
+    component_dict = dict((key,getattr(gun, key)) for key in keys)
+    page = make_html(component_dict, keys, 'Simulated Gun')
+    file_ = open(file_name,'wt')
+    file_.write(page.__str__())
+    return
+def test():
+    import calc
+    gun = calc.GUN()
+    make_page(gun,'test.html')
+    return 0
+    comment = '''This is a long
+multi line explanation
+of the value 2.7
+which is b in test'''
+    a = Float(1)
+    b = Float(27,comment)
+    c = a+b
+    d = c + 3
+    print('''
+a=%s
+-----------------------------------------------------------------
+a+b=%s
+-----------------------------------------------------------------
+c+3=%s
+    '''%(str(a), str(c), str(d)))
+
     return 0
 if __name__ == "__main__":
-    demo()
-    #test()
+    #demo()
+    test()
 
 #---------------
 # Local Variables:
