@@ -42,6 +42,21 @@ class Provenance:
         return rv
     def __str__(self):
         return self._indent(self.depth)
+    def html(
+            self,       # Provenance instance
+            name,       # Component name
+            root_depth,
+            stub,       # Markup object to which this should "add"
+            ):
+        '''Add to h html view of self.
+        '''
+        from markup import oneliner
+        key = '{0}_{1:d}'.format(name, root_depth-self.depth)
+        stub.add(oneliner.dt(key,id=key))
+        stub.add(oneliner.dd(oneliner.a('filename',href='dummy')))
+        for branch in self.branches:
+            branch.html(name, root_depth, stub)
+        return
 
 class Component:
     '''Parent class intended for subclasses.  A Component object represents a
@@ -78,10 +93,25 @@ class Component:
         return self.__class__(value, comment, provenance)
     def __str__(self):
         rv= '''{0}, value = {1}, provenance:
-{2}'''.format(
-    self.__class__, self.value, self.provenance)
+{2}'''.format(self.__class__, self.value, self.provenance)
         return rv
-        
+    def html(
+            self, # Component instance
+            name, # Component name
+            ):
+        '''Return tuple containing:
+             
+             1. html description of self suitable for page.li()
+             
+             2. html description of provenance sutible for page.add
+                inside of page.dl(), page.dl.close() pair
+        '''
+        from markup import oneliner
+        return '{0}: value={1}, {2}'.format(
+            name,
+            self.value,
+            oneliner.a('provenance',href='"#{0}_0"'.format(name))
+            )
 class Float(Component):
     '''
     '''
@@ -122,14 +152,43 @@ c+3=%s
     for i in range(6):
         a += i/2
     return 0
+def make_html(component_dict, sorted_names=None, title='Simulation'):
+    '''
+    '''
+    import markup
+    if sorted_names == None:
+        sorted_names = sorted(component_dict.keys())
+    page = markup.page()
+    page.h1('The components of {0}'.format(title))
+    page.ul()
+    for name, component in component_dict.items():
+        page.li(component_dict[name].html(name))
+    page.ul.close()
+    page.br( )
+    
+    page.h1('Provenance of components')
+    page.dl()
+    for name, component in component_dict.items():
+        # FixMe: modify page here if possible
+        component.provenance.html(name, component.provenance.depth, page)
+    page.dl.close()
+    return page
 def demo():
     import calc
 
     vt = calc.experiment()
     fit,e = calc.best_fit(vt)
+    keys = sorted(fit.components)
+    component_dict = dict((key,getattr(fit, key)) for key in keys)
+    page = make_html(component_dict, keys, 'Simulated Gun')
+    file_ = open('gun.html','wt')
+    file_.write(page.__str__())
+    return 0
+    print(page)
     print("provenance of the components of simulated gun:")
-    for key in sorted(fit.components):
-        print('component {0}: {1}'.format(key, getattr(fit, key)))
+    for key in keys:
+        print('component {0}: {1}'.format(key, component_dict[key]))
+    raise RuntimeError
     return 0
 if __name__ == "__main__":
     demo()

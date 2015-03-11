@@ -21,13 +21,8 @@ ideas or questions to nogradi at gmail dot com.
 Installation: drop markup.py somewhere into your Python path.
 """ % ( __version__, __date__ )
 
-try:
-    basestring
-    import string
-except:
-    # python 3
-    basestring = str
-    string = str
+# python 3
+string = str
 
 # tags which are reserved python keywords will be referred 
 # to by a leading underscore otherwise we end up with a syntax error
@@ -335,7 +330,7 @@ class page:
         """This convenience function is only useful for html.
         It adds css stylesheet(s) to the document via the <link> element."""
       
-        if isinstance( filelist, basestring ):
+        if isinstance( filelist, str ):
             self.link( href=filelist, rel='stylesheet', type='text/css', media='all' )
         else:
             for file in filelist:
@@ -425,9 +420,9 @@ def _argsdicts( args, mydict ):
 def _totuple( x ):
     """Utility stuff to convert string, int, long, float, None or anything to a usable tuple."""
 
-    if isinstance( x, basestring ):
+    if isinstance( x, str ):
         out = x,
-    elif isinstance( x, ( int, long, float ) ):
+    elif isinstance( x, ( int, float ) ):
         out = str( x ),
     elif x is None:
         out = None,
@@ -439,7 +434,7 @@ def _totuple( x ):
 def escape( text, newline=False ):
     """Escape special html characters."""
 
-    if isinstance( text, basestring ):
+    if isinstance( text, str ):
         if '&' in text:
             text = text.replace( '&', '&amp;' )
         if '>' in text:
@@ -461,7 +456,7 @@ _escape = escape
 def unescape( text ):
     """Inverse of escape."""
     
-    if isinstance( text, basestring ):
+    if isinstance( text, str ):
         if '&amp;' in text:
             text = text.replace( '&amp;', '&' )
         if '&gt;' in text:
