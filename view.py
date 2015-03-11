@@ -2,8 +2,10 @@
 '''
 import numpy as np
 import mayavi.mlab as ML
+import matplotlib as mpl
 import sys
-import first
+from first_c import LO_step
+#from first import LO_step
 def main(argv=None):
     import argparse
     if argv is None:                    # Usual case
@@ -11,52 +13,67 @@ def main(argv=None):
 
     parser = argparse.ArgumentParser(
         description='''Display specified data using mayavi ''')
-    parser.add_argument('--file', type=str,
-                        default='400_g_400_h_32_y',
-                        help='Read LO_step instance from this file.')
+    parser.add_argument('--d', type=float, default=100,
+        help='Max g')
+    parser.add_argument('--d_g', type=float, default=4,
+        help='element size')
+    parser.add_argument('--d_h', type=float, default=4,
+        help='element size')
+    parser.add_argument('--iterations', type=int, default=2,
+        help='Apply operator n times and scale d, d_h and d_g')
     parser.add_argument('--dir', type=str,
                         default='archive',
-                        help='Read LO_step instance from this file.')
+                        help='Read LO instances from this directory.')
     parser.add_argument('--log_floor', type=float, default=(1e-20),
                        help='log fractional deviation')
     parser.add_argument('--fig_files', type=str, default=None,
                        help='Write results rather than display to screen')
     parser.add_argument(
         '--resolution', type=int, nargs=2, default=(None,None),
-        help='Resolution in g and h')
+        help='Resolution in h and g')
     args = parser.parse_args(argv)
+    m_h = args.resolution[0]
+    m_g = args.resolution[1]
 
     import pickle, os.path
     from datetime import timedelta
 
-    m_g = args.resolution[0]
-    m_h = args.resolution[1]
-    _dict = pickle.load(open(os.path.join(args.dir,args.file),'rb'))
-    g_max, dy, g_step, h_step = _dict['args']
-    _dict.update({'g_max':g_max, 'dy':dy, 'g_step':g_step, 'h_step':h_step})
-    keys = list(_dict.keys())
-    keys.sort()
-    for key in keys:
-        if key == 'time':
-            print('%-16s= %s'%('time',timedelta(seconds=_dict[key])))
-            continue
-        if key in set(('g_step','h_step')):
-            print('%-16s= %e'%(key,_dict[key]))
-            continue
-        print('%-16s= %s'%(key,_dict[key]))
-    LO = first.read_LO_step(args.file, args.dir)
-    LO.calc_marginal()
+    params = {'axes.labelsize': 18,     # Plotting parameters for latex
+              'text.fontsize': 15,
+              'legend.fontsize': 15,
+              'text.usetex': True,
+              'font.family':'serif',
+              'font.serif':'Computer Modern Roman',
+              'xtick.labelsize': 15,
+              'ytick.labelsize': 15}
+    mpl.rcParams.update(params)
+    if args.fig_files != None:
+        mpl.use('PDF')
+    import matplotlib.pyplot as plt  # must be after mpl.use
 
+    archive = Archive(LO_step)
+    # Initialize operator
+    d = args.d*args.iterations**2
+    h_,g_ = 0,0
+    A,image_dict = archive.get( d, args.d_h, args.d_g,
+                                [(h_, g_, args.iterations)])
+    keys = list(image_dict.keys())
+    assert len(keys) == 1
+    key = keys[0]
+    assert key[2] == args.iterations
     plots = [] # to keep safe from garbage collection
-    for f,name in ((LO.eigenvector,'vec'),(LO.marginal,'marg')):
+    z_1 = A.eigenvector
+    z_2 = image_dict[key]
+    z_3 = z_1*z_2
+    for f,name in ((z_1,'e_vec'),(z_3,'conditional')):
         if args.fig_files == None:
-            plots.append(plot(LO, f, log=True, log_floor=args.log_floor,
-                              m_g=m_g,m_h=m_h))
-            plots.append(plot(LO, f, log=False, m_g=m_g, m_h=m_h))
+            plots.append(plot(A, f, log=True, log_floor=args.log_floor,
+                              m_h=m_h,m_g=m_g))
+            plots.append(plot(A, f, m_h=m_h,m_g=m_g, log=False))
         else:
-            plot(LO, f, log=False, m_g=m_g, m_h=m_h)
+            plot(A, f, m_h=m_h,m_g=m_g, log=False)
             ML.savefig('%s_%s.png'%(args.fig_files,name))
-            plot(LO, f, log=True, log_floor=args.log_floor, m_g=m_g, m_h=m_h)
+            plot(A, f, m_h=m_h,m_g=m_g, log=True, log_floor=args.log_floor)
             ML.savefig('%s_%s_log.png'%(args.fig_files,name))
     if args.fig_files == None:
         ML.show()
@@ -90,8 +107,8 @@ def plot(op,               # Linear operator
         rv.append(ranges)
         return rv
     
-    g,h = op.gh(m_g,m_h)    # Get arrays of g and h values that occur
-    G,H = np.meshgrid(g, h) # Make 2d arrays
+    g,h = op.hg(m_h,m_g)    # Get arrays of g and h values that occur
+    H,G = np.meshgrid(h, g) # Make 2d arrays
     
     if log:
         f = np.log10(np.fmax(f, log_floor))
@@ -101,8 +118,10 @@ def plot(op,               # Linear operator
     if m_g == None:
         assert m_h == None
         z = op.vec2z(f, floor=floor)
-    z = op.vec2z(f, g, h, floor=floor)
-    X,Y,Z,ranges = scale(G,H,z.T)
+    z = op.vec2z(f, h, g, floor=floor)
+    X,Y,Z,ranges = scale(H,G,z)
+    assert X.shape == Y.shape,'X:{0}, Y:{1}'.format(X.shape, Y.shape)
+    assert Z.shape == Y.shape,'Z:{0}, Y:{1}'.format(Z.shape, Y.shape)
     ranges[-2:] = [floor, z.max()] # Make plot show max before log
     fig_0 = ML.figure(size=(800,700))
     s_0 = ML.mesh(X,Y,Z, figure=fig_0) # This call makes the surface plot

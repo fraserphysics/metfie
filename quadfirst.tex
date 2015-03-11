@@ -383,7 +383,6 @@ probability from Shannon.%
 \item[$z\in D$] A point in the domain defined in \eqref{eq:domain}
 \item[$\tuple{n}{m}$] A sequence $(z_n, z_{n+1}, \ldots, z_m)$
 \item[$\allowed$] Indicator function
-  \marginpar{allowed}
   \begin{equation*}
     \allowed(z_a,z_b) =
     \begin{cases}
@@ -393,7 +392,7 @@ probability from Shannon.%
     \end{cases}
   \end{equation*}
 \item[$\PFop$] The Peron Frobenius operator which acts on a
-  function $f:D\mapsto \REAL$ by \marginpar{PFop}
+  function $f:D\mapsto \REAL$ by
   \begin{subequations}
     \label{eq:PFop}
     \begin{align}
@@ -417,14 +416,14 @@ probability from Shannon.%
   \begin{equation}
     \label{eq:pairdef}
     \pair(z_a,z_b) = \lefunc(z_a) \allowed(z_a,z_b) \refunc(z_b)
-  \end{equation}\marginpar{pair}
+  \end{equation}
 \item[$\stationary$] The stationary probability density
   \begin{align}
     \stationary(z_a) &= \int \pair(z_a,z) dz = \int \pair(z,z_a) dz
                        \nonumber \\
     \label{eq:stationary}
                      &= \eval \lefunc(z_a) \refunc(z_a).
-  \end{align}\marginpar{stationary}
+  \end{align}
 \item[$\ptuple{n}$] The joint probability density function for
   sequences of $n$ points
   \begin{equation}
@@ -432,7 +431,6 @@ probability from Shannon.%
     \ptuple{n}(\tuple{1}{n}) = \frac{\lefunc(z_1)
       \refunc(z_n)}{\eval^{n-2}} \prod_{i=1}^{n-1} \allowed(z_i,z_{i+1})
   \end{equation}
-\marginpar{ptuple[1]}
 \item[$\Skip{n}$] The joint density of pairs separated by $n$ skipped
   values, ie,
   \begin{align}
@@ -450,11 +448,10 @@ probability from Shannon.%
     \label{eq:volume}
     &= \left[ \allowed(z_a,\cdot) \cdot \PFop^{n} \right] (z_b),
   \end{align}
-  and that it is the volume in $\REAL^n$ of the allowed paths from
-  $z_a$ $z_b$ in $n$ steps.
-  \marginpar{Skip[1]}
-\item[$\scale{n}$] A rescaling obtained by dividing $\Delta_y$ in $n$,
-  ie, replacing $d$ with $n^2d$.\marginpar{scale[1]}
+  and that it is the volume in $\Z^n \subset \REAL^{2n}$ of the set of
+  allowed paths from $z_a$ to $z_b$ in $n$ steps.
+\item[$\scale{n}$] A rescaling obtained by dividing $\Delta_y$ by $n$,
+  ie, replacing $d$ with $n^2d$.
 \item[$z\supn, \allowed\supn,\cdots $] Corresponding objects for
   rescaled problem, eg, if $z=(h,g)$ then
   \begin{equation*}
@@ -471,8 +468,9 @@ From \eqref{eq:skip} it seems that I need some kind of convergence of
 $\PFop^n$.  I will define the required convergence in this section and
 make a formal conjecture that it exists.
 
-Let $\PFop\suparg{n,m}$ denote the map from functions on $D$ to
-functions on $D$ that operates on $u$ to yield $v$ as follows
+Let $\PFop\suparg{n,m}$ denote a map from functions on $D$ to
+functions on $D$ defined so that starting with a function $u$, one
+calculates $v = \PFop\suparg{n,m}u$ as follows
 \begin{enumerate}
 \item Map $u$ to higher resolution ($\Delta_y \rightarrow
 \frac{\Delta_y}{n}$ or equivalently $d \rightarrow n^2 d$) with
@@ -506,7 +504,7 @@ where $C$ is defined to ensure that
 For a particular $z_0$ the value of $v_{n,m}(z_0,\cdot)$ at $z$ is
 proportional to the volume in $\REAL^m$ that corresponds to allowed
 paths from $z_0$ to $z$.  As $m$ and $n$ get larger with a fixed
-ratio, the I hope that $v_{n,m}(z_0,\cdot)$ converges.  The following
+ratio, I hope that $v_{n,m}(z_0,\cdot)$ converges.  The following
 conjecture is sufficient:
 \begin{conj}
   \label{conj}
@@ -517,6 +515,23 @@ conjecture is sufficient:
     & \left| v_{n,n}(z_0,z) - v_{m,m}(z_0,z) \right| < \epsilon.
   \end{align*}
 \end{conj}
+
+\subsection{Numerical Evidence}
+\label{sec:evidence}
+
+Figure with image of (0,0) in one step
+
+Figures with areas corresponding to $V_n$ in \eqref{eq:volume} for two
+possible images of (0,0) with $n=2$.
+
+Figure of $V_2((0,0),z_b)$ vs $z_b$ indicated by color
+
+Figure of $V_{5}((0,0),z_b)$ vs $z_b$ indicated by color
+
+Figure with lines of $V_{5}((0,0),z_b)$ vs $z_b$ along the boundary
+and along the diagonal that goes to the maximum on the boundary.
+
+Repeat previous two figures for $V_{10}$
 
 \section{Marginal Distributions}
 \label{sec:marginal}
@@ -725,8 +740,8 @@ from~\eqref{eq:rescale}.
 
 \begin{figure}
   \centering
-    \resizebox{1.0\columnwidth}{!}{
-      \includegraphics{figs/2000_g_800_h_2_y_vec_log.png}}
+    %\resizebox{1.0\columnwidth}{!}{
+      %\includegraphics{figs/2000_g_800_h_2_y_vec_log.png}}
     \caption{The $\text{log}_{10}$ of the amplitude of a numerically
       estimated eigenfunction.}
   \label{fig:eigenfunction}

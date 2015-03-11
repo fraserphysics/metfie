@@ -8,8 +8,8 @@ import matplotlib as mpl
 def two_d(w,A, uniform=True):
     'return 2-d version of state vector suitable for plotting'
     if uniform:
-        # Next line makes images have same color regardless of overlap 
-        w = np.minimum(A.h_step*A.g_step, w)
+        # Next line makes images have same color regardless of overlap
+        w = (w>0)*A.h_step*A.g_step
     z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
     u = A.vec2z(w.reshape((A.n_states,)))
     m = u.max()
@@ -44,13 +44,10 @@ def main(argv=None):
     parser.add_argument('--backward', action='store_true',
         help='Use transpose of operator')
     parser.add_argument('--out', type=str, default=None,
-        help="Write result to this file")
+        help="Write plot to this file")
+    parser.add_argument('--archive', type=str, default=None,
+                        help="Write self and vector to archive/name")
     args = parser.parse_args(argv)
-    if args.iterations == 1:
-        uniform = True
-        iterations_string = ''
-    else:
-        raise RuntimeError,'Rethink this'
 
     assert len(args.points)%2 == 0
     f_sources = ((args.points[2*i], args.points[2*i+1]) for i in 
@@ -72,7 +69,7 @@ def main(argv=None):
     from first_c import LO_step
     #from first import LO_step
 
-    A = LO_step( d, d_h, d_g)
+    A = LO_step( args.d*args.iterations**2, args.d_h, args.d_g)
     v = np.zeros(A.n_states)
     i_sources = []           # For tagging sources in plot
     for h_,g_ in f_sources:
@@ -90,13 +87,20 @@ def main(argv=None):
     else:
         op = A.matvec
         op_string = '$A$'
+    if args.iterations > 1:
+        uniform = False
+        iterations_string = ', {0:d} iterations'.format(args.iterations)
+        for i in range(1,args.iterations):
+            v = op(v)
+            v /= v.max()
+    else:
+        uniform = True
+        iterations_string = ''
+        v = op(v)
+    if args.archive != None:
+        A.archive(args.archive, v=v)
     suptitle = 'Points and images under %s%s'%(
         op_string, iterations_string)
-    for i in range(args.iterations):
-        v = op(v)
-        v /= v.max()
-    else:
-        uniform = False
     data = two_d(v,A, uniform)
     fig = plt.figure(figsize=(8,10))
     fig.suptitle(suptitle)

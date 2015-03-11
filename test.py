@@ -98,6 +98,7 @@ def check_bounds(A,B):
 def check_state_list(A,B):
     import numpy.testing as npt
     npt.assert_array_equal( A.state_list, B.state_list)
+    npt.assert_array_equal( A.G2state, B.G2state)
 
 def check_images(A,B):
     import numpy as np
@@ -122,7 +123,7 @@ def test_first_c():
     import numpy.testing as npt
 
     # Get an operator from first.py
-    A = get_A()
+    A = first.LO_step(100,10,10)
     # Make an operator from first_c.pyx with same parameters
     B = first_c.LO_step(A.d, A.g_step, A.h_step)
     
@@ -130,27 +131,10 @@ def test_first_c():
     check_bounds(A,B)
     check_simple(A,B)
     check_images(A,B)
+    A.power(small=1.0e-9)
     B.power(small=1.0e-9)
     npt.assert_allclose(B.eigenvector, A.eigenvector)
-    
-def make_A(d, g_step, h_step, name=None):
-    import first
-    A = first.LO_step(d, g_step, h_step)
-    A.power(small=1e-9)
-    if name != None:
-        A.archive(name)
-    return A
-
-def get_A():
-    d, d_g, d_h = 50, 4, 4 # Operator parameters
-    name='%d_%d_%d'%(d, d_h, d_g)
-    try:
-        A = first.read_LO_step(name)
-        A.pairs()
-    except:
-        A = make_A(d, d_h, d_g, name)
-    return A
-
+  
 def check_symmetry(A):
     ''' Check to ensure that if
     (x,y)  in A*(g,h) then 
@@ -166,11 +150,6 @@ def check_symmetry(A):
 
     l_vec = np.zeros(A.n_states)
     r_vec = np.zeros(A.n_states)
-    for i in range(A.n_states): # state[i] = (g,h)
-        l_vec[i] = 1.0
-        L = A.matvec(l_vec)
-        print(L/L.max())
-        l_vec[i] = 0
     for i in range(A.n_states):
         j = A.conj(i)  # (g,h) in state[i] <=> (g,-h) in state[j]
         
@@ -179,11 +158,11 @@ def check_symmetry(A):
         r_vec[j] = 1.0
         R = A.rmatvec(r_vec)    # Operate to right
         
-# Check A.symmetry()
+        # Check A.symmetry()
         npt.assert_array_equal(l_vec, A.symmetry(r_vec), err_msg=
         'conj inconsistent with symmetry.  i={} j={}\n'.format(i,j))
 
-# Check matvec(x) = S(rmatvec(S(x))), where S is A.symmetry
+        # Check matvec(x) = S(rmatvec(S(x))), where S is A.symmetry
         npt.assert_allclose(L, A.symmetry(R),
             err_msg='''
 matvec(%s)  = %s
@@ -223,14 +202,40 @@ def test_shape():
     A = first.LO_step(d, d_g, d_h)
     check_grid(A, d, d_g, d_h)
     check_symmetry(A)
+
+def test_archive():
+    import os.path
+    import shutil
+    import glob
+    from first import Archive
+    from first_c import LO_step
+    test_dir = 'test'
     
+    for dir_ in glob.glob(test_dir+'/LO*'):
+        shutil.rmtree(dir_)
+        
+    d, h_step, g_step = 100.0, 4.0, 4.0
+    key = (d, h_step, g_step)
+    
+    archive = Archive(LO_step, dir_name=test_dir)
+    sources = [(0,0,2)]
+    A,x = archive.get(*key, sources=sources) # Test write
+    A.pairs()
+    
+    archive = Archive(LO_step, dir_name=test_dir)
+    sources.append((0,0.25,2))
+    C,x = archive.get(*key, sources=sources) # Test update
+    B,x = archive.get(*key, sources=sources) # Test read
+    B.pairs()
+    check_state_list(A,B)
+    check_bounds(A,B)
+    check_simple(A,B)
+                    
 if __name__ == "__main__":
     from time import time
+    test_archive()
     test_shape()
-    t_1 = time()
     test_first_c()
-    t_2 = time()
-    print('{0:f} seconds'.format(t_2-t_1))
     sys.exit(0)
     rv = main()
     sys.exit(rv)

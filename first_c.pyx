@@ -1,5 +1,11 @@
 """first_c.pyx: Cython version of LO from first.py.  This code is faster
 than first.py, but it does not introduce any new methods.
+
+Requires the following from pure python: self.n_states, self.n_pairs
+    self.G2state, self.d, self.state_list, self.h_lim() self.g2G(),
+    self.n_g, self.origin_g, self.g_step, self.h_step, self.bounds_a,
+    self.bounds_b
+
 """
 # See http://docs.cython.org/src/userguide/memoryviews.html
 #To build do the following sequence:
@@ -53,6 +59,8 @@ class LO_step(first.LO_step):
 
         for i in range(n_states): # prange is slower
             t = v_[i] * dgdh
+            if t == 0.0:
+                continue
             n = n_bounds[i]
             bounds_a_i = <ITYPE_t *>(a_pointers[i])
             bounds_b_i = <ITYPE_t *>(b_pointers[i])
