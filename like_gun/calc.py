@@ -35,7 +35,11 @@ class Spline(IU_Spline, Component):
     def __init__(self, x, y, comment=''):
         IU_Spline.__init__(self, x, y)
         Component.__init__(self, self.get_c(), comment)
-        
+    def display(self):
+        '''For making html document of Component.  FixMe: Make a plot and
+        html to refer to it.
+        '''
+        return self.get_c().__str__()
     def get_t(self):
         'Return the knot locations'
         return self._eval_args[0]

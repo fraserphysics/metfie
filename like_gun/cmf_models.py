@@ -8,15 +8,14 @@ class Provenance:
     def __init__(
             self,
             frame,        # inspect.stack() reference to code that called
-            text=None,    # Explanatory text
+            text='',      # Explanatory text
             branches=None,# A list or tuple of source Components
             max_depth=5
             ):
         self.file = frame[1]             # Name of file
-        self.line = frame[2]             # Line number of file
-        self.text = frame[4][0].strip()  # text of the specified line
-        if text != None:
-            self.text +='\n'+text
+        self.line_num = frame[2]         # Line number of file
+        self.line = frame[4][0].strip()  # text of the specified line
+        self.text = text
         if branches == None:
             self.leaf = True
             self.depth = 0
@@ -34,7 +33,7 @@ class Provenance:
         space = (root_depth - self.depth)*4*' '
         lines = self.text.splitlines()
         rv = '\n'+space+'depth={0:d}, {1} line {2:d}:{3}\n'.format(
-            self.depth, self.file, self.line, lines[0])
+            self.depth, self.file, self.line_num, self.line)
         for line in lines[1:]:
             rv += space+line+'\n'
         for branch in self.branches:
@@ -46,17 +45,26 @@ class Provenance:
             self,       # Provenance instance
             name,       # Component name
             root_depth,
-            stub,       # Markup object to which this should "add"
             ):
         '''Add to h html view of self.
         '''
         from markup import oneliner
-        key = '{0}_{1:d}'.format(name, root_depth-self.depth)
-        stub.add(oneliner.dt(key,id=key))
-        stub.add(oneliner.dd(oneliner.a('filename',href='dummy')))
+        import os.path
+        key = '{0}:{1:d}'.format(name, root_depth-self.depth) # EG, "C:0"
+        return_value = oneliner.dt(key,id=key)+'\n'
+        href = 'file://'+self.file # EG, "file:///some_absolute_path/calc.py"
+        
+        text = '{0}\n line {1:d}: {2}\n'.format(
+                oneliner.a(os.path.basename(self.file),href=href),
+                self.line_num,
+                self.line)
+        if self.text != '':
+            text += oneliner.p(self.text)+'\n'
+
+        return_value += oneliner.dd(text)
         for branch in self.branches:
-            branch.html(name, root_depth, stub)
-        return
+            return_value += branch.html(name, root_depth)
+        return return_value
 
 class Component:
     '''Parent class intended for subclasses.  A Component object represents a
@@ -80,6 +88,8 @@ class Component:
             self.provenance = Provenance(stack()[2], comment)
         else:
             self.provenance = provenance
+        if not hasattr(self, 'display'): # Multiple inheritance could set it
+            self.display = False
     def __join__(self, value, comment, branches):
         '''return a new instance that is the result of an operation on
          the objects described by x_prov and y_prov
@@ -107,10 +117,16 @@ class Component:
                 inside of page.dl(), page.dl.close() pair
         '''
         from markup import oneliner
-        return '{0}: value={1}, {2}'.format(
+        if self.display == False:
+            return '{0}: value={1}, {2}'.format(
+                name,
+                self.value,
+                oneliner.a('provenance',href='#{0}:0'.format(name))
+                )
+        return '{0}: {1}, {2}'.format(
             name,
-            self.value,
-            oneliner.a('provenance',href='"#{0}_0"'.format(name))
+            oneliner.a('value_link', href='#value of {0}'.format(name)),
+            oneliner.a('provenance',href='#{0}:0'.format(name))
             )
 class Float(Component):
     '''
@@ -161,16 +177,27 @@ def make_html(component_dict, sorted_names=None, title='Simulation'):
     page = markup.page()
     page.h1('The components of {0}'.format(title))
     page.ul()
-    for name, component in component_dict.items():
+    for name in sorted_names:
         page.li(component_dict[name].html(name))
     page.ul.close()
     page.br( )
     
     page.h1('Provenance of components')
     page.dl()
-    for name, component in component_dict.items():
-        # FixMe: modify page here if possible
-        component.provenance.html(name, component.provenance.depth, page)
+    for name in sorted_names:
+        c = component_dict[name]
+        page.add(c.provenance.html(name, c.provenance.depth))
+    page.dl.close()
+    page.br( )
+    
+    page.h1('Extended displays of component values')
+    page.dl()
+    for name in sorted_names:
+        c = component_dict[name]
+        if not c.display:
+            continue
+        key = 'value of {0}'.format(name)
+        page.add(markup.oneliner.dt(key,id=key)+'\n'+c.display())
     page.dl.close()
     return page
 def demo():
@@ -184,11 +211,9 @@ def demo():
     file_ = open('gun.html','wt')
     file_.write(page.__str__())
     return 0
-    print(page)
     print("provenance of the components of simulated gun:")
     for key in keys:
         print('component {0}: {1}'.format(key, component_dict[key]))
-    raise RuntimeError
     return 0
 if __name__ == "__main__":
     demo()
