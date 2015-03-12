@@ -103,6 +103,7 @@ magic = go(
            )
 
 from cmf_models import Float
+from markup import oneliner
 class GUN:
     '''Represents an imagined experiment and actual simulations.
 
@@ -115,7 +116,8 @@ class GUN:
                     max_hist=10),
             xi=Float(0.4,'Initial position of projectile / cm'),
             xf=Float(4.0,'Final/muzzle position of projectile /cm'),
-            m=Float(100.0,'Mass of projectile / g'),
+            m=Float(100.0,'{0} of projectile / g'.format(oneliner.a(
+                'Mass', href='http://en.wikipedia.org/wiki/Mass'))),
             N=400,            # Number of intervals between xi and xf
             sigma_sq_v=1.0e5, # Variance attributed to v measurements
             ):
