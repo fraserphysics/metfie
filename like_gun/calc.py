@@ -35,11 +35,6 @@ class Spline(IU_Spline, Component):
     def __init__(self, x, y, comment=''):
         IU_Spline.__init__(self, x, y)
         Component.__init__(self, self.get_c(), comment)
-    def display(self):
-        '''For making html document of Component.  FixMe: Make a plot and
-        html to refer to it.
-        '''
-        return self.get_c().__str__()
     def get_t(self):
         'Return the knot locations'
         return self._eval_args[0]
@@ -55,9 +50,37 @@ class Spline(IU_Spline, Component):
         rv = copy.deepcopy(self)
         rv._eval_args = self._eval_args[0], c, self._eval_args[2]
         # stack()[1] is context that called set_c
-        rv.provenance = Provenance(stack()[1], 'New coefficients',
-                                   branches=[self.provenance], max_depth=10)
+        rv.provenance = Provenance(
+            stack()[1], 'New coefficients', branches=[self.provenance],
+            max_hist=10)
         return rv
+    def display(self):
+        '''This method serves the Component class and the make_html
+        function defined in the cmf_models module.  It returns an html
+        description of self and writes a plot to 'eos.jpg'.
+        '''
+        # Write file named eos.jpg
+        fig = plt.figure('eos',figsize=(7,5))
+        ax = fig.add_subplot(1,1,1)
+        ax.set_xlabel(r'$x/{\rm cm}$')
+        ax.set_ylabel(r'$f/{\rm dyn}$')
+        x = np.linspace(.4,4,100)
+        y = self(x)
+        ax.plot(x,y)
+        fig.savefig('eos.jpg', format='jpg')
+
+        # Make an html formated return value
+        from markup import oneliner
+        html = oneliner.p('''
+        Table of coefficients for spline representation of force
+        as a function of position along the barrel''')
+        html += oneliner.p(self.get_c().__str__())
+        html += oneliner.p('''
+        Plot of force as a function of position along the barrel''')
+        html += oneliner.img(
+            width=700, height=500, alt='plot of eos', src='eos.jpg')
+        return html
+    
 class go:
     ''' Generic object.  For storing magic numbers.
     '''
@@ -79,26 +102,37 @@ magic = go(
     k_factor=1.0e6,       # (f(xi)/f(xf))^2
            )
 
+from cmf_models import Float
 class GUN:
     '''Represents an imagined experiment and actual simulations.
 
     Section 2 of the document ../juq.tex describes the imagined
     experiment.    
     '''
-    def __init__(self,      # GUN instance
-                 C=2.56e10, xi=0.4, xf=4.0, m=100.0,
-                 N=400,     # Number of intervals between xi and xf
-                 sigma_sq_v=1.0e5, # Variance attributed to v measurements
-                 ):
-        from cmf_models import Float
-        self.C = Float(C,'Constant in nominal equation of state')
-        self.xi = Float(xi,'Initial position of projectile / cm')
-        self.xf = Float(xf,'Final/muzzle position of projectile /cm')
-        self.m = Float(m,'Mass of projectile / g')
+    def __init__(
+            self,             # GUN instance
+            C=Float(2.56e10,'Constant in nominal equation of state',
+                    max_hist=10),
+            xi=Float(0.4,'Initial position of projectile / cm'),
+            xf=Float(4.0,'Final/muzzle position of projectile /cm'),
+            m=Float(100.0,'Mass of projectile / g'),
+            N=400,            # Number of intervals between xi and xf
+            sigma_sq_v=1.0e5, # Variance attributed to v measurements
+            ):
+        x = Float(1e10,'Just for exercising Float operations')
+        C = C + x
+        C = C - x
+        C = C/x
+        C = C*x
+        C = -C
+        C = -C
+        self.C = C + 0.0 # Vacuous demonstration of Float + float
+        self.xi = xi
+        self.xf = xf
+        self.m = m
         self._set_N(N)
         self.sigma_sq_v = sigma_sq_v
         self.components = set(('C','xi','xf','m'))#Component instance names
-        self.C = self.C + 0.0 # Vacuous demonstration of Float + float
         return
     def _set_N(
             self,                 # GUN instance

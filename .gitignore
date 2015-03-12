@@ -3,6 +3,7 @@ reference
 build
 figs
 *.so
+*.jpg
 *.c
 *.pyc
 result*
