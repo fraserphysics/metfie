@@ -172,7 +172,10 @@ class Float(Component):
         branches = [self.provenance]
         comment = 'Negation of Float'
         return self.__join__(-self.value, comment, branches)
-    def __truediv__(self, x):
+    def __truediv__(self, x): # python3
+        op = lambda a,b: a/b
+        return self.__arithmetic__(x, 'Division', op)
+    def __div__(self, x): # python2
         op = lambda a,b: a/b
         return self.__arithmetic__(x, 'Division', op)
     def __mul__(self, x):
