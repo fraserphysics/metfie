@@ -6,25 +6,31 @@
 \newcommand{\T}{{\cal P}}
 \newcommand{\logprob}{{\cal L}}
 
-\title{Transistion Probabilities that Maximize the Entropy of a Markov
-  Process}
+\title{Uniform Probability for Subsequences Drawn from a Continuous
+  Time Monotonic Process }
 
 \author{Andrew M.\ Fraser}
 \begin{document}
 \maketitle
 \begin{abstract}
-  I describe an algorithm that calculates, for any \emph{strongly
-    connected} directed graph, the set of branching probabilities for
-  the edges that yields a Markov process with the maximum possible
-  entropy rate.  I developed the algorithm as a tool for quantifying
-  uncertainty about an equation of state.  I will introduce the
-  entropy maximization problem in terms of Information Theory as I
-  first encountered it in the homework problems for chapter 4 of Cover
-  and Thomas' text (problems 4.7 and 4.16 in the second edition).
-  Although I will present the set of polynomial equations from Graph
-  Theory that the solution must satisfy, the operationally useful
-  algorithm relies on the power method for calculating eigenvalues.
+  I describe a probability measure for continuous time trajectories that
+  are constrained both to lie in within certain bounds and to be
+  monotonic.  Roughly, the measure makes all allowed sequences have
+  the same probability with respect to a norm.
 \end{abstract}
+
+\section{Introduction}
+\label{sec:introduction}
+\begin{description}
+\item[Motivation:] Priors for regions in function space constrained by
+  physical laws
+\item[Connection to Information Theory:] Theorem 8 of Shannon
+\item[Connection to Statistical Mechanics:] Jaynes maximum entropy
+  derivation of Maxwell Boltzmann distribution.  Coordinate dependent.
+\item[Connection to path integrals:]
+\item[Not Levy process:] Connection to Brownian motion
+\item[Outline:]
+\end{description}
 
 \section{A simple example}
 \label{sec:example}

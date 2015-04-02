@@ -1,0 +1,14 @@
+'''SConstruct derived from parent directory
+Documentation of LaTeX scanner class at
+http://www.scons.org/doc/HTML/scons-api/SCons.Scanner.LaTeX.LaTeX-class.html
+
+http://www.scons.org/wiki/LatexSupport
+'''
+
+Siads = Environment()
+Siads.PDF('siads.tex')
+
+#---------------
+# Local Variables:
+# eval: (python-mode)
+# End:
