@@ -51,8 +51,6 @@ def main(argv=None):
     d = args.d*args.iterations**2
     d_h_list = args.d_h
     d_g_list = args.d_g
-    n_d_h = len(d_h_list)
-    n_d_g = len(d_g_list)
     
     from level import ellipse
     from conditional import fit

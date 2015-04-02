@@ -13,8 +13,7 @@ def two_d(w,A, uniform=True):
     z = A.vec2z(np.ones((A.n_states,))) # Make mask for plots
     u = A.vec2z(w.reshape((A.n_states,)))
     m = u.max()
-    w = u*z + m*z
-    return w
+    return u*z + m*z
 
 def main(argv=None):
     '''For looking at images of points under A and A.T
@@ -54,7 +53,7 @@ def main(argv=None):
                  range(int(len(args.points)/2)))
     
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
+              'font.size': 15,
               'legend.fontsize': 15,
               'text.usetex': True,
               'font.family':'serif',
@@ -90,7 +89,7 @@ def main(argv=None):
     if args.iterations > 1:
         uniform = False
         iterations_string = ', {0:d} iterations'.format(args.iterations)
-        for i in range(1,args.iterations):
+        for i in range(args.iterations):
             v = op(v)
             v /= v.max()
     else:

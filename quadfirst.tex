@@ -461,7 +461,7 @@ probability from Shannon.%
   $\allowed\supn$ operates on a larger domain.
 \end{description}
 
-\subsection{Conjecture}
+\subsection{Conjecture (I Don't Believe it Anymore)}
 \label{sec:conjecture}
 
 From \eqref{eq:skip} it seems that I need some kind of convergence of
@@ -824,6 +824,16 @@ first_c produce archive results and identical results to each other
 Rewrite diff.py to use new LO_step class and write options for
 comparing path integral calculations of relative volumes of paths from
 a state to a pie slice.
+
+nohup python3 conditional.py --d 16 --d_h .5 --d_g 1 --point 0 0
+--iterations 1 2 4 8 16 32 48 --out test.pdf & 16 takes 51 hours, 32
+dies
+
+python3 conditional.py --d 16 --d_h 1 --d_g 2 --point 0 0 --iterations
+1 2 4 8 16 # 16 takes 2.5 hours
+
+nohup python3 conditional.py --d 16 --d_h 2 --d_g 4 --point 0 0
+--iterations 1 2 4 8 16 32 & # 32 takes 7:19
 
 %%%---------------
 %%% Local Variables:

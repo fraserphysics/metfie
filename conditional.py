@@ -110,7 +110,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
+              'font.size': 15,
               'legend.fontsize': 15,
               'text.usetex': True,
               'font.family':'serif',
@@ -132,11 +132,11 @@ def main(argv=None):
         mu[i,:], sigma[i,:,:], vals[i,:], theta_sigma[i], A = fit(args, archive, iters)
 
     plot_lines(args, mu, vals, theta_sigma, plt)
-    plot_ellipses(args, mu, sigma, plt)
+    fig = plot_ellipses(args, mu, sigma, plt)
     
     if args.out == None:
         plt.show()
-    else:
+    else: # FixMe: This only saves one of the two figures
         fig.savefig( open(args.out, 'wb'), format='pdf')
     return 0
     
