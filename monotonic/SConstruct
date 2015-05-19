@@ -8,6 +8,12 @@ http://www.scons.org/wiki/LatexSupport
 Siads = Environment()
 Siads.PDF('siads.tex')
 
+Siads.Command(
+    'bounds.pdf',
+    'plot.py',
+    'python3 plot.py --plot_bounds bounds.pdf'
+    )
+
 #---------------
 # Local Variables:
 # eval: (python-mode)
