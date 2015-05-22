@@ -5,6 +5,10 @@
 \newcommand{\htop}{{h_{\text{top}}}}
 \newcommand{\T}{{\cal P}}
 \newcommand{\logprob}{{\cal L}}
+\newcommand{\measure}{\mu}
+\newcommand{\Aop}{{\cal A}}
+\newcommand{\Aindicate}{\alpha}
+\newcommand{\slope}{s}
 
 \title{Uniform Probability for Subsequences Drawn from a Continuous
   Time Monotonic Process }
@@ -27,16 +31,43 @@
 \item Code that calculates for given $\Delta$:
   \begin{itemize}
   \item Stationary distribution
-  \item Conditional distribution ofter $n$ steps or after $\Delta t$
+  \item Conditional distribution after $n$ steps or after $\Delta t$
   \end{itemize}
-
 \end{itemize}
-\begin{figure*}
-  \centering
-  \resizebox{0.75\textwidth}{!}{\includegraphics{bounds.pdf}}
-  \caption{Bounds on allowed functions}
-  \label{fig:mt2}
-\end{figure*}
+
+I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$ with
+continuous $g$.  In turn I define $\Aop_\tau$ in terms of the function
+$\Aindicate_\tau$ that has the value one if its arguments are an allowed
+pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
+\begin{subequations}
+  \begin{align}
+    \label{eq:indicate}
+    \Aindicate(u,v) &\equiv
+    \begin{cases}
+      1 & 0 \leq u \leq 1,~ 0 \leq v \leq 1,~ v \leq u + \tau\\
+      0 & \text{otherwise}
+    \end{cases}\\
+    \label{eq:operate}
+    \left( \Aop_\tau \rho \right)(g) &\equiv \int \Aindicate(h,g)
+                                       \rho(h) dh \\
+    &= \int_{\max(g-\tau,0)}^1 \rho(h) dh.
+  \end{align}
+\end{subequations}
+I use the following notation for an eigenvalue and eigenfunction of
+$\Aop_\tau$:
+\begin{equation*}
+ \left( \Aop_\tau \rho_\lambda \right)(g) = \lambda \rho_\lambda (g)
+\end{equation*}
+Look at the picture and see
+\begin{align*}
+  \rho_\lambda(g) &= a \text{ constant } \forall g \leq \tau\\
+  \lambda a_\lambda &= \int_0^1 \rho_\lambda(h) dh \\
+  \lambda \rho_\lambda(g) &= \int_{g-\tau}^1 \rho_\lambda(h) dh ~~\forall
+  g > \tau\\
+  \lambda \frac{\partial}{\partial g} \rho_\lambda(g) &=
+                      - \rho_\lambda(g-\tau)~~\forall g > \tau
+\end{align*}
+
 
 \section{Introduction}
 \label{sec:introduction}
@@ -52,6 +83,62 @@
 \item[Not Levy process:] Connection to Brownian motion
 \item[Outline:]
 \end{description}
+
+\section{Specific Problem}
+\label{sec:specific}
+
+I seek a \emph{uniform} distribution on a \emph{restricted} set of
+functions.  Figure~\ref{fig:bounds} illustrate the set which I define
+by the following constraints\footnote{This an undecidable set.}:
+\begin{subequations}
+  \label{eq:f_def}
+  \begin{description}
+  \item[Bounded:] For all values of the independent variable $t$ the
+    function lies between $1-t$ and $-t$,
+    \begin{equation}
+      \label{eq:bounded_f}
+      -t \leq f(t) \leq 1-t
+    \end{equation}
+  \item[Monotonic:] The function is monotonic,
+    \begin{equation}
+      \label{eq:monotonic_f}
+      f(t+\delta) \leq f(t) ~ \forall (t,\delta): \delta \geq 0
+    \end{equation}
+  \end{description}
+\end{subequations}
+
+\begin{figure*}
+  \centering
+  \resizebox{0.75\textwidth}{!}{\includegraphics{bounds.pdf}}
+  \caption{Bounds on allowed functions}
+  \label{fig:bounds}
+\end{figure*}
+If one derives a new function $g$ by shifting $f$ by $t$, ie,
+\begin{equation}
+  \label{eq:shift}
+  g(t) = f(t) + t,
+\end{equation}
+then the constraints \eqref{eq:f_def} on $f$ imply the following
+constraints on $g$:
+\begin{subequations}
+  \label{eq:g_def}
+  \begin{align}
+    \label{eq:bounded_g}
+    0 &\leq g(t) \leq 1 ~ \forall t\\
+    \label{eq:monotonic_g}
+    g(t+\delta) &\leq g(t)+\delta ~ \forall(t,\delta): \delta \geq 0  
+  \end{align}
+\end{subequations}
+
+While Eqns.~\eqref{eq:g_def} describe the constraints that pretty
+simply, the goal of this paper is the more difficult task of defining
+a uniform distribution over the set.  I require that the probability
+measure $\measure$ have the following properties:
+\begin{description}
+\item[Stationary:] 
+\item[Consistent:] 
+\end{description}
+
 
 \section{A simple example}
 \label{sec:example}
@@ -156,77 +243,6 @@ Rather than the single equation \eqref{eq:excycle}, the pair
 \end{equation*}
 must hold.
 
-\section{A $4\times 4$ example}
-\label{sec:fourbyfour}
-
-For the adjacency matrix
-\begin{equation*}
-  A =
-  \begin{bmatrix}
-        1 & 1 & 0 & 1 \\
-        0 & 1 & 1 & 1 \\
-        1 & 0 & 1 & 1 \\
-        0 & 1 & 1 & 0 \\
-  \end{bmatrix}
-\end{equation*}
-I seek the transition matrix
-\begin{equation*}
-  \T =
-  \begin{bmatrix}
-        a & b & 0 & c \\
-        0 & d & e & f \\
-        g & 0 & h & i \\
-        0 & j & k & 0 \\
-  \end{bmatrix}
-\end{equation*}
-that maximizes the entropy rate.  Building on \emph{networkx}, I find
-the following cycle basis where elements are characterized by a list
-of edges and a list of signs that indicate the direction that each
-edge is traversed.
-\begin{align*}
-  C_1 &=
-  \begin{bmatrix}
-    (3,2) & (2,1) & (1,0) & (0,3) \\
-    1 & -1 & -1 & 1
-  \end{bmatrix} \\
-  C_2 &=  \begin{bmatrix} (0,0) \\ 1 \end{bmatrix} \\
-  C_3 &=  \begin{bmatrix} (1,1) \\ 1 \end{bmatrix} \\
-  C_4 &=  \begin{bmatrix} (2,2) \\ 1 \end{bmatrix} \\
-  C_5 &= \begin{bmatrix}
-    (3,1) & (1,0) & (0,3) \\
-    1 & -1 & 1  \end{bmatrix} \\
-  C_6 &= \begin{bmatrix}
-    (2,3) & (3,0) & (0,1) & (1,2) \\
-    1 & -1 & 1 & 1
-  \end{bmatrix} \\
-  C_7 &= \begin{bmatrix}
-    (1,3) & (3,0) & (0,1) \\
-    1 & -1 & 1  \end{bmatrix} \\
-  C_8 &= \begin{bmatrix}
-    (2,0) & (0,1) & (1,2) \\
-    1 & 1 & 1  \end{bmatrix} \\
-\end{align*}
-
-Using the abbreviation $\logprob_{i,j} = -\log(\T_{i,j})$, I write the eight
-loop equations as
-\begin{align*}
-  0 &= \logprob_{3,2} - \logprob_{2,1} - \logprob_{1,0} + \logprob_{0,3} \\
-  H &= \logprob_{0,0} \\
-  H &= \logprob_{1,1} \\
-  H &= \logprob_{2,2} \\
-  H &= \logprob_{3,1} - \logprob_{1,0} + \logprob_{0,3} \\
-  2H &= \logprob_{2,3} - \logprob_{3,0} + \logprob_{0,1} + \logprob_{1,2} \\
-  H &= \logprob_{1,3} - \logprob_{3,0} + \logprob_{0,1} \\
-  3H &= \logprob_{2,0} + \logprob_{0,1} + \logprob_{1,2},
-\end{align*}
-where $H$ is the unknown entropy.  With the four node equations
-each of which has the form
-\begin{equation*}
-  \sum_j \T_{i,j} = 1,
-\end{equation*}
-I have 12 equations for 12 unknowns.  I have not found a method to
-solve such systems in general.
-
 \section{A Power Iteration Approach}
 \label{sec:algorithm}
 
@@ -294,39 +310,12 @@ respectively as follows.
   \hat \mu &= \frac{\tilde m}{\sum_i \tilde m_i} \\
   \hat \T_{i,j} &= \frac{\tilde P_{i,j}}{\tilde m_i}
 \end{align*}
-
-Applying the algorithm to the example of Section \ref{sec:fourbyfour}
-yields
-\newcommand{\first}{\frac{\sqrt{3}-1}{2}}
-\newcommand{\second}{2-\sqrt{3}}
-\begin{align*}
-  \hat \mu &=
-  \begin{bmatrix}
-     0.18795109  & 0.27517816 & 0.32554595 & 0.21132481
-  \end{bmatrix} \\ \\
-  \hat \T &=
-  \begin{bmatrix}
- 0.36602534 & 0.36602534 & 0. &         0.26794932  \\
-  0. &         0.36602534 & 0.36602534 & 0.26794932 \\
-  0.36602534 & 0. &         0.36602534 & 0.26794932 \\
-  0. &         0.5 &        0.5 &        0.         
-  \end{bmatrix} \\ \\
-  &=
-  \begin{bmatrix}
-    \first & \first & 0      & \second \medskip \\
-    0      & \first & \first & \second \medskip \\
-    \first & 0      & \first & \second \medskip \\
-    0      & \frac{1}{2} & \frac{1}{2} & 0
-  \end{bmatrix} \\
-  h &= 1.005053
-\end{align*}
-
-Maxentropic Markov chains appears in:
-IEEE Transactions on Information Theory, 
-Date of Publication: Jul 1984
-Author(s): Justesen, J.
-Hoholdt, T.
-Volume: 30 , Issue: 4
+Maxentropic Markov chains appears in:\\
+IEEE Transactions on Information Theory, \\
+Date of Publication: Jul 1984\\
+Author(s): Justesen, J.\\
+Hoholdt, T.\\
+Volume: 30 , Issue: 4\\
 Page(s): 665 - 667
 
 \section{Composition}
@@ -353,6 +342,30 @@ The conditions are not plausible because if it is possible to get from
 $i$ to $j$ in two steps, ie, $B_{i,j}=1$, the number of ways to get
 from $i$ to $j$ in two steps will vary depending on the values of $i$
 and $j$.
+
+\section{Repetition}
+\label{sec:repetition}
+
+Here I've typed up hand written alternative notation.  For the one
+step joint probability
+\begin{align*}
+  P_{j,k} &= \lim_{n\rightarrow \infty} \frac {\sum_{i,l} \left(A^n
+            \right)_{i,j} A_{j,k}  \left(A^n \right)_{i,j} }{N_n}
+            \text{ where the normalization } N_n \text{ makes} \\
+  \sum_{j,k}P_{j,k} &= 1   \\
+  P_{j,k} &= L_j A{j,k} R_k \text{ where } L,R \text{ are the left and right
+    eigenvectors of } A \\
+  P_{k|j} &= \frac{L_j A{j,k} R_k}{\sum_k L_j A{j,k} R_k} \\
+  &= \frac{L_j A{j,k} R_k}{\lambda L_j R_j} \\
+  &= \frac{A_{j,k} R_k}{\lambda R_j}
+\end{align*}
+For $n$ steps rather than one, the same calculations yield
+\begin{align*}
+  P_{k|j}(x(n)|x(0)) &= \frac{\left( A \right)^n_{j,k} R_k}{\lambda^n
+                       R_j} \\
+  &\propto \left( \delta_j \cdot A^n \right)_k R_k
+\end{align*}
+
 
 \end{document}
 
