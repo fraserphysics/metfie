@@ -9,6 +9,14 @@
 \newcommand{\Aop}{{\cal A}}
 \newcommand{\Aindicate}{\alpha}
 \newcommand{\slope}{s}
+\newcommand{\density}{p}
+\newcommand{\stationary}{\mu}
+\newcommand{\function}{\phi}
+\newcommand{\leftfunction}{\rho}
+\newcommand{\rightfunction}{\tilde \rho}
+\renewcommand{\th}{^{\text{th}}}
+\newcommand{\field}[1]{\mathbb{#1}}
+\newcommand\REAL{\field{R}}
 
 \title{Uniform Probability for Subsequences Drawn from a Continuous
   Time Monotonic Process }
@@ -47,26 +55,145 @@ pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
       1 & 0 \leq u \leq 1,~ 0 \leq v \leq 1,~ v \leq u + \tau\\
       0 & \text{otherwise}
     \end{cases}\\
+    \label{eq:operateright}
+    \left( \Aop_\tau  \function \right)(g) &\equiv \int
+            \Aindicate(g,h) \function(h) dh \\
     \label{eq:operate}
-    \left( \Aop_\tau \rho \right)(g) &\equiv \int \Aindicate(h,g)
-                                       \rho(h) dh \\
-    &= \int_{\max(g-\tau,0)}^1 \rho(h) dh.
+    \left( \function \Aop_\tau \right)(g) &\equiv \int
+           \function(h) \Aindicate(h,g) dh \\
+    &= \int_{\max(g-\tau,0)}^1 \function(h) dh.
   \end{align}
 \end{subequations}
-I use the following notation for an eigenvalue and eigenfunction of
-$\Aop_\tau$:
-\begin{equation*}
- \left( \Aop_\tau \rho_\lambda \right)(g) = \lambda \rho_\lambda (g)
-\end{equation*}
-Look at the picture and see
+I use the following notation for an eigenvalue of $\Aop_\tau$ and
+corresponding \emph{left} and \emph{right} eigenfunctions:
 \begin{align*}
-  \rho_\lambda(g) &= a \text{ constant } \forall g \leq \tau\\
-  \lambda a_\lambda &= \int_0^1 \rho_\lambda(h) dh \\
-  \lambda \rho_\lambda(g) &= \int_{g-\tau}^1 \rho_\lambda(h) dh ~~\forall
-  g > \tau\\
-  \lambda \frac{\partial}{\partial g} \rho_\lambda(g) &=
-                      - \rho_\lambda(g-\tau)~~\forall g > \tau
+ \left( \leftfunction_\lambda \Aop_\tau \right)(g) &= \lambda
+ \leftfunction_\lambda (g)\\
+ \left(\Aop_\tau  \rightfunction_\lambda \right)(g) &= \lambda
+ \rightfunction_\lambda (g).
 \end{align*}
+Now drop $\lambda$ from $\leftfunction_\lambda$ and calculate:
+\begin{align*}
+  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
+                             \Aindicate(h,g) dh \\
+  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
+                             dh ~~\forall g
+                             \leq \tau \\
+  &= \text{ some constant } \\
+  \leftfunction(g) &= a ~~\forall g \leq \tau \\
+  \lambda \leftfunction(g) &= \int_{g-\tau}^1 \leftfunction(h) dh ~~\forall
+  g > \tau\\
+  \lambda \frac{\partial}{\partial g} \leftfunction_\lambda(g) &=
+            - \leftfunction_\lambda(g-\tau)~~\forall g > \tau \\
+  \lambda \leftfunction(g) &= a - \int_0^{g-\tau} \leftfunction(h) dh ~~\forall
+  g > \tau\\
+\end{align*}
+
+If $\tau = 1$ then the image of every function $\function$ is a
+multiple of the constant function $\leftfunction(g) = 1$ and the
+eigenvalue is $1$.  Also there is a one-dimensional subspace
+corresponding to $\lambda=1$ and an infinite dimensional subspace
+corresponding to $\lambda=0$.  If $\tau = \frac{1}{2}$, then
+\begin{equation*}
+  \leftfunction(g) =
+  \begin{cases}
+    a & g \leq \frac{1}{2} \\
+    a(\frac{3}{2} -g) & g > \frac{1}{2}
+  \end{cases},
+\end{equation*}
+and
+\begin{align*}
+  \lambda \leftfunction (g) &= \left( \leftfunction \Aop \right) (g) \\
+  \lambda a &= a \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
+              \left( \frac{3}{2} - h \right) dh \right) \\
+  &= a \left( \frac{5}{4} - \left[ \frac{h^2}{2}
+    \right]_{\frac{1}{2}}^1 \right)\\
+  &= a\frac{7}{8}.
+\end{align*}
+
+If $\tau = \frac{1}{n}$, then $\leftfunction$ is piecewise
+polynomial, and using $k$ as the index of the segments starting with
+$k=0$, the highest power of $g$ in the $k\th$ segment is $k$.
+
+\subsection*{Probabilities for Discrete Time}
+\label{sec:probabilities}
+
+I begin by analyzing a process with an countable number of values for
+the independent variable $t$ with uniform spacing $\tau$.  In this
+analysis, I let $\lambda$ denote the largest eigenvalue.  By the Peron
+Frobenius Theorem, the corresponding eigenfunctions can be chosen to
+be non-negative with normalization that give the
+stationary distribution for that process as
+\begin{equation}
+  \label{eq:stationary}
+  \stationary(g) = \leftfunction(g) \rightfunction(g).
+\end{equation}
+The normalization condition is
+\begin{equation*}
+  \int \stationary(g) dg = 1.
+\end{equation*}
+The probability density at a particular sequence of $n+1$ samples from
+$g_0$ to $g_n$ is
+\begin{equation}
+  \label{eq:joint}
+  \density(g_0, g_1, \ldots , g_n) = \leftfunction(g_0) \prod_{k=1}^n
+  \Aindicate(g_{k-1},g_k) \rightfunction(g_n).
+\end{equation}
+Thus the conditional density at $g_1$ given $g_0$ after $1$ step is
+\begin{align}
+  \density(g_1 | g_0) &= \frac{\leftfunction(g_0)
+  \Aindicate(g_0,g_1) \rightfunction(g_1)}{ \int \leftfunction(g_0)
+  \Aindicate(g_0,h) \rightfunction(h) dh} \nonumber \\
+  \label{eq:one_step}
+  &= \frac{\Aindicate(g_0,g_1)
+    \rightfunction(g_1)}{\lambda \rightfunction(g_0)}.
+\end{align}
+Similarly, for two steps I find
+\begin{align}
+  \density(g_2 | g_0) &= \frac{\leftfunction(g_0) \left( \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
+      \rightfunction(g_2) } 
+      { \leftfunction(g_0) \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,h_2) \rightfunction(h_2) dh_1
+      dh_2} \nonumber \\
+  &= \frac{ \left( \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
+      \rightfunction(g_2) } 
+      { \lambda^2  \rightfunction(g_0)} \nonumber \\
+  \label{eq:two_step}
+  &\equiv \frac{\delta(g_0) \Aop \Aindicate(\cdot,g_2)
+    \rightfunction(g_2)}{\lambda^2 \rightfunction(g_0)},
+\end{align}
+and for $n$ steps
+\begin{equation}
+  \label{eq:n_step}
+  \density(g_n | g_0) = \frac{\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)
+    \rightfunction(g_n)}{\lambda^n \rightfunction(g_0)}.  
+\end{equation}
+Note that
+\begin{equation*}
+  \delta(g_0) \Aop \Aindicate(\cdot,g_2) \equiv \int
+  \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1
+\end{equation*}
+is the length of the interval of $g_1$ values that are possible given
+the values $g_0$ and $g_2$, and that the generalization
+$\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)$ is the volume in
+$\REAL^{n-1}$ of tuples $(g_1,g_2,\ldots,g_{n-1})$ that are possible
+given $g_0$ and $g_n$.
+
+\subsection*{Continuous Time}
+\label{sec:continuous}
+
+The principal task of this paper is to determine if the limit in the
+continuous time version of \eqref{eq:n_step}, ie,
+\begin{equation}
+  \label{eq:2}
+  \density(g_t|g_0) = \lim_{n \rightarrow \infty}  \frac{\delta(g_0)
+    \left( \Aop_\tau \right)^{n-1} \Aindicate_\tau(\cdot,g_n)
+    \rightfunction_\tau(g_n)} { \left( \lambda_\tau \right)^n
+    \rightfunction_\tau(g_0)} \text{ with } \tau=\frac{t}{n},
+\end{equation}
+exists.
 
 
 \section{Introduction}
@@ -165,7 +292,7 @@ Figure~\ref{fig:mt2}, and its probability matrix
 
 Given values for $a$, $b$, and $c$, one can solve
 \begin{equation}
-  \label{eq:stationary}
+  \label{eq:stationary_2}
   \mu = \mu \T
 \end{equation}
 for the stationary distribution $\mu$ and from there find the entropy
@@ -202,7 +329,7 @@ is sufficient to specify the solution
   b &= \frac{\sqrt{5}-1}{1+\sqrt{5}} \approx 0.38197\\
   c &= 1.
 \end{align*}
-Solving \eqref{eq:stationary} for that specification of $\T$ yields
+Solving \eqref{eq:stationary_2} for that specification of $\T$ yields
 \begin{align*}
   \mu &=  \begin{bmatrix} \frac{1+\sqrt{5}}{2\sqrt{5}}, &
     \frac{\sqrt{5}-1}{2\sqrt{5}} \end{bmatrix} \\
@@ -353,10 +480,10 @@ step joint probability
             \right)_{i,j} A_{j,k}  \left(A^n \right)_{i,j} }{N_n}
             \text{ where the normalization } N_n \text{ makes} \\
   \sum_{j,k}P_{j,k} &= 1   \\
-  P_{j,k} &= L_j A{j,k} R_k \text{ where } L,R \text{ are the left and right
+  P_{j,k} &= L_j A_{j,k} R_k \text{ where } L,R \text{ are the left and right
     eigenvectors of } A \\
-  P_{k|j} &= \frac{L_j A{j,k} R_k}{\sum_k L_j A{j,k} R_k} \\
-  &= \frac{L_j A{j,k} R_k}{\lambda L_j R_j} \\
+  P_{k|j} &= \frac{L_j A_{j,k} R_k}{\sum_k L_j A_{j,k} R_k} \\
+  &= \frac{L_j A_{j,k} R_k}{\lambda L_j R_j} \\
   &= \frac{A_{j,k} R_k}{\lambda R_j}
 \end{align*}
 For $n$ steps rather than one, the same calculations yield
