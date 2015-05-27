@@ -19,7 +19,7 @@ def main(argv=None):
         description='Make plots for monotonic docs')
     parser.add_argument('--debug', action='store_true')
     # Plot requests
-    parser.add_argument('--plot_bounds', type=argparse.FileType('wb'),
+    parser.add_argument('--bounds', type=argparse.FileType('wb'),
                        help='Write figure to this file')
     args = parser.parse_args(argv)
     
@@ -52,9 +52,9 @@ def main(argv=None):
     return 0
 
 
-def plot_bounds(plt):
+def bounds(plt):
     slope = -.2
-    fig = plt.figure('plot_bounds',figsize=(6,12))
+    fig = plt.figure('bounds',figsize=(6,12))
     ax1 = plt.subplot2grid((4,1),(0,0))
     ax2 = plt.subplot2grid((4,1),(1,0))
     ax3 = plt.subplot2grid((4,1),(2,0),rowspan=2)
@@ -79,12 +79,14 @@ def plot_bounds(plt):
         
     ax3.set_xlim(0, 1)
     ax3.set_ylim(0, 1)
+    ax3.set_xlabel(r'$g_0$')
+    ax3.set_ylabel(r'$g_1$')
     x = np.linspace(0,1,500)
     y = np.minimum(1, x - slope)
     ax3.plot(x, y)
     #fig.subplots_adjust(hspace=0.3) # Make more space for label
     return fig
-plot_dict['plot_bounds'] = plot_bounds
+plot_dict['bounds'] = bounds
 
 if __name__ == "__main__":
     rv = main()

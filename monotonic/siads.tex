@@ -25,176 +25,25 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-  I describe a probability measure for continuous time trajectories that
-  are constrained both to lie in within certain bounds and to be
-  monotonic.  Roughly, the measure makes all allowed sequences have
-  the same probability with respect to a norm.
+  I describe a probability measure for functions of time that are
+  constrained both to lie in within certain bounds and to be
+  monotonic.  In coordinates that make the constraints invariant with
+  respect to shifts in time, the measure corresponds to a stationary
+  stochastic process.  Roughly, the measure makes all allowed
+  sequences have the same probability with respect to a norm.
 \end{abstract}
 
 \section*{To Do:}
 \label{sec:do}
 
 \begin{itemize}
-\item Pictures of allowed pairs
-\item Code that calculates for given $\Delta$:
-  \begin{itemize}
-  \item Stationary distribution
-  \item Conditional distribution after $n$ steps or after $\Delta t$
-  \end{itemize}
+\item Calculate other eigenfunction and the stationary probability
+\item Make subscripts on $\leftfunction$, $\rightfunction$ and
+  $\lambda$ correspond to $\frac{1}{n}$ or $\tau$ consistently
+\item Plot $\lambda(\tau)$
+\item Code that calculates conditional distribution after $n$ steps of
+  $\Delta t/n$
 \end{itemize}
-
-I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$ with
-continuous $g$.  In turn I define $\Aop_\tau$ in terms of the function
-$\Aindicate_\tau$ that has the value one if its arguments are an allowed
-pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
-\begin{subequations}
-  \begin{align}
-    \label{eq:indicate}
-    \Aindicate(u,v) &\equiv
-    \begin{cases}
-      1 & 0 \leq u \leq 1,~ 0 \leq v \leq 1,~ v \leq u + \tau\\
-      0 & \text{otherwise}
-    \end{cases}\\
-    \label{eq:operateright}
-    \left( \Aop_\tau  \function \right)(g) &\equiv \int
-            \Aindicate(g,h) \function(h) dh \\
-    \label{eq:operate}
-    \left( \function \Aop_\tau \right)(g) &\equiv \int
-           \function(h) \Aindicate(h,g) dh \\
-    &= \int_{\max(g-\tau,0)}^1 \function(h) dh.
-  \end{align}
-\end{subequations}
-I use the following notation for an eigenvalue of $\Aop_\tau$ and
-corresponding \emph{left} and \emph{right} eigenfunctions:
-\begin{align*}
- \left( \leftfunction_\lambda \Aop_\tau \right)(g) &= \lambda
- \leftfunction_\lambda (g)\\
- \left(\Aop_\tau  \rightfunction_\lambda \right)(g) &= \lambda
- \rightfunction_\lambda (g).
-\end{align*}
-Now drop $\lambda$ from $\leftfunction_\lambda$ and calculate:
-\begin{align*}
-  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
-                             \Aindicate(h,g) dh \\
-  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
-                             dh ~~\forall g
-                             \leq \tau \\
-  &= \text{ some constant } \\
-  \leftfunction(g) &= a ~~\forall g \leq \tau \\
-  \lambda \leftfunction(g) &= \int_{g-\tau}^1 \leftfunction(h) dh ~~\forall
-  g > \tau\\
-  \lambda \frac{\partial}{\partial g} \leftfunction_\lambda(g) &=
-            - \leftfunction_\lambda(g-\tau)~~\forall g > \tau \\
-  \lambda \leftfunction(g) &= a - \int_0^{g-\tau} \leftfunction(h) dh ~~\forall
-  g > \tau\\
-\end{align*}
-
-If $\tau = 1$ then the image of every function $\function$ is a
-multiple of the constant function $\leftfunction(g) = 1$ and the
-eigenvalue is $1$.  Also there is a one-dimensional subspace
-corresponding to $\lambda=1$ and an infinite dimensional subspace
-corresponding to $\lambda=0$.  If $\tau = \frac{1}{2}$, then
-\begin{equation*}
-  \leftfunction(g) =
-  \begin{cases}
-    a & g \leq \frac{1}{2} \\
-    a(\frac{3}{2} -g) & g > \frac{1}{2}
-  \end{cases},
-\end{equation*}
-and
-\begin{align*}
-  \lambda \leftfunction (g) &= \left( \leftfunction \Aop \right) (g) \\
-  \lambda a &= a \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
-              \left( \frac{3}{2} - h \right) dh \right) \\
-  &= a \left( \frac{5}{4} - \left[ \frac{h^2}{2}
-    \right]_{\frac{1}{2}}^1 \right)\\
-  &= a\frac{7}{8}.
-\end{align*}
-
-If $\tau = \frac{1}{n}$, then $\leftfunction$ is piecewise
-polynomial, and using $k$ as the index of the segments starting with
-$k=0$, the highest power of $g$ in the $k\th$ segment is $k$.
-
-\subsection*{Probabilities for Discrete Time}
-\label{sec:probabilities}
-
-I begin by analyzing a process with an countable number of values for
-the independent variable $t$ with uniform spacing $\tau$.  In this
-analysis, I let $\lambda$ denote the largest eigenvalue.  By the Peron
-Frobenius Theorem, the corresponding eigenfunctions can be chosen to
-be non-negative with normalization that give the
-stationary distribution for that process as
-\begin{equation}
-  \label{eq:stationary}
-  \stationary(g) = \leftfunction(g) \rightfunction(g).
-\end{equation}
-The normalization condition is
-\begin{equation*}
-  \int \stationary(g) dg = 1.
-\end{equation*}
-The probability density at a particular sequence of $n+1$ samples from
-$g_0$ to $g_n$ is
-\begin{equation}
-  \label{eq:joint}
-  \density(g_0, g_1, \ldots , g_n) = \leftfunction(g_0) \prod_{k=1}^n
-  \Aindicate(g_{k-1},g_k) \rightfunction(g_n).
-\end{equation}
-Thus the conditional density at $g_1$ given $g_0$ after $1$ step is
-\begin{align}
-  \density(g_1 | g_0) &= \frac{\leftfunction(g_0)
-  \Aindicate(g_0,g_1) \rightfunction(g_1)}{ \int \leftfunction(g_0)
-  \Aindicate(g_0,h) \rightfunction(h) dh} \nonumber \\
-  \label{eq:one_step}
-  &= \frac{\Aindicate(g_0,g_1)
-    \rightfunction(g_1)}{\lambda \rightfunction(g_0)}.
-\end{align}
-Similarly, for two steps I find
-\begin{align}
-  \density(g_2 | g_0) &= \frac{\leftfunction(g_0) \left( \int
-      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
-      \rightfunction(g_2) } 
-      { \leftfunction(g_0) \int
-      \Aindicate(g_0,h_1) \Aindicate(h_1,h_2) \rightfunction(h_2) dh_1
-      dh_2} \nonumber \\
-  &= \frac{ \left( \int
-      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
-      \rightfunction(g_2) } 
-      { \lambda^2  \rightfunction(g_0)} \nonumber \\
-  \label{eq:two_step}
-  &\equiv \frac{\delta(g_0) \Aop \Aindicate(\cdot,g_2)
-    \rightfunction(g_2)}{\lambda^2 \rightfunction(g_0)},
-\end{align}
-and for $n$ steps
-\begin{equation}
-  \label{eq:n_step}
-  \density(g_n | g_0) = \frac{\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)
-    \rightfunction(g_n)}{\lambda^n \rightfunction(g_0)}.  
-\end{equation}
-Note that
-\begin{equation*}
-  \delta(g_0) \Aop \Aindicate(\cdot,g_2) \equiv \int
-  \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1
-\end{equation*}
-is the length of the interval of $g_1$ values that are possible given
-the values $g_0$ and $g_2$, and that the generalization
-$\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)$ is the volume in
-$\REAL^{n-1}$ of tuples $(g_1,g_2,\ldots,g_{n-1})$ that are possible
-given $g_0$ and $g_n$.
-
-\subsection*{Continuous Time}
-\label{sec:continuous}
-
-The principal task of this paper is to determine if the limit in the
-continuous time version of \eqref{eq:n_step}, ie,
-\begin{equation}
-  \label{eq:2}
-  \density(g_t|g_0) = \lim_{n \rightarrow \infty}  \frac{\delta(g_0)
-    \left( \Aop_\tau \right)^{n-1} \Aindicate_\tau(\cdot,g_n)
-    \rightfunction_\tau(g_n)} { \left( \lambda_\tau \right)^n
-    \rightfunction_\tau(g_0)} \text{ with } \tau=\frac{t}{n},
-\end{equation}
-exists.
-
 
 \section{Introduction}
 \label{sec:introduction}
@@ -267,6 +116,203 @@ measure $\measure$ have the following properties:
 \end{description}
 
 
+\section{Continuous $g$:}
+\label{sec:continuous_g}
+
+I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$ with
+continuous $g$.  In turn I define $\Aop_\tau$ in terms of the function
+$\Aindicate_\tau$ that has the value one if its arguments are an allowed
+pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
+\begin{subequations}
+  \begin{align}
+    \label{eq:indicate}
+    \Aindicate(u,v) &\equiv
+    \begin{cases}
+      1 & 0 \leq u \leq 1,~ 0 \leq v \leq 1,~ v \leq u + \tau\\
+      0 & \text{otherwise}
+    \end{cases}\\
+    \label{eq:operateright}
+    \left( \Aop_\tau  \function \right)(g) &\equiv \int
+            \Aindicate(g,h) \function(h) dh \\
+    \label{eq:operate}
+    \left( \function \Aop_\tau \right)(g) &\equiv \int
+           \function(h) \Aindicate(h,g) dh \\
+    &= \int_{\max(g-\tau,0)}^1 \function(h) dh.
+  \end{align}
+\end{subequations}
+I use the following notation for an eigenvalue of $\Aop_\tau$ and
+corresponding \emph{left} and \emph{right} eigenfunctions:
+\begin{align*}
+ \left( \leftfunction_\lambda \Aop_\tau \right)(g) &= \lambda
+ \leftfunction_\lambda (g)\\
+ \left(\Aop_\tau  \rightfunction_\lambda \right)(g) &= \lambda
+ \rightfunction_\lambda (g).
+\end{align*}
+Now drop $\lambda$ from $\leftfunction_\lambda$ and calculate:
+\begin{align*}
+  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
+                             \Aindicate(h,g) dh \\
+  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
+                             dh ~~\forall g
+                             \leq \tau \\
+  &= \text{ some constant } \\
+  \leftfunction(g) &= a ~~\forall g \leq \tau \\
+  \lambda \leftfunction(g) &= \int_{g-\tau}^1 \leftfunction(h) dh ~~\forall
+  g > \tau\\
+  \lambda \frac{\partial}{\partial g} \leftfunction_\lambda(g) &=
+            - \leftfunction_\lambda(g-\tau)~~\forall g > \tau \\
+  \lambda \leftfunction(g) &= a - \int_0^{g-\tau} \leftfunction(h) dh ~~\forall
+  g > \tau\\
+\end{align*}
+
+If $\tau = 1$ then the image of every function $\function$ is a
+multiple of the constant function $\leftfunction(g) = 1$ and the
+eigenvalue is $1$.  Also there is a one-dimensional subspace
+corresponding to $\lambda=1$ and an infinite dimensional subspace
+corresponding to $\lambda=0$.  If $\tau = \frac{1}{2}$, then
+\begin{equation*}
+  \leftfunction(g) =
+  \begin{cases}
+    a & g \leq \frac{1}{2} \\
+    a(\frac{3}{2} -g) & g > \frac{1}{2}
+  \end{cases},
+\end{equation*}
+and
+\begin{align*}
+  \lambda \leftfunction (g) &= \left( \leftfunction \Aop \right) (g) \\
+  \lambda a &= a \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
+              \left( \frac{3}{2} - h \right) dh \right) \\
+  &= a \left( \frac{5}{4} - \left[ \frac{h^2}{2}
+    \right]_{\frac{1}{2}}^1 \right)\\
+  &= a\frac{7}{8}.
+\end{align*}
+
+If $\tau = \frac{1}{n}$, then $\leftfunction$ is piecewise
+polynomial, and using $k$ as the index of the segments starting with
+$k=0$, the highest power of $g$ in the $k\th$ segment is $k$.  Letting
+$p_k$ denote the polynomial that describes $\leftfunction$ in the
+$k\th$ segment and $g_k$ denote the end of that segment, the following
+iteration scheme defines $\leftfunction$ over the whole interval:
+\begin{align*}
+  \leftfunction(g) &= p_0(g) \equiv 1 &\forall g:~ 0\leq g < g_0 \\
+  \leftfunction(g) &= p_{k+1}(g) \equiv p_k(g_k) - \int_{g_k}^g p_c(h) dh
+                                 &\forall g:~ g_k \leq g < g_{k+1}.
+\end{align*}
+Note that
+\begin{equation}
+  \label{eq:limit_function}
+  \leftfunction_\infty(g) \equiv \lim_{n \rightarrow \infty}
+  \leftfunction(g) = e^{-g},
+\end{equation}
+and
+\begin{equation}
+  \label{eq:limit_value}
+  \lambda_\infty = \int_0^1 \leftfunction_\infty(h) dh = 1 - \frac{1}{e}.
+\end{equation}
+Figure~\ref{fig:eigenfunctions} illustrates $\leftfunction_n$ for a
+few values of $n$.
+
+\begin{figure*}
+  \centering
+  \resizebox{0.75\textwidth}{!}{\includegraphics{eigenfunctions.pdf}}
+  \caption{Eigenfunctions of $\Aop_\tau$ with $\tau=\frac{1}{n}$ for
+    several values of $n$.}
+  \label{fig:eigenfunctions}
+\end{figure*}
+
+\subsection{Probabilities for Discrete Time}
+\label{sec:discrete_t}
+
+I begin by analyzing a process with an countable number of values for
+the independent variable $t$ with uniform spacing $\tau$.  In this
+analysis, I let $\lambda$ denote the largest eigenvalue.  By the Peron
+Frobenius Theorem, the corresponding eigenfunctions can be chosen to
+be non-negative with normalization that give the
+stationary distribution for that process as
+\begin{equation}
+  \label{eq:stationary}
+  \stationary(g) = \leftfunction(g) \rightfunction(g).
+\end{equation}
+The normalization condition is
+\begin{equation*}
+  \int \stationary(g) dg = 1.
+\end{equation*}
+The probability density at a particular sequence of $n+1$ samples from
+$g_0$ to $g_n$ is
+\begin{equation}
+  \label{eq:joint}
+  \density(g_0, g_1, \ldots , g_n) = \leftfunction(g_0) \prod_{k=1}^n
+  \Aindicate(g_{k-1},g_k) \rightfunction(g_n).
+\end{equation}
+Thus the conditional density at $g_1$ given $g_0$ after $1$ step is
+\begin{align}
+  \density(g_1 | g_0) &= \frac{\leftfunction(g_0)
+  \Aindicate(g_0,g_1) \rightfunction(g_1)}{ \int \leftfunction(g_0)
+  \Aindicate(g_0,h) \rightfunction(h) dh} \nonumber \\
+  \label{eq:one_step}
+  &= \frac{\Aindicate(g_0,g_1)
+    \rightfunction(g_1)}{\lambda \rightfunction(g_0)}.
+\end{align}
+Similarly, for two steps I find
+\begin{align}
+  \density(g_2 | g_0) &= \frac{\leftfunction(g_0) \left( \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
+      \rightfunction(g_2) } 
+      { \leftfunction(g_0) \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,h_2) \rightfunction(h_2) dh_1
+      dh_2} \nonumber \\
+  &= \frac{ \left( \int
+      \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1 \right)
+      \rightfunction(g_2) } 
+      { \lambda^2  \rightfunction(g_0)} \nonumber \\
+  \label{eq:two_step}
+  &\equiv \frac{\delta(g_0) \Aop \Aindicate(\cdot,g_2)
+    \rightfunction(g_2)}{\lambda^2 \rightfunction(g_0)},
+\end{align}
+and for $n$ steps
+\begin{equation}
+  \label{eq:n_step}
+  \density(g_n | g_0) = \frac{\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)
+    \rightfunction(g_n)}{\lambda^n \rightfunction(g_0)}.  
+\end{equation}
+Note that
+\begin{equation*}
+  \delta(g_0) \Aop \Aindicate(\cdot,g_2) \equiv \int
+  \Aindicate(g_0,h_1) \Aindicate(h_1,g_2) dh_1
+\end{equation*}
+is the length of the interval of $g_1$ values that are possible given
+the values $g_0$ and $g_2$, and that the generalization
+$\delta(g_0) \Aop^{n-1} \Aindicate(\cdot,g_n)$ is the volume in
+$\REAL^{n-1}$ of tuples $(g_1,g_2,\ldots,g_{n-1})$ that are possible
+given $g_0$ and $g_n$.
+
+\subsection{Continuous Time}
+\label{sec:continuous_t}
+
+The principal task of this paper is to determine if the limit in the
+continuous time version of \eqref{eq:n_step}, ie,
+\begin{equation}
+  \label{eq:2}
+  \density(g_t|g_0) = \lim_{n \rightarrow \infty}  \frac{\delta(g_0)
+    \left( \Aop_\tau \right)^{n-1} \Aindicate_\tau(\cdot,g_n)
+    \rightfunction_\tau(g_n)} { \left( \lambda_\tau \right)^n
+    \rightfunction_\tau(g_0)} \text{ with } \tau=\frac{t}{n},
+\end{equation}
+exists.  Since the analysis in Section~\ref{sec:continuous_g} leading to
+Equations~\eqref{eq:limit_function} and \eqref{eq:limit_value} gives
+the value $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 - \frac{1}{e}$
+and suggests that $\lim_{\tau \rightarrow 0} \rightfunction_\tau$
+exists\marginpar{calculate $\rightfunction_\infty$.}, all that remains
+is to show that
+\begin{equation}
+  \label{eq:3}
+  T_t \equiv \lim_{n \rightarrow \infty} \left(
+    \frac{\Aop_{\frac{t}{n}}}
+    {\lambda_{\frac{t}{n}}} \right)^n
+\end{equation}
+exists.
+
+\newpage
 \section{A simple example}
 \label{sec:example}
 
