@@ -77,14 +77,18 @@ def bounds(plt):
         ax1.plot(t, y)
         ax2.plot(t, y-slope*t)
         
-    ax3.set_xlim(0, 1)
-    ax3.set_ylim(0, 1)
+    ax1.set_ylabel(r'$f(t)$')
+    ax2.set_xlabel(r'$t$')
+    ax2.set_ylabel(r'$g(t)$')
     ax3.set_xlabel(r'$g_0$')
     ax3.set_ylabel(r'$g_1$')
+    
     x = np.linspace(0,1,500)
     y = np.minimum(1, x - slope)
     ax3.plot(x, y)
-    #fig.subplots_adjust(hspace=0.3) # Make more space for label
+    ax3.set_xlim(0, 1)
+    ax3.set_ylim(0, 1)
+    fig.subplots_adjust(hspace=0.3) # Make more space for label
     return fig
 plot_dict['bounds'] = bounds
 

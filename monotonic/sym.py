@@ -89,7 +89,7 @@ def eigenfunctions(args, plt):
     ax.set_ylim(0.3, 1.05)
     ax.set_xlim(-0.05, 1.05)
     ax.set_xlabel(r'$g$')
-    ax.set_ylabel(r'$\rho_n(g)$')
+    ax.set_ylabel(r'$\rho_{\frac{1}{n}}(g)$')
     ax.legend(loc='lower left')
     return fig
 plot_dict['eigenfunctions']=eigenfunctions

@@ -37,9 +37,6 @@
 \label{sec:do}
 
 \begin{itemize}
-\item Calculate other eigenfunction and the stationary probability
-\item Make subscripts on $\leftfunction$, $\rightfunction$ and
-  $\lambda$ correspond to $\frac{1}{n}$ or $\tau$ consistently
 \item Plot $\lambda(\tau)$
 \item Code that calculates conditional distribution after $n$ steps of
   $\Delta t/n$
@@ -148,30 +145,40 @@ corresponding \emph{left} and \emph{right} eigenfunctions:
  \left(\Aop_\tau  \rightfunction_\lambda \right)(g) &= \lambda
  \rightfunction_\lambda (g).
 \end{align*}
-Now drop $\lambda$ from $\leftfunction_\lambda$ and calculate:
+A symmetry argument yields
+\begin{equation}
+  \label{eq:symmetry}
+  \rightfunction_\lambda(g) \propto \leftfunction_\lambda(1-g)
+\end{equation}
+In the following, since I am only interested in the largest
+eigenvalue and the corresponding eigenfunctions\footnote{Called
+  the Peron Frobenius eigenvalue and eigenvectors}, I either don't use
+subscripts or use them to denote $\tau=s\Delta t$ the only
+parameter.  The following manipulations produce a procedure for
+constructing eigenfunctions:
 \begin{align*}
-  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
-                             \Aindicate(h,g) dh \\
-  \lambda \leftfunction(g) &= \int_0^1 \leftfunction(h)
+  \lambda_\tau \leftfunction_\tau(g) &= \int_0^1 \leftfunction_\tau(h)
+                             \Aindicate_\tau(h,g) dh \\
+  \lambda_\tau \leftfunction_\tau(g) &= \int_0^1 \leftfunction_\tau(h)
                              dh ~~\forall g
                              \leq \tau \\
   &= \text{ some constant } \\
-  \leftfunction(g) &= a ~~\forall g \leq \tau \\
-  \lambda \leftfunction(g) &= \int_{g-\tau}^1 \leftfunction(h) dh ~~\forall
+  \leftfunction_\tau(g) &= a ~~\forall g \leq \tau \\
+  \lambda_\tau \leftfunction_\tau(g) &= \int_{g-\tau}^1 \leftfunction_\tau(h) dh ~~\forall
   g > \tau\\
-  \lambda \frac{\partial}{\partial g} \leftfunction_\lambda(g) &=
-            - \leftfunction_\lambda(g-\tau)~~\forall g > \tau \\
-  \lambda \leftfunction(g) &= a - \int_0^{g-\tau} \leftfunction(h) dh ~~\forall
+  \lambda_\tau \frac{\partial}{\partial g} \leftfunction_\tau(g) &=
+            - \leftfunction_\tau(g-\tau)~~\forall g > \tau \\
+  \lambda_\tau \leftfunction_\tau(g) &= a - \int_0^{g-\tau} \leftfunction_\tau(h) dh ~~\forall
   g > \tau\\
 \end{align*}
 
 If $\tau = 1$ then the image of every function $\function$ is a
-multiple of the constant function $\leftfunction(g) = 1$ and the
+multiple of the constant function $\leftfunction_\tau(g) = 1$ and the
 eigenvalue is $1$.  Also there is a one-dimensional subspace
-corresponding to $\lambda=1$ and an infinite dimensional subspace
+corresponding to $\lambda_\tau=1$ and an infinite dimensional subspace
 corresponding to $\lambda=0$.  If $\tau = \frac{1}{2}$, then
 \begin{equation*}
-  \leftfunction(g) =
+  \leftfunction_\tau(g) =
   \begin{cases}
     a & g \leq \frac{1}{2} \\
     a(\frac{3}{2} -g) & g > \frac{1}{2}
@@ -179,15 +186,15 @@ corresponding to $\lambda=0$.  If $\tau = \frac{1}{2}$, then
 \end{equation*}
 and
 \begin{align*}
-  \lambda \leftfunction (g) &= \left( \leftfunction \Aop \right) (g) \\
-  \lambda a &= a \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
+  \lambda_\tau \leftfunction_\tau (g) &= \left( \leftfunction_\tau \Aop_\tau \right) (g) \\
+  \lambda_\tau a &= a \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
               \left( \frac{3}{2} - h \right) dh \right) \\
   &= a \left( \frac{5}{4} - \left[ \frac{h^2}{2}
     \right]_{\frac{1}{2}}^1 \right)\\
-  &= a\frac{7}{8}.
+  \lambda_\tau &= \frac{7}{8}.
 \end{align*}
 
-If $\tau = \frac{1}{n}$, then $\leftfunction$ is piecewise
+If $\tau = \frac{1}{n}$, then $\leftfunction_\tau$ is piecewise
 polynomial, and using $k$ as the index of the segments starting with
 $k=0$, the highest power of $g$ in the $k\th$ segment is $k$.  Letting
 $p_k$ denote the polynomial that describes $\leftfunction$ in the
@@ -199,17 +206,21 @@ iteration scheme defines $\leftfunction$ over the whole interval:
                                  &\forall g:~ g_k \leq g < g_{k+1}.
 \end{align*}
 Note that
-\begin{equation}
+\begin{subequations}
   \label{eq:limit_function}
-  \leftfunction_\infty(g) \equiv \lim_{n \rightarrow \infty}
-  \leftfunction(g) = e^{-g},
-\end{equation}
+  \begin{align}
+    \leftfunction_0(g) &\equiv \lim_{n \rightarrow \infty}
+    \leftfunction(g) = e^{\frac{1}{2}-g} \\
+    \rightfunction_0(g) &= e^{g-\frac{1}{2}},
+  \end{align}
+\end{subequations}
 and
 \begin{equation}
   \label{eq:limit_value}
-  \lambda_\infty = \int_0^1 \leftfunction_\infty(h) dh = 1 - \frac{1}{e}.
+  \lambda_0 =  e^{-\frac{1}{2}} \int_0^1\leftfunction_0(h) dh = 1 -
+  \frac{1}{e}.
 \end{equation}
-Figure~\ref{fig:eigenfunctions} illustrates $\leftfunction_n$ for a
+Figure~\ref{fig:eigenfunctions} illustrates $\leftfunction_{\frac{1}{n}}$ for a
 few values of $n$.
 
 \begin{figure*}
@@ -298,12 +309,11 @@ continuous time version of \eqref{eq:n_step}, ie,
     \rightfunction_\tau(g_n)} { \left( \lambda_\tau \right)^n
     \rightfunction_\tau(g_0)} \text{ with } \tau=\frac{t}{n},
 \end{equation}
-exists.  Since the analysis in Section~\ref{sec:continuous_g} leading to
-Equations~\eqref{eq:limit_function} and \eqref{eq:limit_value} gives
-the value $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 - \frac{1}{e}$
-and suggests that $\lim_{\tau \rightarrow 0} \rightfunction_\tau$
-exists\marginpar{calculate $\rightfunction_\infty$.}, all that remains
-is to show that
+exists.  Since the analysis in Section~\ref{sec:continuous_g} leading
+to Equations~\eqref{eq:limit_function} and \eqref{eq:limit_value}
+gives the value $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 -
+\frac{1}{e}$ and suggests that $\lim_{\tau \rightarrow 0}
+\rightfunction_\tau$ exists, all that remains is to show that
 \begin{equation}
   \label{eq:3}
   T_t \equiv \lim_{n \rightarrow \infty} \left(
