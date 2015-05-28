@@ -75,6 +75,34 @@ class Piecewise:
             y[k] = self.intervals[i_](x[k])
             #print '{0:d}  {1:6.3f}  {2:6.3f}'.format(i_, x[k], y[k])
         return y
+    def integrate(self):
+        '''Calculate and return definite integral from 0 to 1 as float.
+        '''
+        t = sympy.symbols('t')
+        rv = 0.0
+        for i in self.intervals:
+            rv += sympy.integrate(i.f,(t,i.t_i,i.t_f))
+        return rv
+            
+
+def eigenvalues(args, plt):
+    n_tau = len(args.ns) + 1
+    x = np.empty(n_tau)
+    y = np.empty(n_tau)
+    fig = plt.figure(figsize=(7,5))
+    ax = fig.add_subplot(1,1,1)
+    for i,n in enumerate(args.ns):
+        x[i] = 1.0/n
+        y[i] = Piecewise(n).integrate()
+    x[-1] = 0.0
+    y[-1] = 1 - np.exp(-1)
+    ax.plot(x,y, linestyle='', marker='o')
+    ax.set_ylim(0.62, 0.885)
+    ax.set_xlim(-0.05, 0.55)
+    ax.set_xlabel(r'$\tau$')
+    ax.set_ylabel(r'$\lambda_\tau$')
+    return fig
+plot_dict['eigenvalues']=eigenvalues
 
 def eigenfunctions(args, plt):
     ns = args.ns
@@ -89,7 +117,7 @@ def eigenfunctions(args, plt):
     ax.set_ylim(0.3, 1.05)
     ax.set_xlim(-0.05, 1.05)
     ax.set_xlabel(r'$g$')
-    ax.set_ylabel(r'$\rho_{\frac{1}{n}}(g)$')
+    ax.set_ylabel(r'$_{_L}\rho_{\frac{1}{n}}(g)$')
     ax.legend(loc='lower left')
     return fig
 plot_dict['eigenfunctions']=eigenfunctions
@@ -99,7 +127,10 @@ def test():
     mpl.use('Qt4Agg', warn=False)
     import matplotlib.pyplot as plt  # must be after mpl.use
     mpl.rcParams.update(params)
-    fig = eigenfunctions(go(ns=(1,2,3,10,50)), plt)
+    #fig = eigenfunctions(go(ns=(1,2,3,10,50)), plt)
+    fig = eigenvalues(
+        go(ns=(2, 3, 4, 5, 7, 10, 20)),
+        plt)
     plt.show()
     return 0
 
@@ -116,8 +147,9 @@ def main(argv=None):
         help='number of segments/samples in interval [0,1)')
     parser.add_argument('--test', action='store_true')
     #
-    parser.add_argument('--eigenfunctions', type=str, default=None,
-        help="Write plot to this file")
+    for plot in 'eigenfunctions eigenvalues'.split():
+        parser.add_argument('--{0}'.format(plot), type=str, default=None,
+            help="Write {0} plot to this file".format(plot))
     args = parser.parse_args(argv)
     
     if args.test:

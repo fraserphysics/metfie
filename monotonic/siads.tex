@@ -1,5 +1,5 @@
 \documentclass[12pt]{article} \usepackage{amsmath,amsfonts}
-%\usepackage{showlabels}
+\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
 
 \newcommand{\htop}{{h_{\text{top}}}}
@@ -12,8 +12,8 @@
 \newcommand{\density}{p}
 \newcommand{\stationary}{\mu}
 \newcommand{\function}{\phi}
-\newcommand{\leftfunction}{\rho}
-\newcommand{\rightfunction}{\tilde \rho}
+\newcommand{\rightfunction}{{_{_{\scalebox{.4}{R}}} \rho}}
+\newcommand{\leftfunction}{{_{_{\scalebox{.4}{L}}} \rho}}
 \renewcommand{\th}{^{\text{th}}}
 \newcommand{\field}[1]{\mathbb{#1}}
 \newcommand\REAL{\field{R}}
@@ -37,9 +37,11 @@
 \label{sec:do}
 
 \begin{itemize}
-\item Plot $\lambda(\tau)$
-\item Code that calculates conditional distribution after $n$ steps of
-  $\Delta t/n$
+\item Figure~\ref{fig:paths}: Plot of
+  $\tilde T_{t=\frac{1}{4},g_0=\frac{1}{2},n}$ for several values of
+  $n$.
+\item Surface plot of $p(g(t_1),g(t_0))$ for $t_0=0$ and
+  $t_t=\frac{1}{4}$.
 \end{itemize}
 
 \section{Introduction}
@@ -220,8 +222,9 @@ and
   \lambda_0 =  e^{-\frac{1}{2}} \int_0^1\leftfunction_0(h) dh = 1 -
   \frac{1}{e}.
 \end{equation}
-Figure~\ref{fig:eigenfunctions} illustrates $\leftfunction_{\frac{1}{n}}$ for a
-few values of $n$.
+Figures~\ref{fig:eigenfunctions} and~\ref{fig:eigenvalues} illustrate
+$\leftfunction_{\frac{1}{n}}$ and $\lambda_{\frac{1}{n}}$ respectively
+for a few values of $n$,
 
 \begin{figure*}
   \centering
@@ -231,15 +234,24 @@ few values of $n$.
   \label{fig:eigenfunctions}
 \end{figure*}
 
+\begin{figure*}
+  \centering
+  %\framebox[0.75\textwidth]{Plot here}
+  \resizebox{0.75\textwidth}{!}{\includegraphics{eigenvalues.pdf}}
+  \caption{A plot that illustrates the convergence of $\lambda_{\tau}$
+    to $1-1/e\approx.6321$ as $\tau \rightarrow 0$.}
+  \label{fig:eigenvalues}
+\end{figure*}
+
 \subsection{Probabilities for Discrete Time}
 \label{sec:discrete_t}
 
-I begin by analyzing a process with an countable number of values for
+I begin by analyzing a process with a countable number of values for
 the independent variable $t$ with uniform spacing $\tau$.  In this
 analysis, I let $\lambda$ denote the largest eigenvalue.  By the Peron
 Frobenius Theorem, the corresponding eigenfunctions can be chosen to
-be non-negative with normalization that give the
-stationary distribution for that process as
+be non-negative with normalization that give the stationary
+distribution for that process as
 \begin{equation}
   \label{eq:stationary}
   \stationary(g) = \leftfunction(g) \rightfunction(g).
@@ -300,27 +312,59 @@ given $g_0$ and $g_n$.
 \subsection{Continuous Time}
 \label{sec:continuous_t}
 
-The principal task of this paper is to determine if the limit in the
-continuous time version of \eqref{eq:n_step}, ie,
-\begin{equation}
-  \label{eq:2}
-  \density(g_t|g_0) = \lim_{n \rightarrow \infty}  \frac{\delta(g_0)
-    \left( \Aop_\tau \right)^{n-1} \Aindicate_\tau(\cdot,g_n)
-    \rightfunction_\tau(g_n)} { \left( \lambda_\tau \right)^n
-    \rightfunction_\tau(g_0)} \text{ with } \tau=\frac{t}{n},
-\end{equation}
-exists.  Since the analysis in Section~\ref{sec:continuous_g} leading
-to Equations~\eqref{eq:limit_function} and \eqref{eq:limit_value}
-gives the value $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 -
-\frac{1}{e}$ and suggests that $\lim_{\tau \rightarrow 0}
-\rightfunction_\tau$ exists, all that remains is to show that
-\begin{equation}
-  \label{eq:3}
-  T_t \equiv \lim_{n \rightarrow \infty} \left(
-    \frac{\Aop_{\frac{t}{n}}}
-    {\lambda_{\frac{t}{n}}} \right)^n
-\end{equation}
-exists.
+The principal task of this paper is to determine if a continuous time
+limit of \eqref{eq:n_step} exits.  In particular, does the right hand
+side of \eqref{eq:conditional} converge?
+\begin{align}
+  \label{eq:conditional}
+  \density(g_t|g_0) = &\lim_{n \rightarrow \infty}  \frac{\delta(g_0)
+    \left( \Aop_\tau \right)^{n-1} \Aindicate_\tau(\cdot,g_t)
+    \rightfunction_\tau(g_t)} { \left( \lambda_\tau \right)^n
+    \rightfunction_\tau(g_0)} \\
+  & \text{ with } \tau=\frac{t}{n} \nonumber
+\end{align}
+Since Eqns.~\eqref{eq:limit_function} and \eqref{eq:limit_value}
+provide
+$\lim_{\tau \rightarrow 0} \rightfunction_\tau(g) = e^{g-\frac{1}{2}}$
+and $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 - \frac{1}{e}$, all
+that remains is to show that the limit in \eqref{eq:paths} exists.
+\begin{align}
+  \label{eq:paths}
+  T_{t,g_0} & \equiv \lim_{n \rightarrow \infty} T_{t,g_0,n}, \text{
+  where}\\
+  T_{t,g_0,n} & \equiv \delta(g_0) \left( \frac{\Aop_{\frac{t}{n}}}
+                {\lambda_{\frac{t}{n}}} \right)^n  \nonumber
+\end{align}
+
+For large $t$ the limit in \eqref{eq:paths} approachs a power method for
+finding $\leftfunction$, and
+\begin{equation*}
+  \lim_{t \rightarrow \infty} T_{t,g_0} \propto \leftfunction.
+\end{equation*}
+However, if $t$ is smaller than $1 - g_0$ then the monotonic
+constraint implies that
+\begin{equation*}
+  T_{t,g_0,n} = 0 ~\forall g,n: g > g_0 + t \text{ and } n > 0.
+\end{equation*}
+To simplify numerical calculations, I define
+\begin{equation*}
+  \tilde T_{t,g_0,n} \equiv \delta(g_0) \left( \frac{\Aop_{\frac{t}{n}}}
+                {\lambda_0} \right)^n.
+\end{equation*}
+Numerical calculations of $\tilde T_{t=\frac{1}{4},g_0=\frac{1}{2},n}$
+for several values of $n$ appear in Figure~\ref{fig:paths} and that
+numerical evidence supports the conjecture that \eqref{eq:paths}
+converges.
+\begin{figure*}
+  \centering
+  \framebox[0.75\textwidth]{Plots here}
+  %\resizebox{0.75\textwidth}{!}{\includegraphics{paths.pdf}}
+  \caption{These plots of $\tilde T_{t=\frac{1}{4},g_0=\frac{1}{2},n}$
+    for several values of $n$, suggest that $\lim_{n \rightarrow
+      \infty}$ exists.}
+  \label{fig:paths}
+\end{figure*}
+
 
 \newpage
 \section{A simple example}
