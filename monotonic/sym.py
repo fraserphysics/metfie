@@ -31,7 +31,7 @@ class Interval:
          initialize self by integrating predecessor.
         '''
         assert bool(n)^bool(predecessor) # Exclusive or
-        t = sympy.symbols('t')
+        t,lam = sympy.symbols('t lam'.split())
         if bool(n):
             k = 0
             self.f = 1+0*t      # The function
@@ -39,16 +39,16 @@ class Interval:
             n = predecessor.n
             k = predecessor.k+1
             self.f = predecessor.f_f - sympy.integrate(
-                predecessor.f,(t,predecessor.t_f,t))
+                predecessor.f,(t,predecessor.t_f,t))/lam
         self.n = n
         self.k = k
         self.t_i = float(k)/float(n)
         self.t_f = float(k+1)/float(n)
-        self.f_f = self.f.subs(t,self.t_f).evalf()
+        self.f_f = self.f.subs(t,self.t_f) # Function of lam
         return
     def __call__(self,x):
         t = sympy.symbols('t')
-        return self.f.subs(t,x).evalf()
+        return self.f.subs(t,x) # function of lam
 
 class Piecewise:
     '''Represents whole eigenfunction in n pieces
@@ -76,16 +76,18 @@ class Piecewise:
             #print '{0:d}  {1:6.3f}  {2:6.3f}'.format(i_, x[k], y[k])
         return y
     def integrate(self):
-        '''Calculate and return definite integral from 0 to 1 as float.
+        '''Calculate and return definite integral from 0 to 1 with
+        lam as free variable.
         '''
         t = sympy.symbols('t')
         rv = 0.0
         for i in self.intervals:
             rv += sympy.integrate(i.f,(t,i.t_i,i.t_f))
         return rv
-            
 
 def eigenvalues(args, plt):
+    '''Broken code.
+    '''
     n_tau = len(args.ns) + 1
     x = np.empty(n_tau)
     y = np.empty(n_tau)
@@ -105,6 +107,8 @@ def eigenvalues(args, plt):
 plot_dict['eigenvalues']=eigenvalues
 
 def eigenfunctions(args, plt):
+    '''Broken code.
+    '''
     ns = args.ns
     x = np.linspace(0, 1, 500, endpoint=False)
     fig = plt.figure(figsize=(7,7))
@@ -123,14 +127,32 @@ def eigenfunctions(args, plt):
 plot_dict['eigenfunctions']=eigenfunctions
 
 def test():
+    t,lam = sympy.symbols('t lam'.split())
+    old = 1.0
+    delta = 0
+    ns = np.arange(1,20)
+    vals = []
+    for n in ns:
+        F = Piecewise(n).integrate()
+        new_ = sympy.nsolve(lam-F, lam, old+delta)
+        vals.append(new_)
+        delta = new_ - old
+        old = new_
+        print('For n={0:d}, lambda={1}, delta={2}'.format(n,new_,delta))
     import matplotlib as mpl
     mpl.use('Qt4Agg', warn=False)
     import matplotlib.pyplot as plt  # must be after mpl.use
     mpl.rcParams.update(params)
-    #fig = eigenfunctions(go(ns=(1,2,3,10,50)), plt)
-    fig = eigenvalues(
-        go(ns=(2, 3, 4, 5, 7, 10, 20)),
-        plt)
+    fig_A = plt.figure(figsize=(7,7))
+    ax = fig_A.add_subplot(1,1,1)
+    ax.plot(1.0/ns, vals)
+    ax.set_xlabel(r'$\tau$')
+    ax.set_ylabel(r'$\lambda_\tau$')
+    fig_B = plt.figure(figsize=(7,7))
+    ax = fig_B.add_subplot(1,1,1)
+    x = np.linspace(.4,.5,50)
+    y = list((lam-F).subs(lam, X).evalf() for X in x)
+    ax.plot(x,y)
     plt.show()
     return 0
 
@@ -169,8 +191,8 @@ def main(argv=None):
     return 0
 
 if __name__ == "__main__":
-    rv = main()
-    #rv = test()
+    #rv = main()
+    rv = test()
     sys.exit(rv)
 
 #---------------

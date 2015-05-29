@@ -27,7 +27,6 @@ class LO(scipy.sparse.linalg.LinearOperator):
         '''Calculate rv= A*v and return.  Use array rv if passed, otherwise
         allocate rv.
         '''
-        print('matvec')
         if rv == None:
             rv = np.zeros(self.n_g)
         else:
@@ -41,9 +40,10 @@ class LO(scipy.sparse.linalg.LinearOperator):
         return rv
     def rmatvec(self, v, rv=None):
         '''Calculate rv = v*A and return.  Use array rv if passed, otherwise
-        allocate rv.
+        allocate rv.  In cython with prange, this is faster than matvec
+        because writes (rv[G] += ...) are to chunks of memory that are
+        different for different threads.
         '''
-        print('rmmatvec')
         if rv == None:
             rv = np.zeros(self.n_g)
         else:
@@ -70,6 +70,36 @@ class LO(scipy.sparse.linalg.LinearOperator):
             return self.matvec(self, x[0])
         else:
             raise ValueError('expected x.shape = (n,) or (n,1)')
+    def power(self, n_iter=3000, small=1.0e-6, v=None, op=None, verbose=False):
+        '''Calculate self.eigevalue and self.eigenvector for the
+        largest eigenvalue of op.
+        '''
+        if op == None: op = self.rmatvec
+        if v != None:
+            v_old = v
+        else:
+            v_old = np.ones(self.n_g)
+        def step(s_old, # Last estimate of eigenvalue
+                 v_old, # Last estimate of eigenvector.  Assume norm(v) = 1
+                 ):
+            v_new = op(v_old)
+            s = LA.norm(v_new)
+            v_new /= s
+            dv = LA.norm(v_new-v_old)
+            ds = abs((s-s_old)/s)
+            return s, v_new, ds, dv
+        s, v_old, ds, dv = step(0, v_old)
+        for i in range(n_iter):
+            s, v_old, ds, dv = step(s, v_old)
+            if ds < small and dv < small:
+                break
+        if verbose: print(
+'''With n_g=%d, finished power() at iteration %d
+    ds=%g, dv=%g'''%(self.n_g, i, ds, dv))
+        self.iterations = i
+        self.eigenvalue = s
+        self.eigenvector = v_old
+        return s,v_old
 def _test():
     T = 0.251
     g_step = 1.0/1000
@@ -77,11 +107,19 @@ def _test():
     v = np.ones(A.n_g)
     Av = A*v
     vA = A.rmatvec(v)
-    import pylab
-    pylab.plot(Av)
-    pylab.plot(vA)
     error = np.abs(vA-A.symmetry(Av)).sum()
-    print('error={0:f}'.format(error))
+    assert error < 1e-10
+
+    import pylab
+    for n in (2,3,10):
+        for n_g in (100, 300, 1000, 10000):
+            g_step = 1.0/n_g
+            T = 1.0/n
+            A = LO(T, g_step)
+            A.power(op=A.matvec, verbose=True)
+            v = A.eigenvector
+            x = np.linspace(0,1,A.n_g)
+            pylab.plot(x,v/v[0])
     pylab.show()
 
 if __name__ == "__main__":
