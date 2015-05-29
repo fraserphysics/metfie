@@ -18,8 +18,7 @@
 \newcommand{\field}[1]{\mathbb{#1}}
 \newcommand\REAL{\field{R}}
 
-\title{Uniform Probability for Subsequences Drawn from a Continuous
-  Time Monotonic Process }
+\title{Uniform Probability for a Continuous Time Monotonic Process }
 
 \author{Andrew M.\ Fraser}
 \begin{document}
@@ -204,7 +203,7 @@ $k\th$ segment and $g_k$ denote the end of that segment, the following
 iteration scheme defines $\leftfunction$ over the whole interval:
 \begin{align*}
   \leftfunction(g) &= p_0(g) \equiv 1 &\forall g:~ 0\leq g < g_0 \\
-  \leftfunction(g) &= p_{k+1}(g) \equiv p_k(g_k) - \int_{g_k}^g p_c(h) dh
+  \leftfunction(g) &= p_{k+1}(g) \equiv p_k(g_k) - \int_{g_k}^g p_k(h) dh
                                  &\forall g:~ g_k \leq g < g_{k+1}.
 \end{align*}
 Note that
@@ -212,7 +211,7 @@ Note that
   \label{eq:limit_function}
   \begin{align}
     \leftfunction_0(g) &\equiv \lim_{n \rightarrow \infty}
-    \leftfunction(g) = e^{\frac{1}{2}-g} \\
+    \leftfunction_{\frac{1}{n}}(g) = e^{\frac{1}{2}-g} \\
     \rightfunction_0(g) &= e^{g-\frac{1}{2}},
   \end{align}
 \end{subequations}
