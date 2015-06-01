@@ -85,21 +85,37 @@ class Piecewise:
             rv += sympy.integrate(i.f,(t,i.t_i,i.t_f))
         return rv
 
+vals = {}
+funcs = {}
+def calculate():
+    if len(vals) != 0:
+        return
+    t,lam = sympy.symbols('t lam'.split())
+    old = 1.0
+    delta = 0
+    ns = np.arange(1,21)
+    for n in ns:
+        F = Piecewise(n)
+        funcs[n] = F
+        new_ = sympy.nsolve(lam-F.integrate(), lam, old+delta)
+        vals[n] = new_
+        delta = new_ - old
+        old = new_
+        print('For n={0:d}, lambda={1}, delta={2}'.format(n,new_,delta))
 def eigenvalues(args, plt):
-    '''Broken code.
     '''
-    n_tau = len(args.ns) + 1
+    '''
+    calculate()
+    n_tau = len(args.ns)
     x = np.empty(n_tau)
     y = np.empty(n_tau)
-    fig = plt.figure(figsize=(7,5))
-    ax = fig.add_subplot(1,1,1)
     for i,n in enumerate(args.ns):
         x[i] = 1.0/n
-        y[i] = Piecewise(n).integrate()
-    x[-1] = 0.0
-    y[-1] = 1 - np.exp(-1)
+        y[i] = vals[n]
+    fig = plt.figure(figsize=(7,5))
+    ax = fig.add_subplot(1,1,1)
     ax.plot(x,y, linestyle='', marker='o')
-    ax.set_ylim(0.62, 0.885)
+    ax.set_ylim(0.4, 0.87)
     ax.set_xlim(-0.05, 0.55)
     ax.set_xlabel(r'$\tau$')
     ax.set_ylabel(r'$\lambda_\tau$')
@@ -112,6 +128,7 @@ def eigenfunctions(args, plt):
     ns = args.ns
     x = np.linspace(0, 1, 500, endpoint=False)
     fig = plt.figure(figsize=(7,7))
+    return fig
     ax = fig.add_subplot(1,1,1)
     for n in ns:
         y = Piecewise(n)(x)
@@ -191,8 +208,8 @@ def main(argv=None):
     return 0
 
 if __name__ == "__main__":
-    #rv = main()
-    rv = test()
+    rv = main()
+    #rv = test()
     sys.exit(rv)
 
 #---------------
