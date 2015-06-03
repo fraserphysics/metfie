@@ -94,8 +94,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
             if ds < small and dv < small:
                 break
         if verbose: print(
-'''With n_g=%d, finished power() at iteration %d
-    ds=%g, dv=%g'''%(self.n_g, i, ds, dv))
+'''With n_g=%d, finished power() at iteration %d.  Eigenvalue=%f
+    ds=%g, dv=%g'''%(self.n_g, i, s, ds, dv))
         self.iterations = i
         self.eigenvalue = s
         self.eigenvector = v_old
@@ -111,15 +111,18 @@ def _test():
     assert error < 1e-10
 
     import pylab
-    for n in (2,3,10):
-        for n_g in (100, 300, 1000, 10000):
+    e_val = {}
+    for n in (1, 2, 3, 5, 10, 20, 30):
+        for n_g in (100, 1000, 3000, 10000):
             g_step = 1.0/n_g
             T = 1.0/n
             A = LO(T, g_step)
-            A.power(op=A.matvec, verbose=True)
+            A.power(op=A.matvec, small=1.0e-8, verbose=True)
             v = A.eigenvector
             x = np.linspace(0,1,A.n_g)
             pylab.plot(x,v/v[0])
+            e_val[n] = A.eigenvalue
+        print('\neigenvalue[{0}] = {1}\n'.format(n, e_val[n]))
     pylab.show()
 
 if __name__ == "__main__":

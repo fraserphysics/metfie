@@ -26,7 +26,11 @@ import matplotlib as mpl
 class Interval:
     '''Represents eigenfunction in range [k/n, (k+1)/n)
     '''
-    def __init__(self, n=None, predecessor=None):
+    def __init__(
+            self,              # Interval instance
+            n=None,            # Number of segments between 0 and 1
+            predecessor=None   # Previous interval
+            ):
         '''If n given, initialize self as first interval, otherwise
          initialize self by integrating predecessor.
         '''
@@ -46,14 +50,23 @@ class Interval:
         self.t_f = float(k+1)/float(n)
         self.f_f = self.f.subs(t,self.t_f) # Function of lam
         return
-    def __call__(self,x):
-        t = sympy.symbols('t')
-        return self.f.subs(t,x) # function of lam
+    def __call__(
+            self,  # Interval instance
+            t_val, # float value of t
+            e_val  # float value of eigenvalue
+            ):
+        ''' Calculate and return float evaluation of self at t_val, e_val
+        '''
+        t,lam = sympy.symbols('t lam'.split())
+        return self.f.subs(((t,t_val),(lam,e_val)))
 
 class Piecewise:
     '''Represents whole eigenfunction in n pieces
     '''
-    def __init__(self, n):
+    def __init__(
+            self,  # Piecewise instance
+             n     # Number of segments between 0 and 1
+            ):
         last = Interval(n=n)
         self.intervals = []
         for k in range(n):
@@ -61,19 +74,21 @@ class Piecewise:
             last = Interval(predecessor=last)
         self.bins = np.linspace(0, 1, n+1)
     def __call__(
-            self, # Piecewise instance
-            x,    # 1-d numpy array
+            self,   # Piecewise instance
+            t_vals, # 1-d numpy array
+            e_val,  # eigenvalue
             ):
-        n_x = len(x)
-        i = np.digitize(x, self.bins) - 1
-        assert i.shape == (n_x,)
-        y = np.empty(n_x)
+        ''' Calculate and return value of function at t_vals and e_val
+        '''
+        n_t = len(t_vals)
+        i = np.digitize(t_vals, self.bins) - 1
+        assert i.shape == (n_t,)
+        y = np.empty(n_t)
         #print 'n={0:d}'.format(len(self.intervals))
-        for k in range(n_x):
+        for k in range(n_t):
             i_ = i[k]
             assert 0 <= i_ < len(self.intervals)
-            y[k] = self.intervals[i_](x[k])
-            #print '{0:d}  {1:6.3f}  {2:6.3f}'.format(i_, x[k], y[k])
+            y[k] = self.intervals[i_](t_vals[k], e_val)
         return y
     def integrate(self):
         '''Calculate and return definite integral from 0 to 1 with
@@ -85,16 +100,38 @@ class Piecewise:
             rv += sympy.integrate(i.f,(t,i.t_i,i.t_f))
         return rv
 
+def e_val(tau, start=None):
+    '''Calculate approximate eigenvalue using eq:2
+    '''
+    t,lam = sympy.symbols('t lam'.split())
+    f = t - lam*sympy.exp((t-1)/lam)
+    f_tau = f.subs(t,tau)
+    if start == None:
+        start = tau
+    rv = sympy.nsolve(f_tau, lam, start)#, tol=1e-8)
+    return rv
 vals = {}
 funcs = {}
-def calculate():
+vals_n = {}
+funcs_n = {}
+def calculate(args):
+    '''For 20 values of n, set vals[n] to float representation of eigenvalue
+    and set funcs[n] to corresponding eigenfunction with lambda as free
+    variable.
+    '''
+    from first import LO
     if len(vals) != 0:
         return
     t,lam = sympy.symbols('t lam'.split())
     old = 1.0
     delta = 0
-    ns = np.arange(1,21)
+    ns = np.arange(1, args.n_calculate)
     for n in ns:
+        T = 1.0/n
+        A = LO(T, 1.0/3000)
+        A.power(op=A.matvec, small=1.0e-8)
+        vals_n[n] = A.eigenvalue
+        funcs_n[n] = A.eigenvector
         F = Piecewise(n)
         funcs[n] = F
         new_ = sympy.nsolve(lam-F.integrate(), lam, old+delta)
@@ -105,37 +142,48 @@ def calculate():
 def eigenvalues(args, plt):
     '''
     '''
-    calculate()
-    n_tau = len(args.ns)
-    x = np.empty(n_tau)
-    y = np.empty(n_tau)
-    for i,n in enumerate(args.ns):
-        x[i] = 1.0/n
-        y[i] = vals[n]
+    from first import LO
+    calculate(args)
+    ns_v = np.arange(1,len(vals)+1)
+    y = []
+    y_lo = []
+    for n in ns_v:
+        y.append(vals[n])
+        y_lo.append(vals_n[n])
     fig = plt.figure(figsize=(7,5))
     ax = fig.add_subplot(1,1,1)
-    ax.plot(x,y, linestyle='', marker='o')
-    ax.set_ylim(0.4, 0.87)
-    ax.set_xlim(-0.05, 0.55)
+    ax.plot(1.0/ns_v, y, label=r'$\lambda$')
+    ax.plot(1.0/ns_v, y_lo, label=r'numeric')
+    ns_a = np.arange(1,1000)
+    approx = []
+    val = 1.0 # first guess
+    for n in ns_a:
+        val = e_val(1.0/n, val)
+        approx.append(val)
+    ax.plot(1.0/ns_a, approx, label=r'$\tilde \lambda$')
+    ax.set_xlim(-0.05, 1.0)
     ax.set_xlabel(r'$\tau$')
     ax.set_ylabel(r'$\lambda_\tau$')
+    ax.legend(loc='lower right')
     return fig
 plot_dict['eigenvalues']=eigenvalues
 
 def eigenfunctions(args, plt):
     '''Broken code.
     '''
+    calculate(args)
+    lam = sympy.symbols('lam')
     ns = args.ns
-    x = np.linspace(0, 1, 500, endpoint=False)
+    x = np.linspace(0, 1, 100, endpoint=False)
     fig = plt.figure(figsize=(7,7))
-    return fig
     ax = fig.add_subplot(1,1,1)
     for n in ns:
-        y = Piecewise(n)(x)
-        ax.plot(x,y,label=r'$n=%d$'%n)
-    y = np.exp(-x)
-    ax.plot(x,y,label=r'$n=\infty$')
-    ax.set_ylim(0.3, 1.05)
+        y = funcs[n](x,vals[n])
+        ax.plot(x,y,lw=2,label=r'$n=%d$'%n)
+        y_ = funcs_n[n]
+        x_ = np.linspace(0,1,len(y_))
+        ax.plot(x_,y_/y_[0], linestyle='dotted',color='k')
+    ax.set_ylim(0.0, 1.05)
     ax.set_xlim(-0.05, 1.05)
     ax.set_xlabel(r'$g$')
     ax.set_ylabel(r'$_{_L}\rho_{\frac{1}{n}}(g)$')
@@ -147,29 +195,35 @@ def test():
     t,lam = sympy.symbols('t lam'.split())
     old = 1.0
     delta = 0
-    ns = np.arange(1,20)
+    ns_v = np.arange(1,15)
     vals = []
-    for n in ns:
+    for n in ns_v:
         F = Piecewise(n).integrate()
         new_ = sympy.nsolve(lam-F, lam, old+delta)
         vals.append(new_)
         delta = new_ - old
         old = new_
-        print('For n={0:d}, lambda={1}, delta={2}'.format(n,new_,delta))
+        print('For n={0:2d}, lambda={1:6.3f}, delta={2}'.format(
+            n,float(new_),delta))
+    ns_a = np.arange(1,1000)
+    approx = []
+    start = 1.0
+    for n in ns_a:
+        y = e_val(1.0/n, start)
+        start = y
+        approx.append(y)
     import matplotlib as mpl
     mpl.use('Qt4Agg', warn=False)
     import matplotlib.pyplot as plt  # must be after mpl.use
     mpl.rcParams.update(params)
     fig_A = plt.figure(figsize=(7,7))
     ax = fig_A.add_subplot(1,1,1)
-    ax.plot(1.0/ns, vals)
+    ax.plot(1.0/ns_v, vals, label=r'$\lambda$')
+    ax.plot(1.0/ns_a, approx,# linestyle='', marker='x',
+            label=r'$\tilde \lambda$')
     ax.set_xlabel(r'$\tau$')
     ax.set_ylabel(r'$\lambda_\tau$')
-    fig_B = plt.figure(figsize=(7,7))
-    ax = fig_B.add_subplot(1,1,1)
-    x = np.linspace(.4,.5,50)
-    y = list((lam-F).subs(lam, X).evalf() for X in x)
-    ax.plot(x,y)
+    ax.legend(loc='lower right')
     plt.show()
     return 0
 
@@ -185,11 +239,14 @@ def main(argv=None):
     parser.add_argument('--ns', nargs='*', type=int, default=(1,2,3,5,10),
         help='number of segments/samples in interval [0,1)')
     parser.add_argument('--test', action='store_true')
+    parser.add_argument('--n_calculate', type=int, default=21,
+        help='Calculate eigenfunctions and eigenvalues for 0 < n < n_calculate')
     #
     for plot in 'eigenfunctions eigenvalues'.split():
         parser.add_argument('--{0}'.format(plot), type=str, default=None,
             help="Write {0} plot to this file".format(plot))
     args = parser.parse_args(argv)
+    assert args.ns[-1] < args.n_calculate
     
     if args.test:
         test()

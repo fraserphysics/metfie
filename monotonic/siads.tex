@@ -36,8 +36,10 @@
 \label{sec:do}
 
 \begin{itemize}
-\item Understand difference between analytic eigenfunctions and
-  numerical approximations
+\item Understand behavior of eigenvalues and eigenfunctions in
+  $\tau \rightarrow 0$ limit.  Include results of numerical
+  calculations (with $n_g=3000$) in plots of eigenvalues and
+  eigenvectors.
 \item Figure~\ref{fig:paths}: Plot of
   $\tilde T_{t=\frac{1}{4},g_0=\frac{1}{2},n}$ for several values of
   $n$.
@@ -119,10 +121,11 @@ measure $\measure$ have the following properties:
 \section{Continuous $g$:}
 \label{sec:continuous_g}
 
-I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$ with
-continuous $g$.  In turn I define $\Aop_\tau$ in terms of the function
-$\Aindicate_\tau$ that has the value one if its arguments are an allowed
-pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
+I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$
+with continuous $g$.  (Note: $\tau$ is the only parameter in the
+problem.)  In turn I define $\Aop_\tau$ in terms of the function
+$\Aindicate_\tau$ that has the value one if its arguments are an
+allowed pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
 \begin{subequations}
   \begin{align}
     \label{eq:indicate}
@@ -134,7 +137,7 @@ pair $\left( g(0), g(\tau) \right)$ and zero otherwise, viz:
     \label{eq:operateright}
     \left( \Aop_\tau  \function \right)(g) &\equiv \int
             \Aindicate(g,h) \function(h) dh \\
-    \label{eq:operate}
+    \label{eq:operateleft}
     \left( \function \Aop_\tau \right)(g) &\equiv \int
            \function(h) \Aindicate(h,g) dh \\
     &= \int_{\max(g-\tau,0)}^1 \function(h) dh.
@@ -151,13 +154,12 @@ corresponding \emph{left} and \emph{right} eigenfunctions:
 A symmetry argument yields
 \begin{equation}
   \label{eq:symmetry}
-  \rightfunction_\lambda(g) \propto \leftfunction_\lambda(1-g)
+  \rightfunction_\lambda(g) \propto \leftfunction_\lambda(1-g).
 \end{equation}
 In the following, since I am only interested in the largest
 eigenvalue and the corresponding eigenfunctions\footnote{Called
   the Peron Frobenius eigenvalue and eigenvectors}, I either don't use
-subscripts or use them to denote $\tau=s\Delta t$ the only
-parameter.
+subscripts or use them to denote $\tau=s\Delta t$.
 
 Starting from this definition of an eigenfunction
 \begin{equation}
@@ -179,27 +181,29 @@ I can choose to scale the eigenfunction so that $a=\lambda_\tau$ and
 \end{equation*}
 For larger values of $g$ the integrand in \eqref{eq:1} is one for
 $g-\tau \leq h < 1$ and
-\begin{align*}
+\begin{align}
   \lambda_\tau \leftfunction_\tau(g) &= \int_{g-\tau}^1
-      \leftfunction_\tau(h) dh ~~\forall g > \tau\\
+      \leftfunction_\tau(h) dh ~~\forall g > \tau \nonumber \\
   &= \int_0^1 \leftfunction_\tau(h) dh - \int_0^{g-\tau}
-    \leftfunction_\tau(h) dh \\
-  &= \lambda_\tau - \int_0^{g-\tau} \leftfunction_\tau(h) dh \\
+    \leftfunction_\tau(h) dh \nonumber \\
+  &= \lambda_\tau - \int_0^{g-\tau} \leftfunction_\tau(h) dh \nonumber
+  \\
+  \label{eq:delay_ode}
   \frac{\partial}{\partial g} \leftfunction_\tau(g) &=
             \frac{-1}{\lambda_\tau} \leftfunction_\tau(g-\tau)
              ~~\forall g > \tau .  
-\end{align*}
+\end{align}
 Note that for $\tau = 0$, I get the following pair of equations that
 has no solutions:
-\begin{align}
+\begin{align*}
   \frac{\partial}{\partial g} \leftfunction_0(g) &=
        \frac{-1}{\lambda_0} \leftfunction_0(g) \\
   \lambda_0 &= \int_0^1 \leftfunction_0(h) dh.
-\end{align}
+\end{align*}
 
 If $\tau = 1$ then the image of every function $\function$ is a
 multiple of the constant function $\leftfunction_\tau(g) = 1$ and the
-eigenvalue is $1$.  If $\tau = \frac{1}{2}$, then
+largest eigenvalue is $1$.  If $\tau = \frac{1}{2}$, then
 \begin{equation*}
   \leftfunction_\tau(g) =
   \begin{cases}
@@ -211,9 +215,10 @@ and
 \begin{align*}
   \lambda_\tau \leftfunction_\tau (g=0) &= \left( \leftfunction_\tau
                                           \Aop_\tau \right) (g=0) \\ 
-  \lambda_\tau &= \left( \frac{1}{2} + \int_{\frac{1}{2}}^1
-                1 + \frac{1}{\lambda}\left( \frac{1}{2} - h \right)
+  \lambda_\tau &= \left( \int_0^{\frac{1}{2}} dh + \int_{\frac{1}{2}}^1
+                1 + \frac{1}{\lambda_\tau}\left( \frac{1}{2} - h \right)
                 dh \right) \\
+  &= 1 - \frac{1}{8 \lambda_\tau} \\
               &= \frac{1}{2} + \frac{1}{\sqrt{8}}.
 \end{align*}
 
@@ -229,29 +234,46 @@ iteration scheme defines $\leftfunction$ over the whole interval:
                       \int_{g_k}^g p_k(h) dh
                                  &\forall g:~ g_k \leq g < g_{k+1}.
 \end{align*}
-Note that
-\begin{subequations}
-  \label{eq:limit_function}
-  \begin{align}
-    \leftfunction_0(g) &\equiv \lim_{n \rightarrow \infty}
-    \leftfunction_{\frac{1}{n}}(g) = who knows \\
-    \rightfunction_0(g) &= who knows,
-  \end{align}
-\end{subequations}
-and
+
+\subsection{Approximate Limits}
+\label{sec:limits}
+
+Here I seek the behavior of $\lambda_\tau$ and $\leftfunction_\tau$ as
+$\tau \rightarrow 0$.  Based on \eqref{eq:delay_ode}, I assume that
+for small $\tau$ the eigenfunction has the following approximate form
 \begin{equation}
-  \label{eq:limit_value}
-  \lambda_0 =  FixMe
+  \label{eq:limit_function}
+  \leftfunction(g) \approx
+  \begin{cases}
+    1 & g \leq \tau \\
+    e^{- \frac{g - \tau}{\lambda}} & g > \tau .
+  \end{cases}
 \end{equation}
+From \eqref{eq:1} in the region $g<\tau$ I write
+\begin{align}
+  \lambda &\approx \tau + e^{\frac{\tau}{\lambda}} \int_\tau^1
+  e^{\frac{-h}{\lambda}} dh \nonumber  \\
+  &= \tau - \lambda e^{\frac{\tau}{\lambda}} \left[
+    e^{\frac{-h}{\lambda}} \right]_\tau^1\nonumber  \\
+  &= \tau + \lambda \left( 1 - e^{\frac{\tau -1 }{\lambda}} \right)
+    \nonumber \\
+  \label{eq:limit_value}
+  \tau & \approx \lambda e^{\frac{\tau - 1}{\lambda}}.
+\end{align}
+I let $\tilde \lambda(\tau)$ denote the value of $\lambda$ that solves
+\eqref{eq:limit_value} as an equality.
+
 Figures~\ref{fig:eigenfunctions} and~\ref{fig:eigenvalues} illustrate
 $\leftfunction_{\frac{1}{n}}$ and $\lambda_{\frac{1}{n}}$ respectively
-for a few values of $n$.\marginpar{FixMe}
+for a few values of $n$.\marginpar{Explain algorithms}
 
 \begin{figure*}
   \centering
   \resizebox{0.75\textwidth}{!}{\includegraphics{eigenfunctions.pdf}}
-  \caption{Eigenfunctions FixMe bogus of $\Aop_\tau$ with $\tau=\frac{1}{n}$ for
-    several values of $n$.}
+  \caption{Eigenfunctions of $\Aop_\tau$ with $\tau=\frac{1}{n}$ for
+    several values of $n$.  Solid lines are from sympy calculations
+    and the dotted lines are from numerical power method in which the
+    interval is divided into 3,000 pieces.}
   \label{fig:eigenfunctions}
 \end{figure*}
 
@@ -345,7 +367,7 @@ side of \eqref{eq:conditional} converge?
   & \text{ with } \tau=\frac{t}{n} \nonumber
 \end{align}
 Since Eqns.~\eqref{eq:limit_function} and \eqref{eq:limit_value}
-provide
+provide\marginpar{Wrong}
 $\lim_{\tau \rightarrow 0} \rightfunction_\tau(g) = e^{g-\frac{1}{2}}$
 and $\lim_{\tau \rightarrow 0} \lambda_\tau = 1 - \frac{1}{e}$, all
 that remains is to show that the limit in \eqref{eq:paths} exists.
