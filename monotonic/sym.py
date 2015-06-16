@@ -192,39 +192,14 @@ def eigenfunctions(args, plt):
 plot_dict['eigenfunctions']=eigenfunctions
 
 def test():
-    t,lam = sympy.symbols('t lam'.split())
-    old = 1.0
-    delta = 0
-    ns_v = np.arange(1,15)
-    vals = []
-    for n in ns_v:
-        F = Piecewise(n).integrate()
-        new_ = sympy.nsolve(lam-F, lam, old+delta)
-        vals.append(new_)
-        delta = new_ - old
-        old = new_
-        print('For n={0:2d}, lambda={1:6.3f}, delta={2}'.format(
-            n,float(new_),delta))
-    ns_a = np.arange(1,1000)
-    approx = []
-    start = 1.0
-    for n in ns_a:
-        y = e_val(1.0/n, start)
-        start = y
-        approx.append(y)
-    import matplotlib as mpl
-    mpl.use('Qt4Agg', warn=False)
-    import matplotlib.pyplot as plt  # must be after mpl.use
-    mpl.rcParams.update(params)
-    fig_A = plt.figure(figsize=(7,7))
-    ax = fig_A.add_subplot(1,1,1)
-    ax.plot(1.0/ns_v, vals, label=r'$\lambda$')
-    ax.plot(1.0/ns_a, approx,# linestyle='', marker='x',
-            label=r'$\tilde \lambda$')
-    ax.set_xlabel(r'$\tau$')
-    ax.set_ylabel(r'$\lambda_\tau$')
-    ax.legend(loc='lower right')
-    plt.show()
+    x,lam,tau = sympy.symbols('x lam tau'.split())
+    functions = [1+x*0,]
+    for i in range(1,5):
+        old = functions[-1]
+        f = old.subs(x,tau) -(1/lam)*sympy.integrate(old,(x,0,x))
+        print('f_{0}={1}\n'.format(i, sympy.collect(f.expand(),x,evaluate=True)))
+        #print('f_{0}={1}\n'.format(i, f.simplify()))
+        functions.append(f)
     return 0
 
 def main(argv=None):
@@ -265,8 +240,8 @@ def main(argv=None):
     return 0
 
 if __name__ == "__main__":
-    rv = main()
-    #rv = test()
+    #rv = main()
+    rv = test()
     sys.exit(rv)
 
 #---------------
