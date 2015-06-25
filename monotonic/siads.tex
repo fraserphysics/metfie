@@ -222,18 +222,38 @@ and
               &= \frac{1}{2} + \frac{1}{\sqrt{8}}.
 \end{align*}
 
+\subsection{Recursion Formula}
+\label{sec:recursion}
+
 If $\tau = \frac{1}{n}$, then $\leftfunction_\tau$ is piecewise
 polynomial, and using $k$ as the index of the segments starting with
-$k=0$, the highest power of $g$ in the $k\th$ segment is $k$.  Letting
-$p_k$ denote the polynomial that describes $\leftfunction$ in the
-$k\th$ segment and $g_k$ denote the end of that segment, the following
-iteration scheme defines $\leftfunction$ over the whole interval:
+$k=0$, the highest power of $g$ in the $k\th$ segment is $k$.  By
+defining $p_k$, a version of the $k\th$ segment rescaled so that it
+starts at one, I derive a simple recursion formula for
+$\leftfunction_\tau$.  With the definition
+\begin{equation}
+  \label{eq:pk_def}
+  p_k(x) \equiv
+  \begin{cases}
+    \frac{\leftfunction_\tau(x+k*\tau)} {\leftfunction_\tau(k*\tau)} &
+    0 \leq x \leq \tau \\
+    \text{undefined} & \text{otherwise}
+  \end{cases},
+\end{equation}
+I find
 \begin{align*}
-  \leftfunction(g) &= p_0(g) \equiv 1 &\forall g:~ 0\leq g < g_0 \\
-  \leftfunction(g) &= p_{k+1}(g) \equiv p_k(g_k) - \frac{1}{\lambda}
-                      \int_{g_k}^g p_k(h) dh
-                                 &\forall g:~ g_k \leq g < g_{k+1}.
+  p_0(x) &= 1 \\
+  p_{k+1}(x) &= 1 - \frac{1}{\lambda} \int_0^{x} p_k(s) ds \\
+  p_1(x) &= 1 - \frac{x}{\lambda} \\
+  p_2(x) &= 1 - \frac{x}{\lambda} + \frac{x^2}{2\lambda^2} \\
+  p_k(x) &= \sum_{n=0}^k \frac{1}{n!} \left( -\frac{x}{\lambda}
+           \right)^n,
 \end{align*}
+and in the interval $k\tau \leq g \leq (k+1)\tau$ the eigenfunction is
+\begin{equation}
+  \label{eq:eigenfunction}
+  \leftfunction_\tau(g) = p_k(g-k\tau) \prod_{n=0}^k p_n(\tau).
+\end{equation}
 
 \subsection{Approximate Limits}
 \label{sec:limits}

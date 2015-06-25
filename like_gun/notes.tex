@@ -38,6 +38,12 @@
 \author{Andrew M.\ Fraser}
 \begin{document}
 \maketitle
+\begin{abstract}
+  While source for these notes reside at
+  https://code.google.com/p/metfie/like\_gun/notes.tex and the
+  illustrations are in the same directory, I use the same ideas for
+  work on the 9501 model on moonlight.
+\end{abstract}
 
 \section{Notation for and Implementation of Basic Functions}
 \label{sec:basic}
@@ -67,9 +73,11 @@ to estimate a new model, $\fhat$.
 \item[$D$] Matrix with elements $D[j,k] = \partiald{\cv[j]}{\cf[k]}$
 \item[$B$] Matrix with elements $B[i,j] = \vbasis[j](\texp[i])$, ie,
   the exactly linear map from $c_v$ to simulated data.
-\item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; very
-  expensive to evaluate.  $\DVDf (\texp)$ is represented by the matrix
-  $(BD)^T$.
+\item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; expensive
+  to evaluate.  $\DVDf (\texp)$ is represented by the matrix $(BD)^T$.
+\item[$\epsilon$] The vector of differences between the measured
+  velocities and the simulated velocities at the times of the
+  measurements.
 \end{description}
 
 \subsection{Implementation}
@@ -111,14 +119,19 @@ where $f+\delta = \sum_k (\cf[k] + d[k])\fbasis[k]$, and
   \sum_j \sum_k \partiald{\cv[j]}{\cf[k]}d[k]\vbasis[j](\texp[i])
   +\text{ HOT}.
 \end{equation}
-Letting $\epsilon[i]$ denote $\vexp[i] - \Vt_f(\texp[i])$ and dropping
-HOT, I write
-\begin{align*}
+Defining
+\begin{equation}
+  \label{eq:epsilon}
+  \epsilon[i] \equiv \vexp[i] - \Vt_f(\texp[i])
+\end{equation}
+and dropping HOT, I write
+\begin{align}
   S(d) &\equiv \tilde S(d) - \text{HOT} = \sum_i \left( \epsilon[i] -
   \sum_j \sum_k \partiald{\cv[j]}{\cf[k]}d[k]\vbasis[j](\texp[i])
-  \right)^2\\
+  \right)^2 \nonumber \\
+  \label{eq:sd}
   &= (\epsilon - BDd)^T(\epsilon - BDd)
-\end{align*}
+\end{align}
 and
 \begin{align*}
   \partiald{S}{d[l]} &= -2 \sum_i \left( \epsilon[i] -
@@ -173,6 +186,73 @@ Thus I seek $\hat d$ that solves
   (BD)^T\Sigma_v^{-1}\epsilon + \Sigma_f^{-1} (c_{\tilde f} - \cf) = 
   \left((BD)^T\Sigma_v^{-1}BD + \Sigma_f^{-1} \right) \hat d.
 \end{equation}
+
+\subsection{The Code \emph{calc.py}}
+\label{sec:code}
+
+In the following methods of class \emph{GUN} which implement the
+optimization, the values of the first and last 5 spline coefficients
+of $f$ are not varied.
+\begin{description}
+\item[set\_t2v] Run a simulation to build a spline for mapping times to
+  velocities and save as self.$t2v$
+\item[set\_D] Use finite differences to calculate dv/df in terms of
+  spline coefficients and save as self.$D$ with $D[j,i] = \frac{\Delta
+    c_v[j]}{\Delta c_f[i]}$.  Note that $j$ ranges over all components
+  of $c_v$, but the range of $i$ excludes the first and last 5 components.
+\item[set\_Be] Map experimental velocities v and times t to the
+  following:
+  \begin{align*}        
+    \text{self.}e[i] &= v[i] - t2v(t[i]) \text{ Difference between simulation
+                and data} \\
+    \text{self.}B[i,j] &= b_j(t[i]) \text{ Where }b_j\text{ is the jth basis function
+                  for the t2v spline}    
+  \end{align*}
+\item[set\_ddd] Calculate the derivative (wrt to c) of the second
+  derivative of the eos wrt x at the knots.  Store result as self.ddd
+  and return it.  self.ddd is passed to scipy.optimize.fmin\_slsqp as
+  the derivative of the convexity constraint
+\item[opt] Do a constrained optimization step.  This method has the
+  following internal service functions:
+  \begin{description}
+  \item[func] From \eqref{eq:sd} the objective function is:
+    \begin{equation*}
+      F(d) = \left| \epsilon - BD\cdot d \right|^2.
+    \end{equation*}
+    The difference between the simulated and measured velocities is
+    $\epsilon$, and $d$ is the change in the vector of spline
+    coefficients.  $BD$ is the derivative of the simulated velocities
+    wrt to $d$.
+  \item[d\_func] Derivative of the objective function,
+    \begin{equation*}
+    \partiald{F}{d} = -2(BD)^T(\epsilon - BD\cdot d)
+    \end{equation*}
+  \item[dd] Return the vector of constraint function values, ie, the
+    second derivative of f at the knots ([3:-3] ignores repeated edge
+    knot locations).  The function simply calls the
+    \emph{derivative(2)} method of the parent spline class.
+  \end{description}
+  The goal of \emph{opt} is to find the change $d$ in spline
+  coefficients $c_f$ that yield a function $f(c_f+d)$ that minimizes $F(f)$.
+  The key to \emph{opt} is the following call to
+  scipy.optimize.fmin\_slsqp
+\begin{verbatim}
+ d_hat, ss, its, lmode, smode = fmin(
+     func,
+     np.zeros(len(new_c)-2*magic.anchor), # Initial guess d=0
+     f_ieqcons=dd,                        # Constrain f'' >= 0
+     args=(self,),
+     fprime=d_func,                       # Deivative of func wrt d
+     iter=2000,
+     # next is derivative of f'' wrt to d
+     fprime_ieqcons=lambda d, self: self.ddd,
+     full_output=True,
+     iprint=0,
+     )
+\end{verbatim}
+
+\end{description}
+
 \subsection{Numerical Results}
 \label{sec:numerical-results}
 
@@ -284,18 +364,49 @@ Thus the velocity as a function of radius is
 and we can obtain the velocity as a function of time by numerical
 integration.
 
+\section{Splines}
+\label{sec:splines}
+
+From Fig.~\ref{fig:basis}, I conclude that the second derivative is
+affine between knots and that consequently if it is positive at the
+knots it is positive between them.  Further, if the second derivative
+is positive over the domain and the first derivative is positive at
+the right hand end point, the the function is monotonic and convex
+over the entire domain.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{basis.pdf}}  
+    \caption{Cubic spline basis functions and their first and second
+      derivatives. The dashed plots are for $f_5$ whose knot is
+      $t_5=3$.  Note that $t_k=0$ for $f_0,~f_1,~f_2$ and $f_3$, and
+      $t_4=2$.}
+  \label{fig:basis}
+\end{figure}
+
+Figure~\ref{fig:basis} also illustrates the symmetry of the right and
+left boundaries.  The knot location $t$ of each basis function is the
+point on the left where the function departs from zero.  There are
+four functions at $t=0$.  There are also four functions at $t=10$, but
+since their coefficients are always zero, they are not degrees of
+freedom in any fit.
+
 \section*{Appendix}
 \label{sec:appendix}
 
 See other information in cmfSuite/doc/HE.tex
 
-One may fetch source code for this project from google code and build
+One may fetch source code for this project from Google code and build
 this document as follows:
 \begin{verbatim}
 ->git clone https://code.google.com/p/metfie
 ->cd metfie/like_gun
 ->make notes.pdf
 \end{verbatim}
+
+%
+\vfill \hrule
+
+Source file: https://code.google.com/p/metfie/like\_gun/notes.tex
 
 \end{document}
 

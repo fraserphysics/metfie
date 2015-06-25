@@ -23,6 +23,44 @@ params = {
     'ytick.labelsize': 15}
 import matplotlib as mpl
 
+class Eigenfunction:
+    def __init__(
+            self,
+            tau,  # A float
+            start=None,
+            ):
+        print('''
+tau={0}'''.format(tau))
+        if start==None:
+            start = tau -.05 + 2*tau
+        x,lam = sympy.symbols('x lam'.split())
+        self.tau = tau
+        k = 0
+        term = 1.0 + x*0   # \frac{1}{k!} * (-\frac{x}{lam})^k
+        pk = 0             # sum_{n=0}^k term_k
+        cum_prod = 1       # prod_{n=0}^k pk(tau)
+        integral = 0       # integral_0^? rho(s) ds
+        while tau*k < 1.0:
+            pk += term              # Polynomial of x/lam
+            pk_tau = pk.subs(x,tau) # Polynomial of tau/lam
+            print('''  k={0}
+  term={1}
+  pk={2}
+  '''.format(k, term, pk))
+            if tau*(k+1) >= 1.0:
+                d = 1.0 - tau*k
+                integral += sympy.integrate(pk, (x, 0, d))/cum_prod
+                break
+            integral += sympy.integrate(pk, (x, 0, tau))/cum_prod
+            # integral is a rational function of tau and lam
+            cum_prod *= pk_tau      # Polynomial of tau/lam
+            k += 1
+            term *= -x/(k*lam)      # Monomial of x/lam
+        print('''  cum_prod={2}  Solving
+  {0}={1}'''.format(lam,integral.simplify(), cum_prod))
+        self.eigenvalue = sympy.solve(lam-integral, lam)
+        #FixMe: what is start?
+            
 class Interval:
     '''Represents eigenfunction in range [k/n, (k+1)/n)
     '''
@@ -192,14 +230,9 @@ def eigenfunctions(args, plt):
 plot_dict['eigenfunctions']=eigenfunctions
 
 def test():
-    x,lam,tau = sympy.symbols('x lam tau'.split())
-    functions = [1+x*0,]
-    for i in range(1,5):
-        old = functions[-1]
-        f = old.subs(x,tau) -(1/lam)*sympy.integrate(old,(x,0,x))
-        print('f_{0}={1}\n'.format(i, sympy.collect(f.expand(),x,evaluate=True)))
-        #print('f_{0}={1}\n'.format(i, f.simplify()))
-        functions.append(f)
+    for tau,start in ((1.0,1.0), (.5,.85), (1.0/3, .65)):
+        f = Eigenfunction(tau, start=start)
+        print('tau={0}, lambda={1}'.format(tau, f.eigenvalue))
     return 0
 
 def main(argv=None):
