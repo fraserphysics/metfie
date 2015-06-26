@@ -225,10 +225,8 @@ barrel and the forces at those positons respectively. '''
         Note self.D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
         last 4 which are always 0.
         '''
-        eos_nom = self.eos
-        c_f_nom = eos_nom.get_c() # Vector of nominal coefficients for eos
-        t2v_nom = self.set_t2v()
-        c_v_nom = t2v_nom.get_c()
+        c_f_nom = self.eos.get_c().copy() # Vector of nominal coefficients for eos
+        c_v_nom = self.set_t2v().get_c().copy()
         n_f = len(c_f_nom) - magic.end # Dimension of optimization var
         n_v = len(c_v_nom) - magic.end
         self.D = np.empty((n_v,n_f)) # To be dv/df matrix
@@ -238,21 +236,21 @@ barrel and the forces at those positons respectively. '''
             d_f = float(c_f[i]*fraction)
             assert abs(d_f) > 0.0
             c_f[i] += d_f
-            self.eos = eos_nom.set_c(c_f)
+            self.eos.set_c(c_f)
             # Next line runs a simulation to get a new spline for v(t)
             c_v = self.set_t2v().get_c()
             self.D[:,i] = ((c_v - c_v_nom)/d_f)[:-magic.end]
-        self.eos = eos_nom
-        self.t2v = t2v_nom
+        self.eos.set_c(c_f_nom)
+        self.t2v.set_c(c_v_nom)
         return self.D
     def set_Be(
             self, # GUN instance
             vt,   # (velocities, times)
             ):
-        '''Map experimental velocities v and times t to the error e
-        and dv/dc_v more specifically:
+        '''Map experimental velocities v and times t to the error ep
+        and B = dv/dc_v more specifically:
         
-        self.e[i]=v[i] - t2v(t[i]) Difference between simulation and data
+        self.ep[i]=v[i] - t2v(t[i]) Difference between simulation and data
         
         self.B[i,j] = b_j(t[i]) Where b_j is the jth basis function for
                                 the t2v spline
@@ -260,95 +258,98 @@ barrel and the forces at those positons respectively. '''
         v,t = vt
         n_vt = len(v)
         assert len(t) == n_vt
-        c_v = self.set_t2v().get_c() # Also sets nominal t2v
-        import numpy.testing
-        numpy.testing.assert_array_equal(c_v[-magic.end:], np.zeros(magic.end))
-        c_ = np.zeros(c_v.shape)
-        self.e = v - self.t2v(t) # Calculate errors
-        n_c = len(c_) - magic.end
-        self.B = np.zeros((n_vt,n_c))
-        for j in range(n_c):
+        c_ = np.zeros(self.set_t2v().get_c().shape) # Also creates self.t2v
+        self.ep = v - self.t2v(t)  # Calculate errors
+        v_dim = len(c_) - magic.end # end values are always 0
+        self.B = np.zeros((n_vt,v_dim))
+        for j in range(v_dim):
             c_[j] = 1.0
             delta_t2v = self.t2v.set_c(c_)
             self.B[:,j] = delta_t2v(t)
             c_[j] = 0.0
-    def set_ddd(
-            self  # GUN instance
-            ):
-        '''Calculate the derivative (wrt to c) of the second derivative of the eos
-        wrt x at the knots.  Since the second derivative is affine between
-        adjacent knots, if it is positive at the knots, it is positive
-        everwhere.  Store result as self.ddd and return it.  self.ddd is
-        passed to scipy.optimize.fmin_slsqp as the derivative of the
-        convexity constraint
-        '''
-        t_all = self.eos.get_t()
-        c = np.zeros(t_all.shape)
-        dim = len(c) - magic.end # Dimension of optimization variable
-        t = t_all[magic.end-1:1-magic.end]   # Ignore repeated locations
-        self.ddd = ddd = np.empty((len(t), dim))
-        for i in range(dim):
-            c[i] = 1.0
-            ddd[:,i] = self.eos.set_c(c).derivative(2)(t)
-            c[i] = 0.0
-        return ddd
+        # self.t2v is a mess now
+        del self.t2v
     def func(self, d):
         '''The objective function, S(d) in notes.tex.
         '''
-        r = self.e - np.dot(self.BD,d) # Residual
+        r = self.ep - np.dot(self.BD,d) # Residual
         return float(np.dot(r.T,r))
     def d_func(self, d):
         '''Derivative of the objective function.
         '''
-        r = self.e - np.dot(self.BD,d)
+        r = self.ep - np.dot(self.BD,d) # Residual
         rv = -2*np.dot(self.BD.T,r)
         assert len(rv) == len(d),'len(rv)={0}, len(d)={1}'.format(
             len(rv), len(d))
         return rv
-    def dd(self, d):
-        '''Return the vector of constraint function values, ie, the second
-        derivative of f at the knots ([3:-3] ignores repeated edge
-        knot locations).  If second derivative is non-negative at
-        those points, it is not negative anywhere.
+    def constraint(self, d):
+        '''Return the vector of inequality constraint function values.
+        The constraints are conditions at the unique knots (excluding
+        the 3 repeats at each end), and they are constraints on the
+        active coefficients (excluding the 4 zeros and the left edge).
+        The second derivative should be non-negative at the knots,
+        the first derivative is negative at the left most knot and
+        the value of the function is postitive at the left most knot.
         '''
-        c = self.eos.get_c()
+        original_c = self.eos.get_c().copy()
+        c = original_c.copy()
         c[:-magic.end] += d
-        t = self.eos.get_t()[magic.end-1:1-magic.end]
-        return self.eos.set_c(c).derivative(2)(t)
-
+        t_unique = self.eos.get_t()[magic.end-1:1-magic.end]
+        rv = np.empty(len(t_unique)+2)
+        rv[:-2] = self.eos.set_c(c).derivative(2)(t_unique)
+        rv[-2] = -self.eos.derivative(1)(t_unique[-1])
+        rv[-1] = self.eos(t_unique[-1])
+        self.eos.set_c(original_c)
+        return rv
+    def calc_d_constraint(
+            self  # GUN instance
+            ):
+        '''Calculate and save as self.d_constraint the derivative
+        (wrt to c) of the inequality constraints:
+        f'' >= 0 at all t_unique
+        f' <= 0 at last t
+        f >=0 at last t
+        '''
+        original_c = self.eos.get_c().copy()
+        t_all = self.eos.get_t()
+        t_unique = t_all[magic.end-1:1-magic.end]
+        dim = len(original_c) - magic.end # Number of free components
+        c = np.zeros(dim + magic.end)
+        n_constraints = len(t_unique) + 2
+        self.d_constraint = d_con = np.empty((n_constraints, dim))
+        for i in range(dim):
+            c[i] = 1.0
+            d_con[:-2,i] = self.eos.set_c(c).derivative(2)(t_unique)
+            d_con[-2,i] = -self.eos.derivative(1)(t_unique[-1])
+            d_con[-1,i] = self.eos(t_unique[-1])
+            c[i] = 0.0
+        self.eos.set_c(original_c)
+        return self.d_constraint
     def opt(
             self, # GUN instance
-            vt):
+            vt,   # Simulated experimental data
+            ):
         ''' Do a constrained optimization step
         ''' 
         from scipy.optimize import fmin_slsqp as fmin
+        new_c = self.eos.get_c().copy()
         self.set_D() # Expensive
         self.set_Be(vt)
         self.BD = np.dot(self.B, self.D)
-        self.set_ddd()
-        new_c = self.eos.get_c()
-        d = np.zeros(len(new_c)-magic.end)
-        old_func = func(d,self)
-        old_dd = dd(d, self)
+        self.calc_d_constraint()
+        d = np.zeros(len(new_c)-magic.end) # Optimization variable
         d_hat, ss, its, imode, smode = fmin(
             lambda d, _slf: _slf.func(d),
             d,
-            f_ieqcons=lambda d, _slf: _slf.dd(d),
-            args=(self,),
+            f_ieqcons=lambda d, _slf: _slf.constraint(d),
+            args=(self,),  # This will be _slf in lambda expressions
             fprime=lambda d, _slf: _slf.d_func(d),
             iter=2000,
-            fprime_ieqcons=lambda d, self: self.ddd, # Independent of d
+            fprime_ieqcons=lambda d, _slf: _slf.d_constraint, #Independent of d
             full_output=True,
             disp=1,
             )
-        if imode == 8:
-            print('d_hat=\n{0}'.format(d_hat))
-            print('fprime(d_hat)=\n{0}'.format(d_func(d_hat,self)))
         assert imode == 0,'Exit mode of fmin={0}\n{1}'.format(imode, smode)
-        print('\fmin found func(d_hat)={0:.4g}.  func(0)={1:.4g}'.format(
-            func(d_hat,self), old_func))
-        print('old_dd.min()={:.4g}, new_dd.min()={:.4g}\n'.format(
-            old_dd.min(), dd(d_hat, self).min()))
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.set_c(new_c)
         return
@@ -518,7 +519,7 @@ def best_fit(vt):
     for i in range(magic.like_iter):
         old_eos = gun.eos
         gun.opt(vt)
-        e.append(gun.e)
+        e.append(gun.ep)
         L, g, h = gun.log_like(vt)
         Delta = L - last
         print('L[%2d]=%e, delta=%e'%(i,L,Delta))
@@ -605,7 +606,7 @@ def test():
     v,t = experiment(  # Create pseudo experimental data
         {})            # Dict for plot that is dropped
     gun.set_Be((v,t))
-    assert len(gun.e) == len(t)
+    assert len(gun.ep) == len(t)
     fmt = 'B.shape={0} != ({1},{2}) = (len(t), n_f)'.format
     assert gun.B.shape == (len(t), n_v),fmt(gun.B.shape, len(t), n_v)
 

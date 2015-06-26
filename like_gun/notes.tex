@@ -197,41 +197,60 @@ of $f$ are not varied.
 \item[set\_t2v] Run a simulation to build a spline for mapping times to
   velocities and save as self.$t2v$
 \item[set\_D] Use finite differences to calculate dv/df in terms of
-  spline coefficients and save as self.$D$ with $D[j,i] = \frac{\Delta
-    c_v[j]}{\Delta c_f[i]}$.  Note that $j$ ranges over all components
-  of $c_v$, but the range of $i$ excludes the first and last 5 components.
+  spline coefficients and save as self.$D$ with
+  $D[j,i] = \frac{\Delta c_v[j]}{\Delta c_f[i]}$.  Note that $i$ and
+  $j$ range over variable components of $c_v$ and $c_f$ (excluding the
+  last 4 which are always 0).
 \item[set\_Be] Map experimental velocities v and times t to the
   following:
   \begin{align*}        
-    \text{self.}e[i] &= v[i] - t2v(t[i]) \text{ Difference between simulation
+    \text{self.}ep[i] &= v[i] - t2v(t[i]) \text{ Difference between simulation
                 and data} \\
-    \text{self.}B[i,j] &= b_j(t[i]) \text{ Where }b_j\text{ is the jth basis function
-                  for the t2v spline}    
+    \text{self.}B[i,j] &= b_j(t[i])     
   \end{align*}
-\item[set\_ddd] Calculate the derivative (wrt to c) of the second
-  derivative of the eos wrt x at the knots.  Store result as self.ddd
-  and return it.  self.ddd is passed to scipy.optimize.fmin\_slsqp as
-  the derivative of the convexity constraint
-\item[opt] Do a constrained optimization step.  This method has the
-  following internal service functions:
-  \begin{description}
-  \item[func] From \eqref{eq:sd} the objective function is:
-    \begin{equation*}
-      F(d) = \left| \epsilon - BD\cdot d \right|^2.
-    \end{equation*}
-    The difference between the simulated and measured velocities is
-    $\epsilon$, and $d$ is the change in the vector of spline
-    coefficients.  $BD$ is the derivative of the simulated velocities
-    wrt to $d$.
-  \item[d\_func] Derivative of the objective function,
-    \begin{equation*}
+  Notes: $b_j$ is the jth basis function for the t2v spline.  $B$ is
+  the derivative of the simulated velocity function at the
+  experimental sample times wrt the coefficients of the spline fit
+  that implements that function.
+\item[func] From \eqref{eq:sd} the objective function is:
+  \begin{equation*}
+    F(d) = \left| \epsilon - BD\cdot d \right|^2.
+  \end{equation*}
+  The difference between the simulated and measured velocities is
+  $\epsilon$, and $d$ is the change in the vector of spline
+  coefficients.  $BD$ is the derivative of the simulated velocities
+  wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = len(c_f)-4$.
+\item[d\_func] Derivative of the objective function,
+  \begin{equation*}
     \partiald{F}{d} = -2(BD)^T(\epsilon - BD\cdot d)
-    \end{equation*}
-  \item[dd] Return the vector of constraint function values, ie, the
-    second derivative of f at the knots ([3:-3] ignores repeated edge
-    knot locations).  The function simply calls the
-    \emph{derivative(2)} method of the parent spline class.
+  \end{equation*}
+\item[constraint] Return the vector of constraint function values:
+  \begin{description}
+  \item[$r_{i} = \left. \frac{d^2 f}{d t^2} \right|_{t_i}~\forall i
+    < n_t$:]
+    The second derivative of $f$ wrt to $t$ at all $n_t$ unique knot
+    values for $t$.
+  \item[$r_{n_t} = - \left. \frac{d f}{d t} \right|_{t_{n_{t}-1}}$:]
+    Minus the derivative of $f$ at the last unique knot.
+  \item[$r_{n_t+1} = f(t_{n_{t}-1})$:] The value of $f$ at the last
+    unique knot.
   \end{description}
+  If these constraints are satisfied, ie, $r_i>=0~\forall i<n_t+2$,
+  then the function $f$ is positive, monotonic and convex over its
+  entire domain.  
+\item[calc\_d\_constraint] Calculate the derivative (wrt to c) of the
+  constraint function, store result as self.d\_constraint and return
+  it.
+  \begin{description}
+  \item[$r_{i,j} = \frac{d}{d c_j} \left. \frac{d^2 f}{d t^2}
+    \right|_{t_i}~\forall i < n_t$:]
+    The derivative wrt $c_f$ of the second derivative of $f$ wrt to
+    $t$ at all $n_t$ unique knot values for $t$.
+\item[$r_{n_t,j} = - \frac{d}{d c_j} \left. \frac{d f}{d t}
+    \right|_{t_{n_{t}-1}}$:]
+  \item[$r_{n_t+1,j} = \frac{d}{d c_j} f(t_{n_{t}-1})$:]
+  \end{description}
+\item[opt] Do a constrained optimization step.
   The goal of \emph{opt} is to find the change $d$ in spline
   coefficients $c_f$ that yield a function $f(c_f+d)$ that minimizes $F(f)$.
   The key to \emph{opt} is the following call to
