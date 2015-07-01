@@ -54,7 +54,7 @@ class Spline(IU_Spline, Component):
         # stack()[1] is context that called set_c
         rv.provenance = Provenance(
             stack()[1], 'New coefficients', branches=[self.provenance],
-            max_hist=10)
+            max_hist=50)
         return rv
     def display(self):
         '''This method serves the Component class and the make_html
@@ -72,7 +72,6 @@ class Spline(IU_Spline, Component):
         fig.savefig('eos.jpg', format='jpg')
 
         # Make an html formated return value
-        from markup import oneliner
         html = oneliner.p('''
         Table of coefficients for spline representation of force
         as a function of position along the barrel''')
@@ -94,13 +93,13 @@ magic = go(
     t_min=-5.0e-6,        # Range of times for t2v spline
     t_max=110.0e-6,       # Range of times for t2v spline
     n_x_pert=1000,        # Number of x points for perturbed EOS
-    D_frac=5.0e-3,        # Fractional finte difference for esimating dv/df
+    D_frac=2.0e-2,        # Fractional finte difference for esimating dv/df
     cm2km=1.0e5,          # For conversion from cm/sec to km/sec
     n_t_sim=1000,         # len(vt), simulated velocity time pairs
     fit_dim=50,           # Number of x points for EOS fit
     like_iter=50,         # Bound for iterations maximizing likelihood
     converge=1.0e-3,      # Fractional tolerance for max like
-    stretch=1.40,         # Expansion of x beyond (xi,xf)
+    stretch=1.25,         # Expansion of x beyond (xi,xf)
     k_factor=1.0e6,       # (f(xi)/f(xf))^2
     end=4,                # Last 4 coefficients of all splines are 0
            )
@@ -225,23 +224,27 @@ barrel and the forces at those positons respectively. '''
         Note self.D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
         last 4 which are always 0.
         '''
-        c_f_nom = self.eos.get_c().copy() # Vector of nominal coefficients for eos
-        c_v_nom = self.set_t2v().get_c().copy()
-        n_f = len(c_f_nom) - magic.end # Dimension of optimization var
+        # Spline.set_c(c) does not modify Spline.  It returns a copy
+        # of Spline with the coefficients c and an updated provenance.
+        eos_nom = self.eos
+        c_f_nom = eos_nom.get_c() # Vector of nominal coefficients for eos
+        n_f = len(c_f_nom) - magic.end   # Dimension of optimization var
+        t2v_nom = self.set_t2v()
+        c_v_nom = t2v_nom.get_c()
         n_v = len(c_v_nom) - magic.end
         self.D = np.empty((n_v,n_f)) # To be dv/df matrix
         for i in range(n_f):
             c_f = c_f_nom.copy()
             # Next set size of finite difference for derivative approximation
             d_f = float(c_f[i]*fraction)
-            assert abs(d_f) > 0.0
             c_f[i] += d_f
-            self.eos.set_c(c_f)
-            # Next line runs a simulation to get a new spline for v(t)
+            # Next run a simulation to get a v(t) spline a for a modified eos
+            self.eos = eos_nom.set_c(c_f)
             c_v = self.set_t2v().get_c()
-            self.D[:,i] = ((c_v - c_v_nom)/d_f)[:-magic.end]
-        self.eos.set_c(c_f_nom)
-        self.t2v.set_c(c_v_nom)
+            D_i = ((c_v - c_v_nom)[:-magic.end])/d_f
+            self.D[:,i] = D_i
+        self.eos = eos_nom
+        self.t2v = t2v_nom
         return self.D
     def set_Be(
             self, # GUN instance
@@ -267,8 +270,9 @@ barrel and the forces at those positons respectively. '''
             delta_t2v = self.t2v.set_c(c_)
             self.B[:,j] = delta_t2v(t)
             c_[j] = 0.0
-        # self.t2v is a mess now
-        del self.t2v
+    def set_BD(self, BD):
+        '''For testing'''
+        self.BD = BD
     def func(self, d):
         '''The objective function, S(d) in notes.tex.
         '''
@@ -282,6 +286,22 @@ barrel and the forces at those positons respectively. '''
         assert len(rv) == len(d),'len(rv)={0}, len(d)={1}'.format(
             len(rv), len(d))
         return rv
+    def check(
+            self,   # GUN instance
+            d=None  # Change in c_f
+            ):
+        '''Raise error if d does not satisfy constraints: Convex,
+            monotonic and positive
+        '''
+        if d == None:
+            d = np.zeros(len(self.eos.get_c())-magic.end)
+        a = self.constraint(d)
+        b = a.min()
+        if b < 0.0:
+            print('all constraints={0},\n min={1:.6e}'.format(a,b))
+            raise RuntimeError
+        return 0
+    
     def constraint(self, d):
         '''Return the vector of inequality constraint function values.
         The constraints are conditions at the unique knots (excluding
@@ -290,30 +310,33 @@ barrel and the forces at those positons respectively. '''
         The second derivative should be non-negative at the knots,
         the first derivative is negative at the left most knot and
         the value of the function is postitive at the left most knot.
+        
+        f'' >= 0 at all t_unique
+        f' <= 0 at last t_unique
+        f >=0 at last t_unique
         '''
-        original_c = self.eos.get_c().copy()
-        c = original_c.copy()
+        original_eos = self.eos
+        c = self.eos.get_c().copy()
         c[:-magic.end] += d
         t_unique = self.eos.get_t()[magic.end-1:1-magic.end]
         rv = np.empty(len(t_unique)+2)
-        rv[:-2] = self.eos.set_c(c).derivative(2)(t_unique)
-        rv[-2] = -self.eos.derivative(1)(t_unique[-1])
-        rv[-1] = self.eos(t_unique[-1])
-        self.eos.set_c(original_c)
+        eos_mod = self.eos.set_c(c)
+        rv[:-2] = eos_mod.derivative(2)(t_unique)
+        rv[-2] = -eos_mod.derivative(1)(t_unique[-1])
+        rv[-1] = eos_mod(t_unique[-1])
+        self.eos = original_eos
         return rv
     def calc_d_constraint(
             self  # GUN instance
             ):
         '''Calculate and save as self.d_constraint the derivative
-        (wrt to c) of the inequality constraints:
-        f'' >= 0 at all t_unique
-        f' <= 0 at last t
-        f >=0 at last t
+        (wrt to c) of the inequality constraints.
         '''
-        original_c = self.eos.get_c().copy()
+        original_eos = self.eos
+        # dim is the number of free components
+        dim = len(original_eos.get_c()) - magic.end
         t_all = self.eos.get_t()
         t_unique = t_all[magic.end-1:1-magic.end]
-        dim = len(original_c) - magic.end # Number of free components
         c = np.zeros(dim + magic.end)
         n_constraints = len(t_unique) + 2
         self.d_constraint = d_con = np.empty((n_constraints, dim))
@@ -323,7 +346,7 @@ barrel and the forces at those positons respectively. '''
             d_con[-2,i] = -self.eos.derivative(1)(t_unique[-1])
             d_con[-1,i] = self.eos(t_unique[-1])
             c[i] = 0.0
-        self.eos.set_c(original_c)
+        self.eos = original_eos
         return self.d_constraint
     def opt(
             self, # GUN instance
@@ -336,20 +359,36 @@ barrel and the forces at those positons respectively. '''
         self.set_D() # Expensive
         self.set_Be(vt)
         self.BD = np.dot(self.B, self.D)
-        self.calc_d_constraint()
         d = np.zeros(len(new_c)-magic.end) # Optimization variable
+        f_scale = 1.0/self.func(d)
+        con_scale = 1.0/self.constraint(d)
+        self.calc_d_constraint()
         d_hat, ss, its, imode, smode = fmin(
-            lambda d, _slf: _slf.func(d),
+            lambda d, slf: slf.func(d)*f_scale,
             d,
-            f_ieqcons=lambda d, _slf: _slf.constraint(d),
-            args=(self,),  # This will be _slf in lambda expressions
-            fprime=lambda d, _slf: _slf.d_func(d),
+            f_ieqcons=lambda d, slf: slf.constraint(d)*con_scale,
+            args=(self,),  # This will be slf in lambda expressions
+            fprime=lambda d, slf: slf.d_func(d)*f_scale,
             iter=2000,
-            fprime_ieqcons=lambda d, _slf: _slf.d_constraint, #Independent of d
+            fprime_ieqcons=lambda d, slf: con_scale*slf.d_constraint,
             full_output=True,
-            disp=1,
+            disp=2,
             )
         assert imode == 0,'Exit mode of fmin={0}\n{1}'.format(imode, smode)
+        new_c[:-magic.end] += d_hat
+        self.eos = self.eos.set_c(new_c)
+        return
+    def free_opt(
+            self, # GUN instance
+            vt,   # Simulated experimental data
+            ):
+        ''' Do an unconstrained optimization step
+        ''' 
+        from numpy.linalg import lstsq
+        new_c = self.eos.get_c().copy()
+        self.set_Be(vt)
+        BD = np.dot(self.B, self.set_D())
+        d_hat = lstsq(BD, self.ep, rcond=1e-10)[0]
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.set_c(new_c)
         return
@@ -421,7 +460,7 @@ def plot_dv_df(gun, x, fig):
     frac_b = 2.0e-3
     DA = gun.set_D(fraction=frac_a)
     DB = gun.set_D(fraction=frac_b)
-    x_D = gun.t2v.get_t()[:-magic.end]*1.0e6
+    x_D = (gun.t2v.get_t()[:-magic.end])*1.0e6
 
     eos_nom = gun.eos
     c = eos_nom.get_c()
@@ -462,14 +501,14 @@ def plot_dv_df(gun, x, fig):
         ax.set_xlabel(l_x)
         ax.set_ylabel(l_y)
         n_y, n_x = y_.shape
-        if n_x == len(t):
+        if n_ in (4,5,6):
             y_ = y_/magic.cm2km
-            if y_.max() < 0.1:
+            if n_ in (5,6):
                 y_ *= 1e3
                 ax.set_ylabel(r'$\Delta v/(\rm{m/s})$')
             x_ = x_*1.0e6
         for i in range(n_y):
-            if l_y == '$\Delta f$' or l_y == '$f$':
+            if n_ in (1,2,3):
                 ax.loglog(x_, y_[i])
                 ax.set_ylim(ymin=1e4, ymax=1e12)
             else:
@@ -506,7 +545,7 @@ def experiment(plot_data=None):
         plot_data['experimental'] = (
             (gun.x, f_p, 'f'),(gun.x, v_p/magic.cm2km, 'v'))
     return (v, t)
-def best_fit(vt):
+def best_fit(vt, constrained=True):
     '''Create new gun, adjust spline description of eos to make simulated
     velocities match vt and return adjusted gun.
     '''
@@ -518,7 +557,10 @@ def best_fit(vt):
     e = []
     for i in range(magic.like_iter):
         old_eos = gun.eos
-        gun.opt(vt)
+        if constrained:
+            gun.opt(vt)
+        else:
+            gun.free_opt(vt)
         e.append(gun.ep)
         L, g, h = gun.log_like(vt)
         Delta = L - last
@@ -541,7 +583,7 @@ def main():
     v,t = experiment(plot_data) # side effect assigns plot_data['experimental']
 
     # Calculate best fit to experiment and get data for plotting
-    fit,e = best_fit((v,t))
+    fit,e = best_fit((v,t),constrained=False)
     plot_data['fit']=((x, fit.eos(x), 'f'),(x, fit.x_dot(x)/magic.cm2km, 'v'))
 
     fig_fve = plt.figure('fve',figsize=(8,10))
@@ -563,20 +605,20 @@ def test():
     import numpy.testing as nt
 
     # Test Spline
-    x = np.linspace(0,2*np.pi,20)
-    y = np.sin(x)
-    f = Spline(x,y)
-    assert f.provenance.line == u'f = Spline(x,y)'
+    x_s = np.linspace(0,2*np.pi,20)
+    y = np.sin(x_s)
+    f = Spline(x_s,y)
+    assert f.provenance.line == u'f = Spline(x_s,y)'
     nt.assert_array_equal(f.get_c()[-4:], np.zeros(4))
     #for i in len(y):
         
-    nt.assert_allclose(y, f(x), atol=1e-15)
+    nt.assert_allclose(y, f(x_s), atol=1e-15)
 
     # Test __init__, _set_N, set_eos and E methods of GUN
     gun = GUN()
     assert str(gun.E(4)) == '79200000000.0'
 
-    # Get some values for C/x^3 eos to compare with spline later
+    # Get some values for C/x^3 eos
     x = gun.x
     y = gun.eos(x)
     v_a = gun.x_dot(x)
@@ -590,6 +632,7 @@ def test():
     
     # Exercise/test GUN.set_eos_spline()
     gun.set_eos_spline(x,y)
+    gun.check()
 
     # Test closeness of spline to C/x^3 for f(x), v(x) and v(t)
     nt.assert_allclose(y, gun.eos(x))
@@ -599,22 +642,93 @@ def test():
     # Exercise set_D
     n_f = len(gun.eos.get_c()) - magic.end
     n_v = len(gun.t2v.get_c()) - magic.end
-    #D = gun.set_D() # 11.6 user seconds
-    #assert D.shape == (n_v, n_f)
+    D = gun.set_D(fraction=1.0e-2) # 11.6 user seconds
+    print('D.shape={2}, D.min={0}, D.max={1}'.format(
+        D.min(), D.max(), D.shape))
+    assert D.shape == (n_v, n_f)
+    ax = new_ax('D')
+    for i in range(n_f):
+        ax.plot(D[:,i])
 
     # Exercise set_Be
-    v,t = experiment(  # Create pseudo experimental data
-        {})            # Dict for plot that is dropped
-    gun.set_Be((v,t))
-    assert len(gun.ep) == len(t)
-    fmt = 'B.shape={0} != ({1},{2}) = (len(t), n_f)'.format
-    assert gun.B.shape == (len(t), n_v),fmt(gun.B.shape, len(t), n_v)
+    v_exp, t_exp = experiment()
+    gun.set_Be((v_exp,t_exp))
+    assert len(gun.ep) == len(t_exp)
+    fmt = 'B.shape={0} != ({1},{2}) = (len(t_exp), n_f)'.format
+    assert gun.B.shape == (len(t_exp), n_v),fmt(gun.B.shape, len(t_exp), n_v)
+    ax = new_ax('v,t')
+    ax.plot(ts, v)
+    ax.plot(t_exp, v_exp)
+    ax.plot(t_exp, gun.ep)
 
-    # Exercise set_ddd
-    ddd = gun.set_ddd()
-    fmt = 'ddd.shape={0} != ({1},{2}) = (len(t), n_f)'.format
-    assert ddd.shape == (n_f-2, n_f), fmt(ddd.shape, n_f-2, n_f)
+    # Set up to exercise func and d_func
+    B = gun.B
+    D = gun.D
+    BD = np.dot(B, D)
+    gun.set_BD(BD)
+    print('D.shape={2}, D.min={0}, D.max={1}'.format(
+        D.min(), D.max(), D.shape))
+    print('B.shape={2}, B.min={0}, B.max={1}'.format(
+        B.min(), B.max(), B.shape))
+    print('BD.shape={2}, BD.min={0}, BD.max={1}'.format(
+        BD.min(), BD.max(), BD.shape))
+    c_f = gun.eos.get_c()
+    d = np.zeros(len(c_f)-magic.end)
 
+    F_0 = gun.func(d)                     # Original cost function
+    dF_0 = gun.d_func(d)                  # Derivative of F
+    constraint_0 = gun.constraint(d)      # Original constraint function
+    ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
+    f_0 = gun.eos(x)                      # Original eos values
+    
+    # Solve BD*d=epsilon for d without constraints
+    from numpy.linalg import lstsq
+    rv = lstsq(BD, gun.ep, rcond=1e-8)
+    d_hat = rv[0]
+    ax_0 = new_ax('d_hat')
+    ax_0.plot(d_hat)
+    F_1 = gun.func(d_hat)                # Updated cost function
+    dF_1 = gun.d_func(d_hat)             # Derivative
+    constraint_1 = gun.constraint(d_hat) # Updated constraint function
+    
+    # Plot constraints
+    ax = new_ax('constraints')
+    ax.plot(constraint_0, label='Orginal constraints')
+    ax.plot(constraint_1, label='Updated constraints')
+    ax.legend()
+
+    # Plot orignal errors
+    ax = new_ax('errors')
+    ax.plot(gun.ep, label='Orginal velocity error ep')
+    
+    # Check epsilon for updated EOS
+    c_f[0:-magic.end] += d_hat
+    gun.set_eos(gun.eos.set_c(c_f))
+    gun.set_Be((v_exp,t_exp))
+    # Plot reduced errors
+    ax = new_ax('errors')
+    ax.plot(gun.ep, label='New velocity error')
+    ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
+    f_1 = gun.eos(x)                      # Updated eos values
+    print('''lstsq reduced func from {0:.3e} to {1:.3e}
+ and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
+        F_0, F_1, ll_0, ll_1))
+
+    # Plot original and revised EOS
+    ax.legend()
+    ax = new_ax('EOS')
+    ax.plot(x,f_0,label=r'$f_0$')
+    ax.plot(x,f_1,label=r'$f_1$')
+    ax.legend()
+    
+    # Plot d_func
+    ax = new_ax('d_func')
+    ax.plot(dF_0,label=r'$dF_0$')
+    ax.plot(dF_1,label=r'$dF_1$')
+    ax.legend()
+   
+    plt.show()
+    # FixMe: What about derivative of constraint?
     return 0
     
 if __name__ == "__main__":

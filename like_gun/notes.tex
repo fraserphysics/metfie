@@ -2,6 +2,7 @@
 \usepackage{amsmath,amsfonts,afterpage}
 %\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
+\usepackage{listings}
 \newcommand{\normal}[2]{{\cal N}(#1,#2)}
 \newcommand{\normalexp}[3]{ -\frac{1}{2}
       (#1 - #2)^T #3^{-1} (#1 - #2) }
@@ -255,21 +256,7 @@ of $f$ are not varied.
   coefficients $c_f$ that yield a function $f(c_f+d)$ that minimizes $F(f)$.
   The key to \emph{opt} is the following call to
   scipy.optimize.fmin\_slsqp
-\begin{verbatim}
- d_hat, ss, its, lmode, smode = fmin(
-     func,
-     np.zeros(len(new_c)-2*magic.anchor), # Initial guess d=0
-     f_ieqcons=dd,                        # Constrain f'' >= 0
-     args=(self,),
-     fprime=d_func,                       # Deivative of func wrt d
-     iter=2000,
-     # next is derivative of f'' wrt to d
-     fprime_ieqcons=lambda d, self: self.ddd,
-     full_output=True,
-     iprint=0,
-     )
-\end{verbatim}
-
+  \lstinputlisting[language=Python, firstline=366, lastline=376]{calc.py}
 \end{description}
 
 \subsection{Numerical Results}
