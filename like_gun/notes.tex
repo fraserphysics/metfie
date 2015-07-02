@@ -196,12 +196,29 @@ optimization, the values of the first and last 5 spline coefficients
 of $f$ are not varied.
 \begin{description}
 \item[set\_t2v] Run a simulation to build a spline for mapping times to
-  velocities and save as self.$t2v$
+  velocities and save as self.$t2v$.  The result for the initial EOS
+  appears in Fig.~\ref{fig:vt_test}.
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{vt_test.pdf}}  
+    \caption{Velocity as functions of time.  Traces for the
+      \emph{experimental} data, a simulation with the initial EOS and
+      the errro.}
+    \label{fig:vt_test}
+  \end{figure}
 \item[set\_D] Use finite differences to calculate dv/df in terms of
   spline coefficients and save as self.$D$ with
-  $D[j,i] = \frac{\Delta c_v[j]}{\Delta c_f[i]}$.  Note that $i$ and
-  $j$ range over variable components of $c_v$ and $c_f$ (excluding the
-  last 4 which are always 0).
+  $D[j,i] = \frac{\Delta c_v[j]}{\Delta c_f[i]}$.  See
+  Fig.~\ref{fig:D_test} and note that $i$ and $j$ range over variable
+  components of $c_v$ and $c_f$ (excluding the last 4 which are always
+  0).
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{D_test.pdf}}  
+    \caption{The matrix $D$.  Each trace represents
+      $\frac{\partial c_v[i]}{\partial c_f[j]}$ for a different $j$.}
+    \label{fig:D_test}
+  \end{figure}
 \item[set\_Be] Map experimental velocities v and times t to the
   following:
   \begin{align*}        
@@ -212,10 +229,18 @@ of $f$ are not varied.
   Notes: $b_j$ is the jth basis function for the t2v spline.  $B$ is
   the derivative of the simulated velocity function at the
   experimental sample times wrt the coefficients of the spline fit
-  that implements that function.
+  that implements that function, and $BD_{i,j}$ is the derivative of
+  $v(t[i])$ wrt $c_f[j]$.  See Fig.~\ref{fig:BD_test}.
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{BD_test.pdf}}  
+    \caption{The matrix $B\cdot D$.  Each trace represents
+      $\frac{\partial v(t)}{\partial c_f[j]}$ for a different $j$.}
+    \label{fig:BD_test}
+  \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
   \begin{equation*}
-    F(d) = \left| \epsilon - BD\cdot d \right|^2.
+    S(d) = \left| \epsilon - BD\cdot d \right|^2.
   \end{equation*}
   The difference between the simulated and measured velocities is
   $\epsilon$, and $d$ is the change in the vector of spline
@@ -223,8 +248,28 @@ of $f$ are not varied.
   wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = len(c_f)-4$.
 \item[d\_func] Derivative of the objective function,
   \begin{equation*}
-    \partiald{F}{d} = -2(BD)^T(\epsilon - BD\cdot d)
+    \partiald{S}{d} = -2(BD)^T(\epsilon - BD\cdot d)
   \end{equation*}
+  See Fig.~\ref{fig:d_func_test}
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{d_func_test.pdf}}  
+    \caption{The derivative of the objective function $S$ (see
+      Eqn.~\eqref{eq:sd}) with respect to $c_f[j]$ plotted against $j$.
+      The first trace $dS_0$ is for the nominal EOS, and $dS_1$ is for
+    the EOS that solves \eqref{eq:sd}.  The corresponding EOS
+    functions appear in the lower plot.}
+    \label{fig:d_func_test}
+  \end{figure}
+\item[free\_opt] Solve Eqn.~\eqref{eq:sd} for $d$ to obtain $\hat d$
+  using the SVD solver numpy.linalg.lstsq.  The solution appears in
+  Fig.~\ref{fig:d_hat_test}.
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{d_hat_test.pdf}}  
+    \caption{The function $\hat d$ that solves Eqn.~\eqref{eq:sd} for $d$.}
+    \label{fig:d_hat_test}
+  \end{figure}
 \item[constraint] Return the vector of constraint function values:
   \begin{description}
   \item[$r_{i} = \left. \frac{d^2 f}{d t^2} \right|_{t_i}~\forall i

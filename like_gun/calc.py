@@ -643,12 +643,14 @@ def test():
     n_f = len(gun.eos.get_c()) - magic.end
     n_v = len(gun.t2v.get_c()) - magic.end
     D = gun.set_D(fraction=1.0e-2) # 11.6 user seconds
-    print('D.shape={2}, D.min={0}, D.max={1}'.format(
-        D.min(), D.max(), D.shape))
     assert D.shape == (n_v, n_f)
-    ax = new_ax('D')
+    fig = plt.figure('D', figsize=(7,5))
+    ax = fig.add_subplot(1,1,1)
     for i in range(n_f):
         ax.plot(D[:,i])
+    ax.set_xlabel(r'$j$')
+    ax.set_ylabel(r'$\left( \frac{\partial c_v}{\partial c_f} \right)_{j,i}$')
+    fig.savefig('D_test.pdf',format='pdf')
 
     # Exercise set_Be
     v_exp, t_exp = experiment()
@@ -656,39 +658,47 @@ def test():
     assert len(gun.ep) == len(t_exp)
     fmt = 'B.shape={0} != ({1},{2}) = (len(t_exp), n_f)'.format
     assert gun.B.shape == (len(t_exp), n_v),fmt(gun.B.shape, len(t_exp), n_v)
-    ax = new_ax('v,t')
-    ax.plot(ts, v)
-    ax.plot(t_exp, v_exp)
-    ax.plot(t_exp, gun.ep)
-
-    # Set up to exercise func and d_func
+    fig = plt.figure('v,t')
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(ts*1e6, v/1e5, label='simulation')
+    ax.plot(t_exp*1e6, v_exp/1e5, label='experiment')
+    ax.plot(t_exp*1e6, gun.ep/1e5, label=r'error $\epsilon$')
+    ax.set_xlabel(r'$t/(\mu \rm{sec})$')
+    ax.set_ylabel(r'$v/(\rm{km/s})$')
+    ax.legend()
+    fig.savefig('vt_test.pdf',format='pdf')
+    # Make BD
     B = gun.B
     D = gun.D
     BD = np.dot(B, D)
     gun.set_BD(BD)
-    print('D.shape={2}, D.min={0}, D.max={1}'.format(
-        D.min(), D.max(), D.shape))
-    print('B.shape={2}, B.min={0}, B.max={1}'.format(
-        B.min(), B.max(), B.shape))
-    print('BD.shape={2}, BD.min={0}, BD.max={1}'.format(
-        BD.min(), BD.max(), BD.shape))
+    fig = plt.figure('BD', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    for j in range(n_f):
+        ax.plot(t_exp*1e6, BD[:,j])
+    ax.set_xlabel(r'$t/(\mu \rm{sec})$')
+    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[j]} /(\rm{m/s})$?')
+    fig.savefig('BD_test.pdf',format='pdf')
+
+    #  Exercise func and d_func
     c_f = gun.eos.get_c()
     d = np.zeros(len(c_f)-magic.end)
-
-    F_0 = gun.func(d)                     # Original cost function
-    dF_0 = gun.d_func(d)                  # Derivative of F
+    S_0 = gun.func(d)                     # Original cost function
+    dS_0 = gun.d_func(d)                  # Derivative of S
     constraint_0 = gun.constraint(d)      # Original constraint function
     ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
     f_0 = gun.eos(x)                      # Original eos values
     
     # Solve BD*d=epsilon for d without constraints
     from numpy.linalg import lstsq
-    rv = lstsq(BD, gun.ep, rcond=1e-8)
+    rv = lstsq(BD, gun.ep, rcond=1e-5)
     d_hat = rv[0]
-    ax_0 = new_ax('d_hat')
-    ax_0.plot(d_hat)
-    F_1 = gun.func(d_hat)                # Updated cost function
-    dF_1 = gun.d_func(d_hat)             # Derivative
+    fig = plt.figure('d_hat', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(d_hat)
+    fig.savefig('d_hat_test.pdf',format='pdf')
+    S_1 = gun.func(d_hat)                # Updated cost function
+    dS_1 = gun.d_func(d_hat)             # Derivative
     constraint_1 = gun.constraint(d_hat) # Updated constraint function
     
     # Plot constraints
@@ -712,20 +722,21 @@ def test():
     f_1 = gun.eos(x)                      # Updated eos values
     print('''lstsq reduced func from {0:.3e} to {1:.3e}
  and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
-        F_0, F_1, ll_0, ll_1))
+        S_0, S_1, ll_0, ll_1))
 
-    # Plot original and revised EOS
+    # Plot d_func and EOS
+    fig = plt.figure('d_func', figsize=(9,8))
+    ax = fig.add_subplot(2,1,1)
+    ax.plot(dS_0,label=r'$dS_0$')
+    ax.plot(dS_1,label=r'$dS_1$')
     ax.legend()
-    ax = new_ax('EOS')
+    ax.set_xlabel(r'$j$')
+    ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[j]}$')
+    ax = fig.add_subplot(2,1,2)
     ax.plot(x,f_0,label=r'$f_0$')
     ax.plot(x,f_1,label=r'$f_1$')
     ax.legend()
-    
-    # Plot d_func
-    ax = new_ax('d_func')
-    ax.plot(dF_0,label=r'$dF_0$')
-    ax.plot(dF_1,label=r'$dF_1$')
-    ax.legend()
+    fig.savefig('d_func_test.pdf',format='pdf')
    
     plt.show()
     # FixMe: What about derivative of constraint?
