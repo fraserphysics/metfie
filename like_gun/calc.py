@@ -646,8 +646,8 @@ def test():
     assert D.shape == (n_v, n_f)
     fig = plt.figure('D', figsize=(7,5))
     ax = fig.add_subplot(1,1,1)
-    for i in range(n_f):
-        ax.plot(D[:,i])
+    for j in range(n_f):
+        ax.plot(D[:,j])
     ax.set_xlabel(r'$j$')
     ax.set_ylabel(r'$\left( \frac{\partial c_v}{\partial c_f} \right)_{j,i}$')
     fig.savefig('D_test.pdf',format='pdf')
@@ -665,7 +665,7 @@ def test():
     ax.plot(t_exp*1e6, gun.ep/1e5, label=r'error $\epsilon$')
     ax.set_xlabel(r'$t/(\mu \rm{sec})$')
     ax.set_ylabel(r'$v/(\rm{km/s})$')
-    ax.legend()
+    ax.legend(loc='upper left')
     fig.savefig('vt_test.pdf',format='pdf')
     # Make BD
     B = gun.B
@@ -709,15 +709,17 @@ def test():
 
     # Plot orignal errors
     ax = new_ax('errors')
-    ax.plot(gun.ep, label='Orginal velocity error ep')
+    ax.plot(t_exp*1e6, gun.ep, label='Orginal velocity error ep')
     
     # Check epsilon for updated EOS
-    c_f[0:-magic.end] += d_hat
+    c_f[0:-magic.end] += d_hat        # Change EOS by d_hat
     gun.set_eos(gun.eos.set_c(c_f))
     gun.set_Be((v_exp,t_exp))
     # Plot reduced errors
-    ax = new_ax('errors')
-    ax.plot(gun.ep, label='New velocity error')
+    ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
+    ax.set_xlabel(r'$t/(\mu\rm{sec})$')
+    ax.set_ylabel(r'$v/(\rm{x/s})$')
+    ax.legend(loc='lower right')
     ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
     f_1 = gun.eos(x)                      # Updated eos values
     print('''lstsq reduced func from {0:.3e} to {1:.3e}
@@ -729,7 +731,7 @@ def test():
     ax = fig.add_subplot(2,1,1)
     ax.plot(dS_0,label=r'$dS_0$')
     ax.plot(dS_1,label=r'$dS_1$')
-    ax.legend()
+    ax.legend(loc='lower left')
     ax.set_xlabel(r'$j$')
     ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[j]}$')
     ax = fig.add_subplot(2,1,2)
