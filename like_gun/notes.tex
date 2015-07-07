@@ -40,10 +40,11 @@
 \begin{document}
 \maketitle
 \begin{abstract}
-  While source for these notes reside at
-  https://code.google.com/p/metfie/like\_gun/notes.tex and the
-  illustrations are in the same directory, I use the same ideas for
-  work on the 9501 model on moonlight.
+  While source for these notes reside in
+  metfie/like\_gun/notes.tex\footnote{Run \emph{git clone
+      https://github.com/fraserphysics/metfie} to obtain the source.}
+    and the illustrations are in the same directory, I use the same
+    ideas for work on the 9501 model on moonlight.
 \end{abstract}
 
 \section{Notation for and Implementation of Basic Functions}
@@ -71,14 +72,20 @@ to estimate a new model, $\fhat$.
   that define a $\Vt$
 \item[$\cf,\fbasis$:] Vector of spline coefficients and basis functions
   that define an EOS
-\item[$D$] Matrix with elements $D[j,k] = \partiald{\cv[j]}{\cf[k]}$
-\item[$B$] Matrix with elements $B[i,j] = \vbasis[j](\texp[i])$, ie,
-  the exactly linear map from $c_v$ to simulated data.
+\item[$D$] Matrix with elements $D[k,i] = \partiald{\cv[k]}{\cf[i]}$
+\item[$B$] Matrix with elements $B[j,k] = \vbasis[k](\texp[j])$, ie,
+  the exactly linear map from $c_v$ to simulated data.  The matrix
+  elements are the velocity basis functions evaluated at the
+  experimental sample times.
 \item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; expensive
-  to evaluate.  $\DVDf (\texp)$ is represented by the matrix $(BD)^T$.
+  to evaluate.  $\DVDf (\texp)$ is represented by the matrix $BD$.
 \item[$\epsilon$] The vector of differences between the measured
   velocities and the simulated velocities at the times of the
   measurements.
+\item[$i,j,k$:] Indices: $j$ for experimental sample times; $k$ for
+  the velocity basis functions $\vbasis[k]$ and their coefficients
+  $\cv[k]$; And $i$ for the EOS basis functions and their coefficients
+  $\cf[i]$.
 \end{description}
 
 \subsection{Implementation}
@@ -93,9 +100,9 @@ to estimate a new model, $\fhat$.
   $\fbasis$
 \item[$\DVDf$:] Evaluate $\Vfunc(f)$ for $N(\cf)+1$ different sets of
   coefficients $\cf$, and use finite differences to get a matrix with
-  elements $D[j,k] = \partiald{\cv[j]}{\cf[k]}$.  Then
+  elements $D[k,i] = \partiald{\cv[k]}{\cf[i]}$.  Then
   \begin{equation*}
-    \partiald{\Vt(T)}{\cf[k]} = \sum_j D[j,k] \vbasis[j](T).
+    \partiald{\Vt(T)}{\cf[i]} = \sum_k D[k,i] \vbasis[k](T).
   \end{equation*}
 \end{description}
 
@@ -111,34 +118,34 @@ $\sigma_v[i]$ are equal to each other).  Thus, I wish to find $d$ that
 minimizes
 \begin{equation}
   \label{eq:ssq}
-  \tilde S(d) = \sum_{i=1}^{N_{\rm exp}} (\vexp[i] - \Vt_{f+\delta}(\texp[i]))^2,
+  \tilde S(d) = \sum_{j=1}^{N_{\rm exp}} (\vexp[j] - \Vt_{f+\delta}(\texp[j]))^2,
 \end{equation}
-where $f+\delta = \sum_k (\cf[k] + d[k])\fbasis[k]$, and 
+where $f+\delta = \sum_i (\cf[i] + d[i])\fbasis[i]$, and 
 \begin{equation}
   \label{eq:taylor}
-  \Vt_{f+\delta}(\texp[i]) = \Vt_f(\texp[i]) +
-  \sum_j \sum_k \partiald{\cv[j]}{\cf[k]}d[k]\vbasis[j](\texp[i])
+  \Vt_{f+\delta}(\texp[j]) = \Vt_f(\texp[j]) +
+  \sum_k \sum_i \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
   +\text{ HOT}.
 \end{equation}
 Defining
 \begin{equation}
   \label{eq:epsilon}
-  \epsilon[i] \equiv \vexp[i] - \Vt_f(\texp[i])
+  \epsilon[j] \equiv \vexp[j] - \Vt_f(\texp[j])
 \end{equation}
 and dropping HOT, I write
 \begin{align}
-  S(d) &\equiv \tilde S(d) - \text{HOT} = \sum_i \left( \epsilon[i] -
-  \sum_j \sum_k \partiald{\cv[j]}{\cf[k]}d[k]\vbasis[j](\texp[i])
+  S(d) &\equiv \tilde S(d) - \text{HOT} = \sum_j \left( \epsilon[j] -
+  \sum_i \sum_k \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
   \right)^2 \nonumber \\
   \label{eq:sd}
   &= (\epsilon - BDd)^T(\epsilon - BDd)
 \end{align}
 and
 \begin{align*}
-  \partiald{S}{d[l]} &= -2 \sum_i \left( \epsilon[i] -
-  \sum_j \sum_k \partiald{\cv[j]}{\cf[k]}d[k]\vbasis[j](\texp[i])
+  \partiald{S}{d[l]} &= -2 \sum_j \left( \epsilon[j] -
+  \sum_i \sum_k \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
   \right)
-  \sum_j \partiald{\cv[j]}{\cf[l]}\vbasis[j](\texp[i])\\
+  \sum_k \partiald{\cv[k]}{\cf[l]}\vbasis[k](\texp[j])\\
   \partiald{S}{d} &= -2\left(BD\right)^T\left(\epsilon - BDd\right).
 \end{align*}
 Thus I seek $\hat d$ that solves
@@ -192,8 +199,8 @@ Thus I seek $\hat d$ that solves
 \label{sec:code}
 
 In the following methods of class \emph{GUN} which implement the
-optimization, the values of the first and last 5 spline coefficients
-of $f$ are not varied.
+optimization, the values of the last 4 spline coefficients of $f$ are
+not varied because they are fixed at 0.
 \begin{description}
 \item[set\_t2v] Run a simulation to build a spline for mapping times to
   velocities and save as self.$t2v$.  The result for the initial EOS
@@ -208,34 +215,34 @@ of $f$ are not varied.
   \end{figure}
 \item[set\_D] Use finite differences to calculate dv/df in terms of
   spline coefficients and save as self.$D$ with
-  $D[j,i] = \frac{\Delta c_v[j]}{\Delta c_f[i]}$.  See
-  Fig.~\ref{fig:D_test} and note that $i$ and $j$ range over variable
-  components of $c_v$ and $c_f$ (excluding the last 4 which are always
-  0).
+  $D[k,i] = \frac{\Delta c_v[k]}{\Delta c_f[i]}$.  See
+  Fig.~\ref{fig:D_test} and note that $k$ and $i$ range over variable
+  components of $\cv$ and $\cf$.
   \begin{figure}
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{D_test.pdf}}  
     \caption{The matrix $D$.  Each trace represents
-      $\frac{\partial c_v[i]}{\partial c_f[j]}$ for a different $i$.}
+      $\frac{\partial \cv[k]}{\partial \cf[i]}$ for a different $i$.
+      Why not all monotonically increasing?}
     \label{fig:D_test}
   \end{figure}
 \item[set\_Be] Map experimental velocities v and times t to the
   following:
   \begin{align*}        
-    \text{self.}ep[i] &= v[i] - t2v(t[i]) \text{ Difference between simulation
-                and data} \\
-    \text{self.}B[i,j] &= b_j(t[i])     
+    \text{self.}ep[i] &= v[j] - t2v(t[j])
+                        \text{ Difference between simulation and data} \\
+    \text{self.}B[j,k] &= \vbasis[k](t[j])     
   \end{align*}
-  Notes: $b_j$ is the jth basis function for the t2v spline.  $B$ is
-  the derivative of the simulated velocity function at the
+  Notes: $\vbasis[k]$ is the kth basis function for the t2v spline.
+  $B$ is the derivative of the simulated velocity function at the
   experimental sample times wrt the coefficients of the spline fit
-  that implements that function, and $BD_{i,j}$ is the derivative of
-  $v(t[i])$ wrt $c_f[j]$.  See Fig.~\ref{fig:BD_test}.
+  that implements that function, and $BD_{j,i}$ is the derivative of
+  $v(t[j])$ wrt $\cf[i]$.  See Fig.~\ref{fig:BD_test}.
   \begin{figure}
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{BD_test.pdf}}  
-    \caption{The matrix $B\cdot D$.  Each trace represents
-      $\frac{\partial v(t)}{\partial c_f[j]}$ for a different $j$.}
+    \caption{The product $B D$.  Each trace represents
+      $\frac{\partial v(t)}{\partial c_f[i]}$ for a different $i$.}
     \label{fig:BD_test}
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
@@ -255,53 +262,64 @@ of $f$ are not varied.
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{d_func_test.pdf}}  
     \caption{The derivative of the objective function $S$ (see
-      Eqn.~\eqref{eq:sd}) with respect to $c_f[j]$ plotted against $j$.
-      The first trace $dS_0$ is for the nominal EOS, and $dS_1$ is for
-    the EOS that solves \eqref{eq:sd}.  The corresponding EOS
-    functions appear in the lower plot.}
+      Eqn.~\eqref{eq:sd}) with respect to $\cf[i]$ plotted against
+      $i$.  The first trace $dS_0$ is for the nominal EOS, and $dS_1$
+      is for the EOS from $\hat d$ that solves \eqref{eq:dhat}.  The
+      corresponding EOS functions appear in the lower plot.}
     \label{fig:d_func_test}
   \end{figure}
-\item[free\_opt] Solve Eqn.~\eqref{eq:sd} for $d$ to obtain $\hat d$
+\item[free\_opt] Solve Eqn.~\eqref{eq:dhat} for $d$ to obtain $\hat d$
   using the SVD solver numpy.linalg.lstsq.  The solution appears in
   Fig.~\ref{fig:d_hat_test}.
   \begin{figure}
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{d_hat_test.pdf}}  
-    \caption{The function $\hat d$ that solves Eqn.~\eqref{eq:sd} for $d$.}
+    \caption{The function $\hat d$ that solves Eqn.~\eqref{eq:dhat},
+      from gun.free\_opt().}
     \label{fig:d_hat_test}
   \end{figure}
 \item[constraint] Return the vector of constraint function values:
   \begin{description}
-  \item[$r_{i} = \left. \frac{d^2 f}{d t^2} \right|_{t_i}~\forall i
-    < n_t$:]
-    The second derivative of $f$ wrt to $t$ at all $n_t$ unique knot
-    values for $t$.
-  \item[$r_{n_t} = - \left. \frac{d f}{d t} \right|_{t_{n_{t}-1}}$:]
+  \item[$r_{l} = \left. \frac{d^2 f}{d x^2} \right|_{x_i}~\forall l:~
+    0 \leq l < n_x$:]
+    The second derivative of $f$ wrt to $x$ at all $n_x$ unique knot
+    values for $x$.
+  \item[$r_{n_x} = - \left. \frac{d f}{d t} \right|_{x_{n_{x}-1}}$:]
     Minus the derivative of $f$ at the last unique knot.
-  \item[$r_{n_t+1} = f(t_{n_{t}-1})$:] The value of $f$ at the last
+  \item[$r_{n_x+1} = f(x_{n_{x}-1})$:] The value of $f$ at the last
     unique knot.
   \end{description}
-  If these constraints are satisfied, ie, $r_i>=0~\forall i<n_t+2$,
-  then the function $f$ is positive, monotonic and convex over its
-  entire domain.  
-\item[calc\_d\_constraint] Calculate the derivative (wrt to c) of the
-  constraint function, store result as self.d\_constraint and return
-  it.
+  If these constraints are satisfied, ie,
+  $r_i>=0~\forall i: 0 \leq i<n_x+2$, then the function $f$ is
+  positive, monotonic and convex over its entire domain.
+\item[calc\_d\_constraint] Calculate the derivative (wrt to $\cf$) of
+  the constraint function, store result as self.d\_constraint and
+  return it.
   \begin{description}
-  \item[$r_{i,j} = \frac{d}{d c_j} \left. \frac{d^2 f}{d t^2}
-    \right|_{t_i}~\forall i < n_t$:]
-    The derivative wrt $c_f$ of the second derivative of $f$ wrt to
-    $t$ at all $n_t$ unique knot values for $t$.
-\item[$r_{n_t,j} = - \frac{d}{d c_j} \left. \frac{d f}{d t}
-    \right|_{t_{n_{t}-1}}$:]
-  \item[$r_{n_t+1,j} = \frac{d}{d c_j} f(t_{n_{t}-1})$:]
+  \item[$r_{l,m} = \frac{d}{d \cf[m]} \left. \frac{d^2 f}{d x^2}
+    \right|_{x_l}~\forall l: 0 \leq l < n_x$:]
+    The derivative wrt $\cf$ of the second derivative of $f$ wrt to
+    $x$ at all $n_x$ unique knot values for $x$.
+\item[$r_{n_x,m} = - \frac{d}{d \cf[m]} \left. \frac{d f}{d x}
+    \right|_{x_{n_{x}-1}}$:]
+  \item[$r_{n_x+1,m} = \frac{d}{d \cf[m]} f(x_{n_{x}-1})$:]
   \end{description}
-\item[opt] Do a constrained optimization step.
-  The goal of \emph{opt} is to find the change $d$ in spline
-  coefficients $c_f$ that yield a function $f(c_f+d)$ that minimizes $F(f)$.
-  The key to \emph{opt} is the following call to
-  scipy.optimize.fmin\_slsqp
-  \lstinputlisting[language=Python, firstline=366, lastline=376]{calc.py}
+\item[opt] Do a constrained optimization step.  The goal of \emph{opt}
+  is to find the change $d$ in spline coefficients $c_f$ that yields a
+  function $f(c_f+d)$ that minimizes $F(f)$.  The key to \emph{opt} is
+  the following call to scipy.optimize.fmin\_slsqp
+  \lstinputlisting[language=Python, firstline=369,
+  lastline=380]{calc.py} The result appears in
+  Fig.~\ref{fig:opt_result} and is unsatisfactory compared to the
+  free\_opt result which yields Fig.~\ref{fig:d_func_test} which seems
+  only slightly non-convex.  Surely there is a better solution than
+  the initial function $f_0$.
+  \begin{figure}
+    \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{opt_result.pdf}}  
+    \caption{The function $\hat d$ returned by gun.opt().}
+    \label{fig:opt_result}
+  \end{figure}
 \end{description}
 
 \subsection{Numerical Results}

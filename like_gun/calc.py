@@ -108,11 +108,14 @@ class GUN:
     '''Represents an imagined experiment and actual simulations.
 
     Section 2 of the document ../juq.tex describes the imagined
-    experiment.    
+    experiment.
+
+    Units: cgs
     '''
     def __init__(
             self,             # GUN instance
-            C=Float(2.56e10, 'Constant in nominal equation of state: F = C/x^3 dynes', max_hist=10),
+            C=Float(2.56e10,  # dynes (cm)^3
+'Constant in nominal equation of state: F = C/x^3 dynes', max_hist=10),
             xi=Float(0.4, 'Initial position of projectile / cm'),
             xf=Float(4.0, 'Final/muzzle position of projectile /cm'),
             m=Float(
@@ -377,21 +380,22 @@ barrel and the forces at those positons respectively. '''
         assert imode == 0,'Exit mode of fmin={0}\n{1}'.format(imode, smode)
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.set_c(new_c)
-        return
+        return d_hat
     def free_opt(
             self, # GUN instance
             vt,   # Simulated experimental data
+            rcond=1e-10,
             ):
-        ''' Do an unconstrained optimization step
+        ''' Do an unconstrained optimization step.  Uses an SVD solver.
         ''' 
         from numpy.linalg import lstsq
         new_c = self.eos.get_c().copy()
         self.set_Be(vt)
         BD = np.dot(self.B, self.set_D())
-        d_hat = lstsq(BD, self.ep, rcond=1e-10)[0]
+        d_hat = lstsq(BD, self.ep, rcond=rcond)[0]
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.set_c(new_c)
-        return
+        return d_hat
     def log_like(
             self, # GUN instance
             vt,   # Arrays of measured times and velocities
@@ -648,8 +652,8 @@ def test():
     ax = fig.add_subplot(1,1,1)
     for j in range(n_f):
         ax.plot(D[:,j])
-    ax.set_xlabel(r'$j$')
-    ax.set_ylabel(r'$\left( \frac{\partial c_v}{\partial c_f} \right)_{j,i}$')
+    ax.set_xlabel(r'$k$')
+    ax.set_ylabel(r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)$')
     fig.savefig('D_test.pdf',format='pdf')
 
     # Exercise set_Be
@@ -677,7 +681,7 @@ def test():
     for j in range(n_f):
         ax.plot(t_exp*1e6, BD[:,j])
     ax.set_xlabel(r'$t/(\mu \rm{sec})$')
-    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[j]} /(\rm{m/s})$?')
+    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]} /(\rm{cm/s})$')
     fig.savefig('BD_test.pdf',format='pdf')
 
     #  Exercise func and d_func
@@ -690,12 +694,12 @@ def test():
     f_0 = gun.eos(x)                      # Original eos values
     
     # Solve BD*d=epsilon for d without constraints
-    from numpy.linalg import lstsq
-    rv = lstsq(BD, gun.ep, rcond=1e-5)
-    d_hat = rv[0]
+    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-2)
     fig = plt.figure('d_hat', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(d_hat)
+    ax.set_xlabel(r'$i$')
+    ax.set_ylabel(r'$\hat d[i]$')
     fig.savefig('d_hat_test.pdf',format='pdf')
     S_1 = gun.func(d_hat)                # Updated cost function
     dS_1 = gun.d_func(d_hat)             # Derivative
@@ -732,13 +736,24 @@ def test():
     ax.plot(dS_0,label=r'$dS_0$')
     ax.plot(dS_1,label=r'$dS_1$')
     ax.legend(loc='lower left')
-    ax.set_xlabel(r'$j$')
-    ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[j]}$')
+    ax.set_xlabel(r'$i$')
+    ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[i]}$')
     ax = fig.add_subplot(2,1,2)
     ax.plot(x,f_0,label=r'$f_0$')
     ax.plot(x,f_1,label=r'$f_1$')
+    ax.set_xlabel(r'$x/{\rm cm}$')
+    ax.set_ylabel(r'$f/{\rm dyne}$')
     ax.legend()
     fig.savefig('d_func_test.pdf',format='pdf')
+    
+    # Exercise gun.opt()
+    d_hat = gun.opt((v_exp,t_exp))
+    fig = plt.figure('opt_result', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(d_hat)
+    ax.set_xlabel(r'$i$')
+    ax.set_ylabel(r'$\hat d[i]$')
+    fig.savefig('opt_result.pdf',format='pdf')    
    
     plt.show()
     # FixMe: What about derivative of constraint?
