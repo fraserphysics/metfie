@@ -223,7 +223,10 @@ not varied because they are fixed at 0.
     \resizebox{\columnwidth}{!}{\includegraphics{D_test.pdf}}  
     \caption{The matrix $D$.  Each trace represents
       $\frac{\partial \cv[k]}{\partial \cf[i]}$ for a different $i$.
-      Why not all monotonically increasing?}
+      While a positive change in $f$ anywhere can only increase $v(t)$
+      in the ideal gun, I believe that the negative values at low
+      values of $k$ are due primarily to the overlapping basis
+      functions for the spline that approximates the function $v$.}
     \label{fig:D_test}
   \end{figure}
 \item[set\_Be] Map experimental velocities v and times t to the
@@ -242,7 +245,14 @@ not varied because they are fixed at 0.
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{BD_test.pdf}}  
     \caption{The product $B D$.  Each trace represents
-      $\frac{\partial v(t)}{\partial c_f[i]}$ for a different $i$.}
+      $\frac{\partial v(t)}{\partial c_f[i]}$ for a different $i$.
+      Note that each trace is a from a difference between splines fit
+      to simulations with a finite difference in $f$.  I believe that
+      the negative values of some of the traces are spline
+      approximation errors and not integration errors.  I also believe
+      that plots of the derivative of energy, ie,
+      $\frac{\partial E(t)}{\partial c_f[i]}$ would increase
+      monotonically.}
     \label{fig:BD_test}
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:

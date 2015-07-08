@@ -10,7 +10,6 @@ each edge of the domain.
 
 """
 import numpy as np
-from scipy.integrate import quad, odeint
 import scipy.interpolate # InterpolatedUnivariateSpline
 #https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
 
@@ -176,6 +175,7 @@ barrel and the forces at those positons respectively. '''
         ''' Integrate eos between xi and x using numpy.integrate.quad
         to get energy of projectile at position x.
         '''
+        from scipy.integrate import quad
         rv, err = quad(self.eos,self.xi.value, min(x,self.xf.value))
         assert rv == rv # test for nan
         return rv
@@ -198,6 +198,7 @@ barrel and the forces at those positons respectively. '''
         '''Run a simulation to build a spline for mapping times to
         velocities and save as self.t2v
         '''
+        from scipy.integrate import odeint
         m = self.m.value   # mass
         f = self.eos # force
         xf = self.xf.value # end of gun barrel, muzzle
@@ -213,7 +214,10 @@ barrel and the forces at those positons respectively. '''
             return np.array([x[1], acceleration])
         t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
         self.t_max = t[-1]
-        xv = odeint(F,[self.xi.value,0],t, atol=1.0e-11, rtol=1.0e-11)
+        xv = odeint(F,[self.xi.value,0],t,
+                    atol = 1e-11, # Default 1.49012e-8
+                    rtol = 1e-11, # Default 1.49012e-8
+                    )
         assert xv.shape == (len(t),2)
         # xv is array of calculated positions and velocities at times in t
         self.t2v = Spline(t,xv[:,1])
@@ -587,7 +591,7 @@ def main():
     v,t = experiment(plot_data) # side effect assigns plot_data['experimental']
 
     # Calculate best fit to experiment and get data for plotting
-    fit,e = best_fit((v,t),constrained=False)
+    fit,e = best_fit((v,t),constrained=True)
     plot_data['fit']=((x, fit.eos(x), 'f'),(x, fit.x_dot(x)/magic.cm2km, 'v'))
 
     fig_fve = plt.figure('fve',figsize=(8,10))
@@ -694,7 +698,7 @@ def test():
     f_0 = gun.eos(x)                      # Original eos values
     
     # Solve BD*d=epsilon for d without constraints
-    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-2)
+    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
     fig = plt.figure('d_hat', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(d_hat)
