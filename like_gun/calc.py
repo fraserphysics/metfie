@@ -678,10 +678,13 @@ def test_set_Be(gun, v_exp, t_exp, plot_file=None):
     n_v = len(gun.t2v.get_c()) - magic.end
     gun.set_Be((v_exp,t_exp))
     assert len(gun.ep) == len(t_exp)
+    if plot_file == None:
+        return 0
+    t2v = gun.set_t2v()
+    ts = t2v.get_t()
+    v = t2v(ts)
     fmt = 'B.shape={0} != ({1},{2}) = (len(t_exp), n_f)'.format
     assert gun.B.shape == (len(t_exp), n_v),fmt(gun.B.shape, len(t_exp), n_v)
-    if True:#plot_file == None: FixMe need ts and v at least
-        return 0
     fig = plt.figure('v,t')
     ax = fig.add_subplot(1,1,1)
     ax.plot(ts*1e6, v/1e5, label='simulation')
@@ -708,81 +711,104 @@ def test_set_BD(gun, plot_file=None, t_exp=None):
     ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]} /(\rm{cm/s})$')
     fig.savefig(plot_file,format='pdf')
     return 0
-def test():
-
-    # test_spline()
-    # Test __init__ _set_N, set_eos and E methods of GUN
-    gun = GUN()
-    assert str(gun.E(4)) == '79200000000.0'
-
-    test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
-
-    v_exp, t_exp = experiment()
-    test_set_D(gun, 'D_test.pdf')                  # Makes gun.D
-    test_set_Be(gun, v_exp, t_exp, 'vt_test.pdf')  # Makes gun.B and gun.ep
-    test_set_BD(gun, 'BD_test.pdf', t_exp)
-
-    #  Exercise func and d_func
-    c_f = gun.eos.get_c()
-    d = np.zeros(len(c_f)-magic.end)
-    S_0 = gun.func(d, scale=False)        # Original cost function
-    dS_0 = gun.d_func(d, scale=False)     # Derivative of S
-    constraint_0 = gun.constraint(d, scale=False) # Original constraint
-    ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
-    f_0 = gun.eos(gun.x)                  # Original eos values
-    
-    # Solve BD*d=epsilon for d without constraints
-    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
+def plot_d_hat(d_hat):
     fig = plt.figure('d_hat', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(d_hat)
     ax.set_xlabel(r'$i$')
     ax.set_ylabel(r'$\hat d[i]$')
     fig.savefig('d_hat_test.pdf',format='pdf')
+    return 0
+def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
+
+    ep_0 = gun.ep
+    gun.set_eos(eos_0)
+    d = np.zeros(len(d_hat))
+    S_0 = gun.func(d, scale=False)        # Original cost function
+    dS_0 = gun.d_func(d, scale=False)     # Derivative of S
+    constraint_0 = gun.constraint(d, scale=False) # Original constraint
+    ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
+    f_0 = gun.eos(gun.x)                  # Original eos values
+    
     S_1 = gun.func(d_hat, scale=False)                # Updated cost function
     dS_1 = gun.d_func(d_hat, scale=False)             # Derivative
     constraint_1 = gun.constraint(d_hat, scale=False) # Updated constraint
     
-    # Plot constraints
-    ax = new_ax('constraints')
-    ax.plot(constraint_0, label='Orginal constraints')
-    ax.plot(constraint_1, label='Updated constraints')
-    ax.legend()
-
-    # Plot orignal errors
-    ax = new_ax('errors')
-    ax.plot(t_exp*1e6, gun.ep, label='Orginal velocity error ep')
-    
-    # Check epsilon for updated EOS
-    c_f[0:-magic.end] += d_hat        # Change EOS by d_hat
-    gun.set_eos(gun.eos.set_c(c_f))
+    gun.set_eos(eos_1)
+    # Get epsilon for updated EOS
     gun.set_Be((v_exp,t_exp))
-    # Plot reduced errors
-    ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
-    ax.set_xlabel(r'$t/(\mu\rm{sec})$')
-    ax.set_ylabel(r'$v/(\rm{x/s})$')
-    ax.legend(loc='lower right')
     ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
     f_1 = gun.eos(gun.x)                  # Updated eos values
+
+    if plot_files == None:
+        return 0
+    
     print('''lstsq reduced func from {0:.3e} to {1:.3e}
  and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
         S_0, S_1, ll_0, ll_1))
 
-    # Plot d_func and EOS
-    fig = plt.figure('d_func', figsize=(9,8))
-    ax = fig.add_subplot(2,1,1)
-    ax.plot(dS_0,label=r'$dS_0$')
-    ax.plot(dS_1,label=r'$dS_1$')
-    ax.legend(loc='lower left')
-    ax.set_xlabel(r'$i$')
-    ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[i]}$')
-    ax = fig.add_subplot(2,1,2)
-    ax.plot(gun.x,f_0,label=r'$f_0$')
-    ax.plot(gun.x,f_1,label=r'$f_1$')
-    ax.set_xlabel(r'$x/{\rm cm}$')
-    ax.set_ylabel(r'$f/{\rm dyne}$')
-    ax.legend()
-    fig.savefig('d_func_test.pdf',format='pdf')
+    if 'constraints' in plot_files:
+        fig = plt.figure('constraints')
+        ax = fig.add_subplot(1,1,1)
+        ax.plot(constraint_0, label='Original constraints')
+        ax.plot(constraint_1, label='Updated constraints')
+        ax.legend()
+        fig.savefig(plot_files['constraints'],format='pdf')
+    if 'errors' in plot_files:
+        fig = plt.figure('errors')
+        ax = fig.add_subplot(1,1,1)
+        # Plot orignal errors
+        ax = new_ax('errors')
+        ax.plot(t_exp*1e6, ep_0, label='Original velocity error ep')
+        # Plot reduced errors
+        ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
+        ax.set_xlabel(r'$t/(\mu\rm{sec})$')
+        ax.set_ylabel(r'$v/(\rm{x/s})$')
+        ax.legend(loc='lower right')
+        fig.savefig(plot_files['errors'],format='pdf')
+    if 'd_func' in plot_files:
+        fig = plt.figure('d_func', figsize=(9,8))
+        ax = fig.add_subplot(2,1,1)
+        ax.plot(dS_0,label=r'$dS_0$')
+        ax.plot(dS_1,label=r'$dS_1$')
+        ax.legend(loc='lower left')
+        ax.set_xlabel(r'$i$')
+        ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[i]}$')
+        ax = fig.add_subplot(2,1,2)
+        ax.plot(gun.x,f_0,label=r'$f_0$')
+        ax.plot(gun.x,f_1,label=r'$f_1$')
+        ax.set_xlabel(r'$x/{\rm cm}$')
+        ax.set_ylabel(r'$f/{\rm dyne}$')
+        ax.legend()
+        fig.savefig(plot_files['d_func'],format='pdf')
+    return 0
+def test():
+
+    # test_spline()
+    # Test __init__ _set_N, set_eos and E methods of GUN
+    gun = GUN()
+    s = '{0:.1f}'.format(gun.E(4))
+    assert s  == '79200000000.0','gun.E(4)={0}'.format(s)
+
+    test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
+    eos_0 = gun.eos
+    v_exp, t_exp = experiment()
+    test_set_D(gun, 'D_test.pdf')
+    test_set_Be(gun, v_exp, t_exp, 'vt_test.pdf')
+    test_set_BD(gun, 'BD_test.pdf', t_exp)
+    
+    # Solve BD*d=epsilon for d without constraints
+    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
+    plot_d_hat(d_hat)
+    eos_1 = gun.eos
+    
+    # Exercise func, d_func and constraint and make plots for d_hat, etc
+    plot_files = {
+        'constraints':'constraints_test.pdf',
+        'errors':'errors_test.pdf',
+        'd_func':'d_func_test.pdf',
+        }
+    test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
     
     # Exercise gun.opt()
     d_hat = gun.opt((v_exp,t_exp))

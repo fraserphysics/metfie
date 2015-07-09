@@ -2,7 +2,9 @@ fig_d.pdf: calc.py   # Makes fig_d.pdf and fig_fve.pdf
 	python3 calc.py
 basis.pdf: basis.py
 	python basis.py $@
-FIGURES = fig_d.pdf basis.pdf
+D_test.pdf: calc.py
+	python3 calc.py test
+FIGURES = fig_d.pdf basis.pdf D_test.pdf
 notes.aux: notes.tex ${FIGURES}
 	pdflatex notes
 notes.pdf: notes.aux
