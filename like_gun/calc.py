@@ -280,7 +280,7 @@ barrel and the forces at those positons respectively. '''
     def set_BD(self, BD):
         '''For testing'''
         self.BD = BD
-    def func(self, d, scale=True):
+    def func(self, d, scale=False):
         '''The objective function, S(d) in notes.tex.
         '''
         r = self.ep - np.dot(self.BD,d) # Residual
@@ -288,7 +288,7 @@ barrel and the forces at those positons respectively. '''
         if scale:
             rv *= self.f_scale
         return rv
-    def d_func(self, d, scale=True):
+    def d_func(self, d, scale=False):
         '''Derivative of the objective function.
         '''
         r = self.ep - np.dot(self.BD,d) # Residual
@@ -314,7 +314,7 @@ barrel and the forces at those positons respectively. '''
             raise RuntimeError
         return 0
     
-    def constraint(self, d, scale=True):
+    def constraint(self, d, scale=False):
         '''Return the vector of inequality constraint function values.
         The constraints are conditions at the unique knots (excluding
         the 3 repeats at each end), and they are constraints on the
@@ -343,7 +343,7 @@ barrel and the forces at those positons respectively. '''
         return rv
     def calc_d_constraint(
             self,       # GUN instance
-            scale=True
+            scale=False
             ):
         '''Calculate and save as self.d_constraint the derivative
         (wrt to c) of the inequality constraints.
@@ -380,15 +380,15 @@ barrel and the forces at those positons respectively. '''
         d = np.zeros(len(new_c)-magic.end) # Optimization variable
         self.f_scale = 1.0/self.func(d, scale=False)
         self.con_scale = 1.0/self.constraint(d, scale=False)
-        #self.calc_d_constraint()
+        self.calc_d_constraint()
         d_hat, ss, its, imode, smode = fmin(
             lambda d, slf: slf.func(d),
             d,
             f_ieqcons=lambda d, slf: slf.constraint(d),
             args=(self,),  # This will be slf in lambda expressions
-            #fprime=lambda d, slf: slf.d_func(d),
+            fprime=lambda d, slf: slf.d_func(d),
             iter=2000,
-            #fprime_ieqcons=lambda d, slf: slf.d_constraint,
+            fprime_ieqcons=lambda d, slf: slf.d_constraint,
             full_output=True,
             disp=2,
             )
@@ -399,7 +399,7 @@ barrel and the forces at those positons respectively. '''
     def free_opt(
             self, # GUN instance
             vt,   # Simulated experimental data
-            rcond=1e-10,
+            rcond=1e-9,
             ):
         ''' Do an unconstrained optimization step.  Uses an SVD solver.
         ''' 
@@ -782,6 +782,35 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
         ax.legend()
         fig.savefig(plot_files['d_func'],format='pdf')
     return 0
+def test_opt():
+    ''' Exercise GUN.opt()
+    '''
+    # Set up gun with spline eos
+    gun = GUN()
+    gun.set_eos_spline(gun.x,gun.eos(gun.x))
+
+    # Make experimental data
+    vt = experiment()
+    
+    gun.set_Be(vt)
+    error_0 = gun.ep
+    d_hat = gun.opt(vt)
+    gun.set_Be(vt)
+    error_1 = gun.ep
+    #d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
+    fig = plt.figure('opt_result', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(d_hat)
+    ax.set_xlabel(r'$i$')
+    ax.set_ylabel(r'$\hat d[i]$')
+    fig = plt.figure('errors', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(error_0)
+    ax.plot(error_1)
+    plt.show()
+    #fig.savefig('opt_result.pdf',format='pdf')  
+    return 0 
+   
 def test():
 
     # test_spline()
@@ -810,23 +839,15 @@ def test():
         }
     test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
     
-    # Exercise gun.opt()
-    d_hat = gun.opt((v_exp,t_exp))
-    fig = plt.figure('opt_result', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(d_hat)
-    ax.set_xlabel(r'$i$')
-    ax.set_ylabel(r'$\hat d[i]$')
-    fig.savefig('opt_result.pdf',format='pdf')    
-   
-    plt.show()
+    #plt.show()
     # FixMe: What about derivative of constraint?
     return 0
     
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        sys.exit(test())
+        #sys.exit(test())
+        sys.exit(test_opt())
     main()
 
 #---------------
