@@ -15,14 +15,20 @@ def make_figure():
     x = np.linspace(0,x_n,x_n+1)
     s = Spline(x,np.zeros(x.shape)) # Function is zero everywhere
     c = s.get_c()                   # The coefficients
-    t = s.get_t()                   # The knot locations
+    t = s.get_t()[3:-3]             # The knot locations
     k_lim = len(c) - knots_0
     x = np.linspace(0, x_n, n_x)
     n_x = len(x)
     d = np.empty((n_d,n_x))
+    d2 = np.empty((len(t),k_lim))
+    np.set_printoptions(precision=3)
     for k in range(k_lim):
         c[k] = 1.0
         s.set_c(c)
+        if k >= k_lim-2:
+            print("k={0}\n f'[-1]={1}\n f[-1]={2}".format(
+                k, s.derivative(1)(t[-1]), s(t[-1])))
+        d2[:,k] = s.derivative(2)(t)
         for i in range(n_x):
             d[:,i] = s.derivatives(x[i])
         for i in range(3):
@@ -32,6 +38,7 @@ def make_figure():
                 ax[i].plot(x,d[i,:], label=str(k))
             ax[i].plot(t,np.zeros(t.shape),'rx')
         c[k] = 0.0
+    print(d2)
     for axis, label in zip(ax, "f \\frac{df}{dx} \\frac{d^2f}{df^2}".split()):
         axis.set_ylabel(r'${0}$'.format(label))
     return fig

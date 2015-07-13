@@ -1,8 +1,8 @@
-personal_ws-1.1 en 11 
+personal_ws-1.1 en 12 
 wrt
 eos
-EOS
 Gaussians
+metfie
 eg
 affine
 isentrope
@@ -10,3 +10,4 @@ covariances
 functionals
 posteriori
 ie
+piecewise

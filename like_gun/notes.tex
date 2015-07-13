@@ -109,6 +109,60 @@ to estimate a new model, $\fhat$.
 \section{Priors, Likelihood and Optimization}
 \label{sec:opt}
 
+\subsection{Constraints}
+\label{sec:constraints}
+
+I require that the function $f$ be everywhere convex, monotonically
+decreasing and positive.  Since I am using cubic splines, the third
+derivative is piecewise constant, and the constraints are equivalent
+to the following:
+\begin{description}
+\item[Second derivative positive at each knot] The matrix
+  \setcounter{MaxMatrixCols}{12}
+  \begin{equation}
+    \label{eq:d2}
+    D_2 =
+    \begin{bmatrix}
+      \frac{3}{2} & -\frac{5}{2} & 1     & 0   & \cdots \\ \\
+      0   & \frac{2}{3} & -\frac{7}{6} & \frac{1}{2} & 0 & \cdots \\ \\
+      \vdots   & 0    & \frac{3}{4} & -\frac{7}{4} & 1 & 0 & \cdots \\ \\
+      & \vdots    & 0   & 1 & -2 & 1 & 0 & \cdots \\ \\
+       & & & 0 & 1 & -2 & 1 & 0  \\ \\
+      & & & & 0 & 1 & -2 & 1 & 0  \\ \\
+      &&&&& 0 & 1 & -\frac{7}{4} &\frac{3}{4} & 0 \\ \\
+      &&&&&& 0 & \frac{1}{2} & -\frac{7}{6} & \frac{2}{3} & 0 \\ \\
+      &&&&&&& 0 & 1 & -\frac{5}{2} & \frac{3}{2} \\ \\
+    \end{bmatrix}
+  \end{equation}
+  is the map from coefficients to the second derivative at the knots
+  in Fig.~\ref{fig:basis}.
+\item[First derivative negative at last knot] The vector
+  \begin{equation*}
+    D_1 = \begin{bmatrix}
+    0 & \cdots & 0 & -\frac{3}{2} & \frac{3}{2}
+  \end{bmatrix}
+  \end{equation*}
+  is the map from coefficients to the first derivative at the last knot
+  in Fig.~\ref{fig:basis}.
+\item[Function value positive at last knot] The vector
+  \begin{equation*}
+     D_0 = \begin{bmatrix}
+    0 & \cdots & 0 & 1
+  \end{bmatrix}
+  \end{equation*}
+  is the map from coefficients to the function value at the last knot
+  in Fig.~\ref{fig:basis}.
+\end{description}
+Thus for the knots in Fig.~\ref{fig:basis}, the constraints are
+\begin{align}
+  G & \equiv
+      \begin{bmatrix}
+        - D_2 \\ D_1 \\ -D_0
+      \end{bmatrix}\\
+  \label{eq:constraint}
+  G\cf & \preceq 0.
+\end{align}
+
 \subsection{Minimum Squared Error}
 \label{sec:minsq}
 
@@ -138,21 +192,26 @@ and dropping HOT, I write
   \sum_i \sum_k \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
   \right)^2 \nonumber \\
   \label{eq:sd}
-  &= (\epsilon - BDd)^T(\epsilon - BDd)
+  &= (\epsilon - BDd)^T(\epsilon - BDd)\\
+  &= d^TD^TB^TBDd - 2 \epsilon^TBDd + \epsilon^T\epsilon \nonumber
 \end{align}
-and
-\begin{align*}
-  \partiald{S}{d[l]} &= -2 \sum_j \left( \epsilon[j] -
-  \sum_i \sum_k \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
-  \right)
-  \sum_k \partiald{\cv[k]}{\cf[l]}\vbasis[k](\texp[j])\\
-  \partiald{S}{d} &= -2\left(BD\right)^T\left(\epsilon - BDd\right).
-\end{align*}
-Thus I seek $\hat d$ that solves
-\begin{equation}
+Thus I seek $\hat d$ that minimizes $S(d)$ subject to the constraint
+\eqref{eq:constraint}.  This is the quadratic programming problem
+\begin{subequations}
   \label{eq:dhat}
-  \left(BD\right)^T\epsilon = \left(BD\right)^T BD \hat d.
-\end{equation}
+  \begin{align}
+    \text{Minimize } & \frac{1}{2} d^T P d + q^T d \\
+    \text{Subject to } & Gd \preceq h
+  \end{align}
+\end{subequations}
+with
+\begin{align*}
+  P &= D^TB^TBD \\
+  q^T &= \epsilon^TBD \\
+  h &= -G\cf
+\end{align*}
+where I've put \eqref{eq:dhat} in a form that matches
+\emph{cvxopt.solvers.qp}.
 
 \subsection{A Posteriori Probability}
 \label{sec:app}

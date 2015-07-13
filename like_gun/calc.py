@@ -313,7 +313,26 @@ barrel and the forces at those positons respectively. '''
             print('all constraints={0},\n min={1:.6e}'.format(a,b))
             raise RuntimeError
         return 0
-    
+    def G_matrix(self):
+        ''' Get constraint matrix
+        '''
+        original_eos = self.eos
+        dim = len(original_eos.get_c()) - magic.end
+        t_all = self.eos.get_t()
+        t_unique = t_all[magic.end-1:1-magic.end]
+        c = np.zeros(dim + magic.end)
+        n_constraints = len(t_unique) + 2
+        G = np.zeros((len(t_unique)+2, dim))
+        for i in range(dim):
+            c[i] = 1.0
+            f = self.eos.set_c(c)
+            G[:-2,i] = -f.derivative(2)(t_unique)
+            G[-2,i] = f.derivative(1)(t_unique[-1])
+            G[-1,i] = -f(t_unique[-1])
+            c[i] = 0.0
+        self.eos = original_eos
+        raise RuntimeError
+        return G
     def constraint(self, d, scale=False):
         '''Return the vector of inequality constraint function values.
         The constraints are conditions at the unique knots (excluding
@@ -820,6 +839,10 @@ def test():
     assert s  == '79200000000.0','gun.E(4)={0}'.format(s)
 
     test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
+    G = gun.G_matrix()
+    print(G[:5,:4])
+    print(G[-5:,-4:])
+    return 0
     eos_0 = gun.eos
     v_exp, t_exp = experiment()
     test_set_D(gun, 'D_test.pdf')
@@ -846,7 +869,7 @@ def test():
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        #sys.exit(test())
+        sys.exit(test())
         sys.exit(test_opt())
     main()
 
