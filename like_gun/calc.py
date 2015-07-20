@@ -331,87 +331,42 @@ barrel and the forces at those positons respectively. '''
             G[-1,i] = -f(t_unique[-1])
             c[i] = 0.0
         self.eos = original_eos
-        raise RuntimeError
         return G
-    def constraint(self, d, scale=False):
-        '''Return the vector of inequality constraint function values.
-        The constraints are conditions at the unique knots (excluding
-        the 3 repeats at each end), and they are constraints on the
-        active coefficients (excluding the 4 zeros and the left edge).
-        The second derivative should be non-negative at the knots,
-        the first derivative is negative at the left most knot and
-        the value of the function is postitive at the left most knot.
-        
-        f'' >= 0 at all t_unique
-        f' <= 0 at last t_unique
-        f >=0 at last t_unique
-        '''
-        original_eos = self.eos
-        c = self.eos.get_c().copy()
-        c[:-magic.end] += d
-        t_unique = self.eos.get_t()[magic.end-1:1-magic.end]
-        #return np.ones(len(t_unique)+2)
-        rv = np.empty(len(t_unique)+2)
-        eos_mod = self.eos.set_c(c)
-        rv[:-2] = eos_mod.derivative(2)(t_unique)
-        rv[-2] = -eos_mod.derivative(1)(t_unique[-1])
-        rv[-1] = eos_mod(t_unique[-1])
-        self.eos = original_eos
-        if scale:
-            rv *= self.con_scale
-        return rv
-    def calc_d_constraint(
-            self,       # GUN instance
-            scale=False
-            ):
-        '''Calculate and save as self.d_constraint the derivative
-        (wrt to c) of the inequality constraints.
-        '''
-        original_eos = self.eos
-        # dim is the number of free components
-        dim = len(original_eos.get_c()) - magic.end
-        t_all = self.eos.get_t()
-        t_unique = t_all[magic.end-1:1-magic.end]
-        c = np.zeros(dim + magic.end)
-        n_constraints = len(t_unique) + 2
-        self.d_constraint = d_con = np.empty((n_constraints, dim))
-        for i in range(dim):
-            c[i] = 1.0
-            d_con[:-2,i] = self.eos.set_c(c).derivative(2)(t_unique)
-            d_con[-2,i] = -self.eos.derivative(1)(t_unique[-1])
-            d_con[-1,i] = self.eos(t_unique[-1])
-            if scale:
-                d_con[:,i] *= self.con_scale
-            c[i] = 0.0
-        self.eos = original_eos
-        return self.d_constraint
     def opt(
             self, # GUN instance
             vt,   # Simulated experimental data
             ):
         ''' Do a constrained optimization step
-        ''' 
-        from scipy.optimize import fmin_slsqp as fmin
+        '''
+        from cvxopt import matrix, solvers
+        solvers.options['maxiters']=2000
         new_c = self.eos.get_c().copy()
         self.set_D() # Expensive
         self.set_Be(vt)
         self.BD = np.dot(self.B, self.D)
-        d = np.zeros(len(new_c)-magic.end) # Optimization variable
-        self.f_scale = 1.0/self.func(d, scale=False)
-        self.con_scale = 1.0/self.constraint(d, scale=False)
-        self.calc_d_constraint()
-        d_hat, ss, its, imode, smode = fmin(
-            lambda d, slf: slf.func(d),
-            d,
-            f_ieqcons=lambda d, slf: slf.constraint(d),
-            args=(self,),  # This will be slf in lambda expressions
-            fprime=lambda d, slf: slf.d_func(d),
-            iter=2000,
-            fprime_ieqcons=lambda d, slf: slf.d_constraint,
-            full_output=True,
-            disp=2,
-            )
-        assert imode == 0,'Exit mode of fmin={0}\n{1}'.format(imode, smode)
+        
+        P = np.dot(self.BD.T,self.BD)
+        from numpy import linalg as LA
+        vals = LA.eigvalsh(P)
+        max_val = float(vals.max())
+        reg = np.eye(len(vals))*max_val/1e8
+
+        G = self.G_matrix()
+        scale = max_val/float(G.max())
+        G *= scale
+        h = np.dot(G,new_c[:-magic.end])
+        
+        P = matrix(P+reg)
+        G = matrix(G)
+        q = matrix(np.dot(self.BD.T,self.ep))
+        h = matrix(h)
+        
+        print('max_val={0}'.format(max_val))
+        #sol=solvers.qp(P, q, G, h )
+        sol=solvers.qp(P, q)
+        for key,value in sol.items():
+            print(key, value)
+        d_hat = np.array(sol['x']).reshape(-1)
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.set_c(new_c)
         return d_hat
@@ -824,8 +779,9 @@ def test_opt():
     ax.set_ylabel(r'$\hat d[i]$')
     fig = plt.figure('errors', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
-    ax.plot(error_0)
-    ax.plot(error_1)
+    ax.plot(error_0,label='error_0')
+    ax.plot(error_1,label='error_1')
+    ax.legend()
     plt.show()
     #fig.savefig('opt_result.pdf',format='pdf')  
     return 0 
@@ -842,7 +798,7 @@ def test():
     G = gun.G_matrix()
     print(G[:5,:4])
     print(G[-5:,-4:])
-    return 0
+    #return 0
     eos_0 = gun.eos
     v_exp, t_exp = experiment()
     test_set_D(gun, 'D_test.pdf')
@@ -869,7 +825,7 @@ def test():
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        sys.exit(test())
+        #sys.exit(test())
         sys.exit(test_opt())
     main()
 

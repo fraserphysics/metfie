@@ -4,7 +4,7 @@ basis.pdf: basis.py
 	python basis.py $@
 D_test.pdf: calc.py
 	python3 calc.py test
-FIGURES = fig_d.pdf basis.pdf D_test.pdf
+FIGURES = D_test.pdf basis.pdf #fig_d.pdf basis.pdf
 notes.aux: notes.tex ${FIGURES}
 	pdflatex notes
 notes.pdf: notes.aux
