@@ -1,27 +1,26 @@
 """calc.py: Classes for EOS and gun simulation.  Derived from calc.py
-in parent directory.  Goals are to develop, analyze and understand a
-procedure for estimating an isentrope on the basis of data and simulations.
+in parent directory.  Goals are:
 
-Run using python3 and scipy 0.14
+1. Develop, analyze and understand a procedure for estimating an
+isentrope on the basis of data and simulations.
 
-In the spline optimization I do not change coefficient values at t[:5]
-and t[-5:].  That will leave the function unchanged at 2 points at
-each edge of the domain.
+2. Demonstrate provenance tracking
+
+Run using python2 and scipy 0.14
+
+For the splines, I use
+scipy.interpolate.InterpolatedUnivariateSpline. See:
+https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
+
+For the spline optimization I use cvxopt.solvers.qp.  See:
+http://cvxopt.org/userguide/coneprog.html
 
 """
 import numpy as np
-import scipy.interpolate # InterpolatedUnivariateSpline
-#https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
-
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
 from cmf_models import Component, Provenance, Float
 from markup import oneliner
-
-# Next line provides easy plotting, eg in pdb:
-#> new_ax('eos').plot(x,f)
-#> plt.show()
 import matplotlib.pyplot as plt
-new_ax = lambda n : plt.figure(n).add_subplot(1,1,1)
 
 class Spline(IU_Spline, Component):
     '''From the source:
@@ -42,7 +41,7 @@ class Spline(IU_Spline, Component):
     def get_c(self):
         'Return the coefficients for the basis functions'
         return self._eval_args[1]
-    def set_c(self,c):
+    def new_c(self,c):
         '''Return a new Spline instance that is copy of self except
         that the coefficients for the basis functions are c and
         provenance is updated.'''
@@ -50,7 +49,7 @@ class Spline(IU_Spline, Component):
         from inspect import stack
         rv = copy.deepcopy(self)
         rv._eval_args = self._eval_args[0], c, self._eval_args[2]
-        # stack()[1] is context that called set_c
+        # stack()[1] is context that called new_c
         rv.provenance = Provenance(
             stack()[1], 'New coefficients', branches=[self.provenance],
             max_hist=50)
@@ -113,8 +112,10 @@ class GUN:
     '''
     def __init__(
             self,             # GUN instance
-            C=Float(2.56e10,  # dynes (cm)^3
-'Constant in nominal equation of state: F = C/x^3 dynes', max_hist=10),
+            C=Float(
+                2.56e10,    # dynes (cm)^3
+                'Constant in nominal equation of state: F = C/x^3 dynes',
+                ),
             xi=Float(0.4, 'Initial position of projectile / cm'),
             xf=Float(4.0, 'Final/muzzle position of projectile /cm'),
             m=Float(
@@ -125,20 +126,14 @@ class GUN:
             N=400,            # Number of intervals between xi and xf
             sigma_sq_v=1.0e5, # Variance attributed to v measurements
             ):
-        x = Float(1e10,'Just for exercising Float operations')
-        C = C + x
-        C = C - x
-        C = C/x
-        C = C*x
-        C = -C
-        C = -C
         self.C = C + 0.0 # Vacuous demonstration of Float + float
         self.xi = xi
         self.xf = xf
         self.m = m
         self._set_N(N)
         self.sigma_sq_v = sigma_sq_v
-        self.components = set(('C','xi','xf','m'))#Component instance names
+        self.components = set(('C','xi','xf','m'))
+        # Set of component instance names for exercising provenance tracking
         return
     def _set_N(
             self,                 # GUN instance
@@ -148,11 +143,10 @@ class GUN:
         '''Interval lengths are uniform on a log scale ie
                self.x[i+1]/self.x[i] = constant.
         '''
-        # N points and N-1 intervals equal spacing on log scale
         self.x = np.logspace(
             np.log(self.xi.value/stretch),
             np.log(self.xf.value*stretch), N, base=np.e)
-        self.set_eos(lambda x:self.C.value/x**3)
+        self.set_eos(lambda x:self.C.value/x**3) # Initial eos
         return
     def set_eos(self, func):
         self.eos = func
@@ -165,7 +159,7 @@ class GUN:
 and f with elements that are positions along the gun
 barrel and the forces at those positons respectively. '''
 # The number of knots is len(x)+4.  The first 4 knots are at x[0] and
-# t[4]=x[2].  Similarly the last 4 knots are at x[-1].
+# t[4]=x[2].  Similarly the last 4 knots are at x[-1] and t[-5]=x[-3].
         self.eos = Spline(x, f, s)
         self.components.add('eos')
         return
@@ -231,11 +225,11 @@ barrel and the forces at those positons respectively. '''
         Note self.D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
         last 4 which are always 0.
         '''
-        # Spline.set_c(c) does not modify Spline.  It returns a copy
+        # Spline.new_c(c) does not modify Spline.  It returns a copy
         # of Spline with the coefficients c and an updated provenance.
         eos_nom = self.eos
-        c_f_nom = eos_nom.get_c() # Vector of nominal coefficients for eos
-        n_f = len(c_f_nom) - magic.end   # Dimension of optimization var
+        c_f_nom = eos_nom.get_c()      # Nominal coefficients for eos
+        n_f = len(c_f_nom) - magic.end # Dimension of optimization var
         t2v_nom = self.set_t2v()
         c_v_nom = t2v_nom.get_c()
         n_v = len(c_v_nom) - magic.end
@@ -246,14 +240,14 @@ barrel and the forces at those positons respectively. '''
             d_f = float(c_f[i]*fraction)
             c_f[i] += d_f
             # Next run a simulation to get a v(t) spline a for a modified eos
-            self.eos = eos_nom.set_c(c_f)
+            self.eos = eos_nom.new_c(c_f)
             c_v = self.set_t2v().get_c()
             D_i = ((c_v - c_v_nom)[:-magic.end])/d_f
             self.D[:,i] = D_i
         self.eos = eos_nom
         self.t2v = t2v_nom
         return self.D
-    def set_Be(
+    def set_B_ep(
             self, # GUN instance
             vt,   # (velocities, times)
             ):
@@ -269,52 +263,33 @@ barrel and the forces at those positons respectively. '''
         n_vt = len(v)
         assert len(t) == n_vt
         c_ = np.zeros(self.set_t2v().get_c().shape) # Also creates self.t2v
-        self.ep = v - self.t2v(t)  # Calculate errors
+        self.ep = v - self.t2v(t)   # Calculate errors
         v_dim = len(c_) - magic.end # end values are always 0
         self.B = np.zeros((n_vt,v_dim))
         for j in range(v_dim):
             c_[j] = 1.0
-            delta_t2v = self.t2v.set_c(c_)
+            delta_t2v = self.t2v.new_c(c_)
             self.B[:,j] = delta_t2v(t)
             c_[j] = 0.0
     def set_BD(self, BD):
         '''For testing'''
         self.BD = BD
-    def func(self, d, scale=False):
+    def func(self, d):
         '''The objective function, S(d) in notes.tex.
         '''
         r = self.ep - np.dot(self.BD,d) # Residual
-        rv = float(np.dot(r.T,r))
-        if scale:
-            rv *= self.f_scale
-        return rv
-    def d_func(self, d, scale=False):
-        '''Derivative of the objective function.
-        '''
-        r = self.ep - np.dot(self.BD,d) # Residual
-        rv = -2*np.dot(self.BD.T,r)
-        assert len(rv) == len(d),'len(rv)={0}, len(d)={1}'.format(
-            len(rv), len(d))
-        if scale:
-            rv *= self.f_scale
-        return rv
-    def check(
-            self,   # GUN instance
-            d=None  # Change in c_f
-            ):
-        '''Raise error if d does not satisfy constraints: Convex,
-            monotonic and positive
-        '''
-        if d == None:
-            d = np.zeros(len(self.eos.get_c())-magic.end)
-        a = self.constraint(d, scale=False)
-        b = a.min()
-        if b < 0.0:
-            print('all constraints={0},\n min={1:.6e}'.format(a,b))
-            raise RuntimeError
-        return 0
+        return float(np.dot(r.T,r))
     def G_matrix(self):
-        ''' Get constraint matrix
+        ''' Get constraint matrix G.  The constraint enforced by
+        cvxopt.solvers.qp is
+        Gx leq_component_wise h
+
+        Want the following constraints:
+
+        f'' positive for all x
+        f' negative for x_max
+        f positive for x_max
+        
         '''
         original_eos = self.eos
         dim = len(original_eos.get_c()) - magic.end
@@ -325,7 +300,7 @@ barrel and the forces at those positons respectively. '''
         G = np.zeros((len(t_unique)+2, dim))
         for i in range(dim):
             c[i] = 1.0
-            f = self.eos.set_c(c)
+            f = self.eos.new_c(c)
             G[:-2,i] = -f.derivative(2)(t_unique)
             G[-2,i] = f.derivative(1)(t_unique[-1])
             G[-1,i] = -f(t_unique[-1])
@@ -336,39 +311,52 @@ barrel and the forces at those positons respectively. '''
             self, # GUN instance
             vt,   # Simulated experimental data
             ):
-        ''' Do a constrained optimization step
+        ''' Does a constrained optimization step.
         '''
+        # Takes ~ 20 seconds on watcher
         from cvxopt import matrix, solvers
-        solvers.options['maxiters']=2000
-        new_c = self.eos.get_c().copy()
+        solvers.options['maxiters']=1000 # 100 default
+        solvers.options['feastol']=1e-12
+        solvers.options['show_progress']=False
+        # default, 1e-7 allows non-monotonic, 1e-16 -> "singular KKT matrix"
+
+        # Make self.BD and self.ep
         self.set_D() # Expensive
-        self.set_Be(vt)
+        self.set_B_ep(vt)
         self.BD = np.dot(self.B, self.D)
-        
+
+        # P is quadratic term in form used by cvxopt.solvers.qp
         P = np.dot(self.BD.T,self.BD)
+        # Calculate reg, an attempt to regularize problem
         from numpy import linalg as LA
         vals = LA.eigvalsh(P)
         max_val = float(vals.max())
-        reg = np.eye(len(vals))*max_val/1e8
+        reg = np.eye(len(vals))*max_val/1e10 # /1e13 -> rough d_hat
+        # FixMe: do MAP with prior instead
 
+        # Calculate G and h for use by cvxopt.solvers.qp
         G = self.G_matrix()
-        scale = max_val/float(G.max())
-        G *= scale
-        h = np.dot(G,new_c[:-magic.end])
-        
+        G *= max_val/float(G.max()) # Make objective and constraint
+                                    # rougly the same scale
+        new_c = self.eos.get_c().copy()
+
+        # Put P, h, G and h in cvxopt.matrix form
         P = matrix(P+reg)
         G = matrix(G)
-        q = matrix(np.dot(self.BD.T,self.ep))
-        h = matrix(h)
+        q = matrix(-np.dot(self.BD.T,self.ep))
+        h = matrix(-np.dot(G,new_c[:-magic.end]))
         
-        print('max_val={0}'.format(max_val))
-        #sol=solvers.qp(P, q, G, h )
-        sol=solvers.qp(P, q)
-        for key,value in sol.items():
-            print(key, value)
+        # minimize (1/2) x^TPx + q^T x
+        # subject to G x \preceq h (\preceq is \leq for each component)
+        sol=solvers.qp(P, q, G, h )
+        #sol=solvers.qp(P, q)  # Unconstrained optimization
+        if sol['status'] != 'optimal':
+            for key,value in sol.items():
+                print(key, value)
+            raise RuntimeError
         d_hat = np.array(sol['x']).reshape(-1)
         new_c[:-magic.end] += d_hat
-        self.eos = self.eos.set_c(new_c)
+        self.eos = self.eos.new_c(new_c)
         return d_hat
     def free_opt(
             self, # GUN instance
@@ -379,11 +367,11 @@ barrel and the forces at those positons respectively. '''
         ''' 
         from numpy.linalg import lstsq
         new_c = self.eos.get_c().copy()
-        self.set_Be(vt)
+        self.set_B_ep(vt)
         BD = np.dot(self.B, self.set_D())
         d_hat = lstsq(BD, self.ep, rcond=rcond)[0]
         new_c[:-magic.end] += d_hat
-        self.eos = self.eos.set_c(new_c)
+        self.eos = self.eos.new_c(new_c)
         return d_hat
     def log_like(
             self, # GUN instance
@@ -467,7 +455,7 @@ def plot_dv_df(gun, x, fig):
         for i in range(len(c)):
             c_ = c.copy()
             c_[i] = c[i]*(1+frac)
-            gun.eos = eos_nom.set_c(c_)
+            gun.eos = eos_nom.new_c(c_)
             gun.set_t2v()
             df.append(gun.eos(x)-f)
             dv.append(gun.t2v(t) - v)
@@ -648,9 +636,9 @@ def test_set_D(gun, plot_file=None):
     ax.set_ylabel(r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)$')
     fig.savefig(plot_file, format='pdf')
     return 0
-def test_set_Be(gun, v_exp, t_exp, plot_file=None):
+def test_set_B_ep(gun, v_exp, t_exp, plot_file=None):
     n_v = len(gun.t2v.get_c()) - magic.end
-    gun.set_Be((v_exp,t_exp))
+    gun.set_B_ep((v_exp,t_exp))
     assert len(gun.ep) == len(t_exp)
     if plot_file == None:
         return 0
@@ -710,7 +698,7 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
     
     gun.set_eos(eos_1)
     # Get epsilon for updated EOS
-    gun.set_Be((v_exp,t_exp))
+    gun.set_B_ep((v_exp,t_exp))
     ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
     f_1 = gun.eos(gun.x)                  # Updated eos values
 
@@ -732,6 +720,8 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
         fig = plt.figure('errors')
         ax = fig.add_subplot(1,1,1)
         # Plot orignal errors
+        fig = plt.figure('errors')
+        ax = fig.add_subplot(1,1,1)
         ax = new_ax('errors')
         ax.plot(t_exp*1e6, ep_0, label='Original velocity error ep')
         # Plot reduced errors
@@ -762,14 +752,15 @@ def test_opt():
     # Set up gun with spline eos
     gun = GUN()
     gun.set_eos_spline(gun.x,gun.eos(gun.x))
+    old_eos = gun.eos
 
     # Make experimental data
     vt = experiment()
     
-    gun.set_Be(vt)
+    gun.set_B_ep(vt)
     error_0 = gun.ep
     d_hat = gun.opt(vt)
-    gun.set_Be(vt)
+    gun.set_B_ep(vt)
     error_1 = gun.ep
     #d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
     fig = plt.figure('opt_result', figsize=(7,6))
@@ -781,6 +772,12 @@ def test_opt():
     ax = fig.add_subplot(1,1,1)
     ax.plot(error_0,label='error_0')
     ax.plot(error_1,label='error_1')
+    ax.legend()
+    fig = plt.figure('eos', figsize=(7,6))
+    ax = fig.add_subplot(1,1,1)
+    x = gun.x
+    ax.plot(x,old_eos(x),label='f_0')
+    ax.plot(x,gun.eos(x),label='f_1')
     ax.legend()
     plt.show()
     #fig.savefig('opt_result.pdf',format='pdf')  
@@ -802,7 +799,7 @@ def test():
     eos_0 = gun.eos
     v_exp, t_exp = experiment()
     test_set_D(gun, 'D_test.pdf')
-    test_set_Be(gun, v_exp, t_exp, 'vt_test.pdf')
+    test_set_B_ep(gun, v_exp, t_exp, 'vt_test.pdf')
     test_set_BD(gun, 'BD_test.pdf', t_exp)
     
     # Solve BD*d=epsilon for d without constraints

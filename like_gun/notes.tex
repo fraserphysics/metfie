@@ -109,13 +109,43 @@ to estimate a new model, $\fhat$.
 \section{Priors, Likelihood and Optimization}
 \label{sec:opt}
 
+\subsection{Cubic Splines}
+\label{sec:splines}
+
+I use cubic splines to approximate both the force function $f$ and the
+velocity function $\Vt$.  Cubic splines are piecewise cubic.  I
+illustrate their basis functions for a grid of evenly spaced knots in
+Fig.~\ref{fig:basis}.  Note that the second derivative is affine
+between knots and that consequently if it is positive at the knots it
+is positive between them.  Also if the second derivative is positive
+over the domain and the first derivative is positive at the right hand
+end point, the function is monotonic and convex over the entire
+domain.  Finally, if the function is monotonic and positive a the
+right hand end point it is positive over the entire domain.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{basis.pdf}}  
+    \caption{Cubic spline basis functions and their first and second
+      derivatives. The dashed plots are for $f_5$ whose knot is
+      $t_5=3$.  Note that $t_k=0$ for $f_0,~f_1,~f_2$ and $f_3$, and
+      $t_4=2$.}
+  \label{fig:basis}
+\end{figure}
+
+Figure~\ref{fig:basis} also illustrates the symmetry of the right and
+left boundaries.  The knot location $t$ of each basis function is the
+point on the left where the function departs from zero.  There are
+four functions at $t=0$.  There are also four functions at $t=10$, but
+since their coefficients are always zero, they are not degrees of
+freedom in any fit.
+
 \subsection{Constraints}
 \label{sec:constraints}
 
 I require that the function $f$ be everywhere convex, monotonically
 decreasing and positive.  Since I am using cubic splines, the third
-derivative is piecewise constant, and the constraints are equivalent
-to the following:
+derivative is piecewise constant, and for the knot positions in
+Fig.~\ref{fig:basis} the constraints are equivalent to the following:
 \begin{description}
 \item[Second derivative positive at each knot] The matrix
   \setcounter{MaxMatrixCols}{12}
@@ -196,7 +226,16 @@ and dropping HOT, I write
   &= d^TD^TB^TBDd - 2 \epsilon^TBDd + \epsilon^T\epsilon \nonumber
 \end{align}
 Thus I seek $\hat d$ that minimizes $S(d)$ subject to the constraint
-\eqref{eq:constraint}.  This is the quadratic programming problem
+\eqref{eq:constraint}.  The following manipulations put the constraint
+in terms of $d$:
+\begin{align*}
+  \cf{_{_1}} &\equiv \cf{_{_0}} + d \\
+  G \cf{_{_1}} &= G \left( \cf{_{_0}} + d \right) \preceq 0 \\
+  G d &\preceq -G \cf{_{_0}} \equiv h
+\end{align*}
+
+
+This is the quadratic programming problem
 \begin{subequations}
   \label{eq:dhat}
   \begin{align}
@@ -207,7 +246,7 @@ Thus I seek $\hat d$ that minimizes $S(d)$ subject to the constraint
 with
 \begin{align*}
   P &= D^TB^TBD \\
-  q^T &= \epsilon^TBD \\
+  q^T &= -\epsilon^TBD \\
   h &= -G\cf
 \end{align*}
 where I've put \eqref{eq:dhat} in a form that matches
@@ -501,32 +540,6 @@ Thus the velocity as a function of radius is
 \end{equation*}
 and we can obtain the velocity as a function of time by numerical
 integration.
-
-\section{Splines}
-\label{sec:splines}
-
-From Fig.~\ref{fig:basis}, I conclude that the second derivative is
-affine between knots and that consequently if it is positive at the
-knots it is positive between them.  Further, if the second derivative
-is positive over the domain and the first derivative is positive at
-the right hand end point, the the function is monotonic and convex
-over the entire domain.
-\begin{figure}
-  \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{basis.pdf}}  
-    \caption{Cubic spline basis functions and their first and second
-      derivatives. The dashed plots are for $f_5$ whose knot is
-      $t_5=3$.  Note that $t_k=0$ for $f_0,~f_1,~f_2$ and $f_3$, and
-      $t_4=2$.}
-  \label{fig:basis}
-\end{figure}
-
-Figure~\ref{fig:basis} also illustrates the symmetry of the right and
-left boundaries.  The knot location $t$ of each basis function is the
-point on the left where the function departs from zero.  There are
-four functions at $t=0$.  There are also four functions at $t=10$, but
-since their coefficients are always zero, they are not degrees of
-freedom in any fit.
 
 \section*{Appendix}
 \label{sec:appendix}
