@@ -576,7 +576,7 @@ def main():
     study.set_eos_spline(study.x, study.eos(study.x))
     plot_dv_df(study, x, fig_d)
 
-    if False:
+    if True:
         fig_d.savefig('fig_d.pdf', format='pdf')
         fig_fve.savefig('fig_fve.pdf', format='pdf')
     else:
@@ -610,7 +610,6 @@ def test_gun_splines(gun):
     
     # Exercise/test GUN.set_eos_spline()
     gun.set_eos_spline(x,y)
-    gun.check()
 
     # Test closeness of spline to C/x^3 for f(x), v(x) and v(t)
     nt.assert_allclose(y, gun.eos(x))
@@ -686,17 +685,15 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
     ep_0 = gun.ep
     gun.set_eos(eos_0)
     d = np.zeros(len(d_hat))
-    S_0 = gun.func(d, scale=False)        # Original cost function
-    dS_0 = gun.d_func(d, scale=False)     # Derivative of S
-    constraint_0 = gun.constraint(d, scale=False) # Original constraint
+    S_0 = gun.func(d)        # Original cost function
+    G_0 = gun.G_matrix()
     ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
     f_0 = gun.eos(gun.x)                  # Original eos values
     
-    S_1 = gun.func(d_hat, scale=False)                # Updated cost function
-    dS_1 = gun.d_func(d_hat, scale=False)             # Derivative
-    constraint_1 = gun.constraint(d_hat, scale=False) # Updated constraint
-    
+    S_1 = gun.func(d_hat)                # Updated cost function
     gun.set_eos(eos_1)
+    G_1 = gun.G_matrix() # FixMe: Should devise test of G_0 and G_1
+    
     # Get epsilon for updated EOS
     gun.set_B_ep((v_exp,t_exp))
     ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
@@ -708,21 +705,12 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
     print('''lstsq reduced func from {0:.3e} to {1:.3e}
  and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
         S_0, S_1, ll_0, ll_1))
-
-    if 'constraints' in plot_files:
-        fig = plt.figure('constraints')
-        ax = fig.add_subplot(1,1,1)
-        ax.plot(constraint_0, label='Original constraints')
-        ax.plot(constraint_1, label='Updated constraints')
-        ax.legend()
-        fig.savefig(plot_files['constraints'],format='pdf')
     if 'errors' in plot_files:
         fig = plt.figure('errors')
         ax = fig.add_subplot(1,1,1)
         # Plot orignal errors
         fig = plt.figure('errors')
         ax = fig.add_subplot(1,1,1)
-        ax = new_ax('errors')
         ax.plot(t_exp*1e6, ep_0, label='Original velocity error ep')
         # Plot reduced errors
         ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
@@ -730,21 +718,6 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
         ax.set_ylabel(r'$v/(\rm{x/s})$')
         ax.legend(loc='lower right')
         fig.savefig(plot_files['errors'],format='pdf')
-    if 'd_func' in plot_files:
-        fig = plt.figure('d_func', figsize=(9,8))
-        ax = fig.add_subplot(2,1,1)
-        ax.plot(dS_0,label=r'$dS_0$')
-        ax.plot(dS_1,label=r'$dS_1$')
-        ax.legend(loc='lower left')
-        ax.set_xlabel(r'$i$')
-        ax.set_ylabel(r'$\frac{\partial F(c_f+d)}{\partial d[i]}$')
-        ax = fig.add_subplot(2,1,2)
-        ax.plot(gun.x,f_0,label=r'$f_0$')
-        ax.plot(gun.x,f_1,label=r'$f_1$')
-        ax.set_xlabel(r'$x/{\rm cm}$')
-        ax.set_ylabel(r'$f/{\rm dyne}$')
-        ax.legend()
-        fig.savefig(plot_files['d_func'],format='pdf')
     return 0
 def test_opt():
     ''' Exercise GUN.opt()
@@ -779,8 +752,10 @@ def test_opt():
     ax.plot(x,old_eos(x),label='f_0')
     ax.plot(x,gun.eos(x),label='f_1')
     ax.legend()
-    plt.show()
-    #fig.savefig('opt_result.pdf',format='pdf')  
+    ax.set_xlabel(r'$x/{\rm cm}$')
+    ax.set_ylabel(r'$f/{\rm dyn}$')
+    #plt.show()
+    fig.savefig('opt_result.pdf',format='pdf')  
     return 0 
    
 def test():
@@ -793,9 +768,6 @@ def test():
 
     test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
     G = gun.G_matrix()
-    print(G[:5,:4])
-    print(G[-5:,-4:])
-    #return 0
     eos_0 = gun.eos
     v_exp, t_exp = experiment()
     test_set_D(gun, 'D_test.pdf')
@@ -809,9 +781,7 @@ def test():
     
     # Exercise func, d_func and constraint and make plots for d_hat, etc
     plot_files = {
-        'constraints':'constraints_test.pdf',
         'errors':'errors_test.pdf',
-        'd_func':'d_func_test.pdf',
         }
     test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
     
@@ -823,6 +793,7 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
         #sys.exit(test())
+        test()
         sys.exit(test_opt())
     main()
 

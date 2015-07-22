@@ -24,7 +24,7 @@ def make_figure():
     np.set_printoptions(precision=3)
     for k in range(k_lim):
         c[k] = 1.0
-        s.set_c(c)
+        s.new_c(c)
         if k >= k_lim-2:
             print("k={0}\n f'[-1]={1}\n f[-1]={2}".format(
                 k, s.derivative(1)(t[-1]), s(t[-1])))

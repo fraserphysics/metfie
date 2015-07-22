@@ -360,72 +360,19 @@ not varied because they are fixed at 0.
   The difference between the simulated and measured velocities is
   $\epsilon$, and $d$ is the change in the vector of spline
   coefficients.  $BD$ is the derivative of the simulated velocities
-  wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = len(c_f)-4$.
-\item[d\_func] Derivative of the objective function,
-  \begin{equation*}
-    \partiald{S}{d} = -2(BD)^T(\epsilon - BD\cdot d)
-  \end{equation*}
-  See Fig.~\ref{fig:d_func_test}
-  \begin{figure}
-    \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{d_func_test.pdf}}  
-    \caption{The derivative of the objective function $S$ (see
-      Eqn.~\eqref{eq:sd}) with respect to $\cf[i]$ plotted against
-      $i$.  The first trace $dS_0$ is for the nominal EOS, and $dS_1$
-      is for the EOS from $\hat d$ that solves \eqref{eq:dhat}.  The
-      corresponding EOS functions appear in the lower plot.}
-    \label{fig:d_func_test}
-  \end{figure}
-\item[free\_opt] Solve Eqn.~\eqref{eq:dhat} for $d$ to obtain $\hat d$
-  using the SVD solver numpy.linalg.lstsq.  The solution appears in
-  Fig.~\ref{fig:d_hat_test}.
-  \begin{figure}
-    \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{d_hat_test.pdf}}  
-    \caption{The function $\hat d$ that solves Eqn.~\eqref{eq:dhat},
-      from gun.free\_opt().}
-    \label{fig:d_hat_test}
-  \end{figure}
-\item[constraint] Return the vector of constraint function values:
-  \begin{description}
-  \item[$r_{l} = \left. \frac{d^2 f}{d x^2} \right|_{x_i}~\forall l:~
-    0 \leq l < n_x$:]
-    The second derivative of $f$ wrt to $x$ at all $n_x$ unique knot
-    values for $x$.
-  \item[$r_{n_x} = - \left. \frac{d f}{d t} \right|_{x_{n_{x}-1}}$:]
-    Minus the derivative of $f$ at the last unique knot.
-  \item[$r_{n_x+1} = f(x_{n_{x}-1})$:] The value of $f$ at the last
-    unique knot.
-  \end{description}
-  If these constraints are satisfied, ie,
-  $r_i>=0~\forall i: 0 \leq i<n_x+2$, then the function $f$ is
-  positive, monotonic and convex over its entire domain.
-\item[calc\_d\_constraint] Calculate the derivative (wrt to $\cf$) of
-  the constraint function, store result as self.d\_constraint and
-  return it.
-  \begin{description}
-  \item[$r_{l,m} = \frac{d}{d \cf[m]} \left. \frac{d^2 f}{d x^2}
-    \right|_{x_l}~\forall l: 0 \leq l < n_x$:]
-    The derivative wrt $\cf$ of the second derivative of $f$ wrt to
-    $x$ at all $n_x$ unique knot values for $x$.
-\item[$r_{n_x,m} = - \frac{d}{d \cf[m]} \left. \frac{d f}{d x}
-    \right|_{x_{n_{x}-1}}$:]
-  \item[$r_{n_x+1,m} = \frac{d}{d \cf[m]} f(x_{n_{x}-1})$:]
-  \end{description}
+  wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = \text{len}(c_f)-4$.
 \item[opt] Do a constrained optimization step.  The goal of \emph{opt}
   is to find the change $d$ in spline coefficients $c_f$ that yields a
   function $f(c_f+d)$ that minimizes $F(f)$.  The key to \emph{opt} is
-  the following call to scipy.optimize.fmin\_slsqp
-  \lstinputlisting[language=Python, firstline=369,
-  lastline=380]{calc.py} The result appears in
-  Fig.~\ref{fig:opt_result} and is unsatisfactory compared to the
-  free\_opt result which yields Fig.~\ref{fig:d_func_test} which seems
-  only slightly non-convex.  Surely there is a better solution than
-  the initial function $f_0$.
+  a call to cvxopt.solvers.qp
+  \lstinputlisting[language=Python, firstline=327,
+  lastline=352]{calc.py} The result appears in
+  Fig.~\ref{fig:opt_result}.
   \begin{figure}
     \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{opt_result.pdf}}  
-    \caption{The function $\hat d$ returned by gun.opt().}
+    \resizebox{.7\columnwidth}{!}{\includegraphics{opt_result.pdf}}  
+    \caption{The function $f_1 = f_0 + \hat d$ returned by gun.opt()
+      compared to $f_0$.}
     \label{fig:opt_result}
   \end{figure}
 \end{description}
@@ -453,7 +400,7 @@ and the iterations approach the \emph{actual} function
 which was used to generate the simulated data.
 \begin{figure}
   \centering
-    %\resizebox{\columnwidth}{!}{\includegraphics{fig_d.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{fig_d.pdf}}  
     \caption{Illustration of the derivative of the velocity function
       with respect to the pressure function, $\frac{d v}{d p}$.  The
       second and third columns correspond variations of the
@@ -465,7 +412,7 @@ which was used to generate the simulated data.
 \end{figure}
 \begin{figure}
   \centering
-    %\resizebox{0.8\columnwidth}{!}{\includegraphics{fig_fve.pdf}}  
+    \resizebox{0.8\columnwidth}{!}{\includegraphics{fig_fve.pdf}}  
     \caption{Maximum likelihood estimation of $f$.  The \emph{true}
       EOS appears as \emph{actual} in the upper plot, and the
       optimization starts with the \emph{initial} and ends with
@@ -544,12 +491,12 @@ integration.
 \section*{Appendix}
 \label{sec:appendix}
 
-See other information in cmfSuite/doc/HE.tex
+See other information in cmfSuite/doc/HE.tex on moonlight.
 
 One may fetch source code for this project from Google code and build
 this document as follows:
 \begin{verbatim}
-->git clone https://code.google.com/p/metfie
+->git clone https://github.com/fraserphysics/metfie
 ->cd metfie/like_gun
 ->make notes.pdf
 \end{verbatim}
