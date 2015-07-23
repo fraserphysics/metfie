@@ -583,211 +583,211 @@ def main():
         plt.show()
     return
 
-# Test functions
-import numpy.testing as nt
-def test_spline():
-    x_s = np.linspace(0,2*np.pi,20)
-    y = np.sin(x_s)
-    f = Spline(x_s,y)
-    assert f.provenance.line == u'f = Spline(x_s,y)'
-    nt.assert_array_equal(f.get_c()[-4:], np.zeros(4))        
-    nt.assert_allclose(y, f(x_s), atol=1e-15)
+# # Test functions
+# import numpy.testing as nt
+# def test_spline():
+#     x_s = np.linspace(0,2*np.pi,20)
+#     y = np.sin(x_s)
+#     f = Spline(x_s,y)
+#     assert f.provenance.line == u'f = Spline(x_s,y)'
+#     nt.assert_array_equal(f.get_c()[-4:], np.zeros(4))        
+#     nt.assert_allclose(y, f(x_s), atol=1e-15)
 
-def test_gun_splines(gun):
-    '''test spline approximations of f(x) and v(t).  Side effects: Change eos
-    and t2v to splines.
-    '''
-    # Get some values for C/x^3 eos
-    x = gun.x
-    y = gun.eos(x)
-    v_a = gun.x_dot(x)
-    t2v_a = gun.set_t2v()
+# def test_gun_splines(gun):
+#     '''test spline approximations of f(x) and v(t).  Side effects: Change eos
+#     and t2v to splines.
+#     '''
+#     # Get some values for C/x^3 eos
+#     x = gun.x
+#     y = gun.eos(x)
+#     v_a = gun.x_dot(x)
+#     t2v_a = gun.set_t2v()
     
-    ts = t2v_a.get_t()
-    v = t2v_a(ts)
-    for i in range(len(ts)): # Test v(t) = 0 for t<0
-        assert ts[i] > 0 or abs(v[i]) < 1e-13
+#     ts = t2v_a.get_t()
+#     v = t2v_a(ts)
+#     for i in range(len(ts)): # Test v(t) = 0 for t<0
+#         assert ts[i] > 0 or abs(v[i]) < 1e-13
     
-    # Exercise/test GUN.set_eos_spline()
-    gun.set_eos_spline(x,y)
+#     # Exercise/test GUN.set_eos_spline()
+#     gun.set_eos_spline(x,y)
 
-    # Test closeness of spline to C/x^3 for f(x), v(x) and v(t)
-    nt.assert_allclose(y, gun.eos(x))
-    nt.assert_allclose(v_a, gun.x_dot(x))
-    nt.assert_allclose(v, gun.set_t2v()(ts), atol=1e-11)
-    return 0
-def test_set_D(gun, plot_file=None):
-    ''' Side effects:
-    Sets gun.D
+#     # Test closeness of spline to C/x^3 for f(x), v(x) and v(t)
+#     nt.assert_allclose(y, gun.eos(x))
+#     nt.assert_allclose(v_a, gun.x_dot(x))
+#     nt.assert_allclose(v, gun.set_t2v()(ts), atol=1e-11)
+#     return 0
+# def test_set_D(gun, plot_file=None):
+#     ''' Side effects:
+#     Sets gun.D
     
-    '''
-    n_f = len(gun.eos.get_c()) - magic.end
-    n_v = len(gun.t2v.get_c()) - magic.end
-    D = gun.set_D(fraction=1.0e-2) # 11.6 user seconds
-    assert D.shape == (n_v, n_f)
-    if plot_file == None:
-        return 0
-    fig = plt.figure('D', figsize=(7,5))
-    ax = fig.add_subplot(1,1,1)
-    for j in range(n_f):
-        ax.plot(D[:,j])
-    ax.set_xlabel(r'$k$')
-    ax.set_ylabel(r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)$')
-    fig.savefig(plot_file, format='pdf')
-    return 0
-def test_set_B_ep(gun, v_exp, t_exp, plot_file=None):
-    n_v = len(gun.t2v.get_c()) - magic.end
-    gun.set_B_ep((v_exp,t_exp))
-    assert len(gun.ep) == len(t_exp)
-    if plot_file == None:
-        return 0
-    t2v = gun.set_t2v()
-    ts = t2v.get_t()
-    v = t2v(ts)
-    fmt = 'B.shape={0} != ({1},{2}) = (len(t_exp), n_f)'.format
-    assert gun.B.shape == (len(t_exp), n_v),fmt(gun.B.shape, len(t_exp), n_v)
-    fig = plt.figure('v,t')
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(ts*1e6, v/1e5, label='simulation')
-    ax.plot(t_exp*1e6, v_exp/1e5, label='experiment')
-    ax.plot(t_exp*1e6, gun.ep/1e5, label=r'error $\epsilon$')
-    ax.set_xlabel(r'$t/(\mu \rm{sec})$')
-    ax.set_ylabel(r'$v/(\rm{km/s})$')
-    ax.legend(loc='upper left')
-    fig.savefig(plot_file,format='pdf')
-    return 0
-def test_set_BD(gun, plot_file=None, t_exp=None):
-    B = gun.B
-    D = gun.D
-    BD = np.dot(B, D)
-    gun.set_BD(BD)
-    if plot_file == None:
-        return 0
-    n_f = len(gun.eos.get_c()) - magic.end
-    fig = plt.figure('BD', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    for j in range(n_f):
-        ax.plot(t_exp*1e6, BD[:,j])
-    ax.set_xlabel(r'$t/(\mu \rm{sec})$')
-    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]} /(\rm{cm/s})$')
-    fig.savefig(plot_file,format='pdf')
-    return 0
-def plot_d_hat(d_hat):
-    fig = plt.figure('d_hat', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(d_hat)
-    ax.set_xlabel(r'$i$')
-    ax.set_ylabel(r'$\hat d[i]$')
-    fig.savefig('d_hat_test.pdf',format='pdf')
-    return 0
-def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
+#     '''
+#     n_f = len(gun.eos.get_c()) - magic.end
+#     n_v = len(gun.t2v.get_c()) - magic.end
+#     D = gun.set_D(fraction=1.0e-2) # 11.6 user seconds
+#     assert D.shape == (n_v, n_f)
+#     if plot_file == None:
+#         return 0
+#     fig = plt.figure('D', figsize=(7,5))
+#     ax = fig.add_subplot(1,1,1)
+#     for j in range(n_f):
+#         ax.plot(D[:,j])
+#     ax.set_xlabel(r'$k$')
+#     ax.set_ylabel(r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)$')
+#     fig.savefig(plot_file, format='pdf')
+#     return 0
+# def test_set_B_ep(gun, v_exp, t_exp, plot_file=None):
+#     n_v = len(gun.t2v.get_c()) - magic.end
+#     gun.set_B_ep((v_exp,t_exp))
+#     assert len(gun.ep) == len(t_exp)
+#     if plot_file == None:
+#         return 0
+#     t2v = gun.set_t2v()
+#     ts = t2v.get_t()
+#     v = t2v(ts)
+#     fmt = 'B.shape={0} != ({1},{2}) = (len(t_exp), n_f)'.format
+#     assert gun.B.shape == (len(t_exp), n_v),fmt(gun.B.shape, len(t_exp), n_v)
+#     fig = plt.figure('v,t')
+#     ax = fig.add_subplot(1,1,1)
+#     ax.plot(ts*1e6, v/1e5, label='simulation')
+#     ax.plot(t_exp*1e6, v_exp/1e5, label='experiment')
+#     ax.plot(t_exp*1e6, gun.ep/1e5, label=r'error $\epsilon$')
+#     ax.set_xlabel(r'$t/(\mu \rm{sec})$')
+#     ax.set_ylabel(r'$v/(\rm{km/s})$')
+#     ax.legend(loc='upper left')
+#     fig.savefig(plot_file,format='pdf')
+#     return 0
+# def test_set_BD(gun, plot_file=None, t_exp=None):
+#     B = gun.B
+#     D = gun.D
+#     BD = np.dot(B, D)
+#     gun.set_BD(BD)
+#     if plot_file == None:
+#         return 0
+#     n_f = len(gun.eos.get_c()) - magic.end
+#     fig = plt.figure('BD', figsize=(7,6))
+#     ax = fig.add_subplot(1,1,1)
+#     for j in range(n_f):
+#         ax.plot(t_exp*1e6, BD[:,j])
+#     ax.set_xlabel(r'$t/(\mu \rm{sec})$')
+#     ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]} /(\rm{cm/s})$')
+#     fig.savefig(plot_file,format='pdf')
+#     return 0
+# def plot_d_hat(d_hat):
+#     fig = plt.figure('d_hat', figsize=(7,6))
+#     ax = fig.add_subplot(1,1,1)
+#     ax.plot(d_hat)
+#     ax.set_xlabel(r'$i$')
+#     ax.set_ylabel(r'$\hat d[i]$')
+#     fig.savefig('d_hat_test.pdf',format='pdf')
+#     return 0
+# def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
 
-    ep_0 = gun.ep
-    gun.set_eos(eos_0)
-    d = np.zeros(len(d_hat))
-    S_0 = gun.func(d)        # Original cost function
-    G_0 = gun.G_matrix()
-    ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
-    f_0 = gun.eos(gun.x)                  # Original eos values
+#     ep_0 = gun.ep
+#     gun.set_eos(eos_0)
+#     d = np.zeros(len(d_hat))
+#     S_0 = gun.func(d)        # Original cost function
+#     G_0 = gun.G_matrix()
+#     ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
+#     f_0 = gun.eos(gun.x)                  # Original eos values
     
-    S_1 = gun.func(d_hat)                # Updated cost function
-    gun.set_eos(eos_1)
-    G_1 = gun.G_matrix() # FixMe: Should devise test of G_0 and G_1
+#     S_1 = gun.func(d_hat)                # Updated cost function
+#     gun.set_eos(eos_1)
+#     G_1 = gun.G_matrix() # FixMe: Should devise test of G_0 and G_1
     
-    # Get epsilon for updated EOS
-    gun.set_B_ep((v_exp,t_exp))
-    ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
-    f_1 = gun.eos(gun.x)                  # Updated eos values
+#     # Get epsilon for updated EOS
+#     gun.set_B_ep((v_exp,t_exp))
+#     ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
+#     f_1 = gun.eos(gun.x)                  # Updated eos values
 
-    if plot_files == None:
-        return 0
+#     if plot_files == None:
+#         return 0
     
-    print('''lstsq reduced func from {0:.3e} to {1:.3e}
- and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
-        S_0, S_1, ll_0, ll_1))
-    if 'errors' in plot_files:
-        fig = plt.figure('errors')
-        ax = fig.add_subplot(1,1,1)
-        # Plot orignal errors
-        fig = plt.figure('errors')
-        ax = fig.add_subplot(1,1,1)
-        ax.plot(t_exp*1e6, ep_0, label='Original velocity error ep')
-        # Plot reduced errors
-        ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
-        ax.set_xlabel(r'$t/(\mu\rm{sec})$')
-        ax.set_ylabel(r'$v/(\rm{x/s})$')
-        ax.legend(loc='lower right')
-        fig.savefig(plot_files['errors'],format='pdf')
-    return 0
-def test_opt():
-    ''' Exercise GUN.opt()
-    '''
-    # Set up gun with spline eos
-    gun = GUN()
-    gun.set_eos_spline(gun.x,gun.eos(gun.x))
-    old_eos = gun.eos
+#     print('''lstsq reduced func from {0:.3e} to {1:.3e}
+#  and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
+#         S_0, S_1, ll_0, ll_1))
+#     if 'errors' in plot_files:
+#         fig = plt.figure('errors')
+#         ax = fig.add_subplot(1,1,1)
+#         # Plot orignal errors
+#         fig = plt.figure('errors')
+#         ax = fig.add_subplot(1,1,1)
+#         ax.plot(t_exp*1e6, ep_0, label='Original velocity error ep')
+#         # Plot reduced errors
+#         ax.plot(t_exp*1e6, gun.ep, label='New velocity error')
+#         ax.set_xlabel(r'$t/(\mu\rm{sec})$')
+#         ax.set_ylabel(r'$v/(\rm{x/s})$')
+#         ax.legend(loc='lower right')
+#         fig.savefig(plot_files['errors'],format='pdf')
+#     return 0
+# def test_opt():
+#     ''' Exercise GUN.opt()
+#     '''
+#     # Set up gun with spline eos
+#     gun = GUN()
+#     gun.set_eos_spline(gun.x,gun.eos(gun.x))
+#     old_eos = gun.eos
 
-    # Make experimental data
-    vt = experiment()
+#     # Make experimental data
+#     vt = experiment()
     
-    gun.set_B_ep(vt)
-    error_0 = gun.ep
-    d_hat = gun.opt(vt)
-    gun.set_B_ep(vt)
-    error_1 = gun.ep
-    #d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
-    fig = plt.figure('opt_result', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(d_hat)
-    ax.set_xlabel(r'$i$')
-    ax.set_ylabel(r'$\hat d[i]$')
-    fig = plt.figure('errors', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(error_0,label='error_0')
-    ax.plot(error_1,label='error_1')
-    ax.legend()
-    fig = plt.figure('eos', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    x = gun.x
-    ax.plot(x,old_eos(x),label='f_0')
-    ax.plot(x,gun.eos(x),label='f_1')
-    ax.legend()
-    ax.set_xlabel(r'$x/{\rm cm}$')
-    ax.set_ylabel(r'$f/{\rm dyn}$')
-    #plt.show()
-    fig.savefig('opt_result.pdf',format='pdf')  
-    return 0 
+#     gun.set_B_ep(vt)
+#     error_0 = gun.ep
+#     d_hat = gun.opt(vt)
+#     gun.set_B_ep(vt)
+#     error_1 = gun.ep
+#     #d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
+#     fig = plt.figure('opt_result', figsize=(7,6))
+#     ax = fig.add_subplot(1,1,1)
+#     ax.plot(d_hat)
+#     ax.set_xlabel(r'$i$')
+#     ax.set_ylabel(r'$\hat d[i]$')
+#     fig = plt.figure('errors', figsize=(7,6))
+#     ax = fig.add_subplot(1,1,1)
+#     ax.plot(error_0,label='error_0')
+#     ax.plot(error_1,label='error_1')
+#     ax.legend()
+#     fig = plt.figure('eos', figsize=(7,6))
+#     ax = fig.add_subplot(1,1,1)
+#     x = gun.x
+#     ax.plot(x,old_eos(x),label='f_0')
+#     ax.plot(x,gun.eos(x),label='f_1')
+#     ax.legend()
+#     ax.set_xlabel(r'$x/{\rm cm}$')
+#     ax.set_ylabel(r'$f/{\rm dyn}$')
+#     #plt.show()
+#     fig.savefig('opt_result.pdf',format='pdf')  
+#     return 0 
    
-def test():
+# def test():
 
-    # test_spline()
-    # Test __init__ _set_N, set_eos and E methods of GUN
-    gun = GUN()
-    s = '{0:.1f}'.format(gun.E(4))
-    assert s  == '79200000000.0','gun.E(4)={0}'.format(s)
+#     # test_spline()
+#     # Test __init__ _set_N, set_eos and E methods of GUN
+#     gun = GUN()
+#     s = '{0:.1f}'.format(gun.E(4))
+#     assert s  == '79200000000.0','gun.E(4)={0}'.format(s)
 
-    test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
-    G = gun.G_matrix()
-    eos_0 = gun.eos
-    v_exp, t_exp = experiment()
-    test_set_D(gun, 'D_test.pdf')
-    test_set_B_ep(gun, v_exp, t_exp, 'vt_test.pdf')
-    test_set_BD(gun, 'BD_test.pdf', t_exp)
+#     test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
+#     G = gun.G_matrix()
+#     eos_0 = gun.eos
+#     v_exp, t_exp = experiment()
+#     test_set_D(gun, 'D_test.pdf')
+#     test_set_B_ep(gun, v_exp, t_exp, 'vt_test.pdf')
+#     test_set_BD(gun, 'BD_test.pdf', t_exp)
     
-    # Solve BD*d=epsilon for d without constraints
-    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
-    plot_d_hat(d_hat)
-    eos_1 = gun.eos
+#     # Solve BD*d=epsilon for d without constraints
+#     d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
+#     plot_d_hat(d_hat)
+#     eos_1 = gun.eos
     
-    # Exercise func, d_func and constraint and make plots for d_hat, etc
-    plot_files = {
-        'errors':'errors_test.pdf',
-        }
-    test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
+#     # Exercise func, d_func and constraint and make plots for d_hat, etc
+#     plot_files = {
+#         'errors':'errors_test.pdf',
+#         }
+#     test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
     
-    #plt.show()
-    # FixMe: What about derivative of constraint?
-    return 0
+#     #plt.show()
+#     # FixMe: What about derivative of constraint?
+#     return 0
     
 if __name__ == "__main__":
     import sys
