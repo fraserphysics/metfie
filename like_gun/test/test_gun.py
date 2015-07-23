@@ -157,7 +157,7 @@ class TestGunSpline(unittest.TestCase):
     #end
 #end 
 
-# @unittest.skip('Computationally expensive D matrix tests skipped')
+@unittest.skip('Computationally expensive D matrix tests skipped')
 class TestSetD(unittest.TestCase):
     """
 
@@ -245,14 +245,14 @@ class test_B_matrix(unittest.TestCase):
 
     """
 
-    def setUp():
+    def setUp(self):
         self.gun = GUN()
         x = self.gun.x 
         y = self.gun.eos(x)
         self.gun.set_eos_spline(x,y)
     #end
 
-    def tearDown():
+    def tearDown(self):
         pass
 
     def test_gun_err_size(self):
@@ -266,7 +266,7 @@ class test_B_matrix(unittest.TestCase):
         v_exp, t_exp = experiment()
         self.gun.set_B_ep((v_exp,t_exp))
         
-        self.assertEqual(len(gun.ep), len(t_exp), 
+        self.assertEqual(len(self.gun.ep), len(t_exp), 
                 msg = "Length of error vecotr and t_exp do not match")
 
 
