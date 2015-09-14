@@ -34,6 +34,8 @@
 \newcommand\tsim{{\mathbf t}_{\rm{sim}}}
 \newcommand\DVDf{\partiald{\Vt}{f}}
 \newcommand\Lbb{\mathbb{L}}
+\newcommand\epv{\epsilon_v}
+\newcommand\epf{\epsilon_f}
 \title{Notes on EOS Estimation Code}
 
 \author{Andrew M.\ Fraser}
@@ -79,9 +81,12 @@ to estimate a new model, $\fhat$.
   experimental sample times.
 \item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; expensive
   to evaluate.  $\DVDf (\texp)$ is represented by the matrix $BD$.
-\item[$\epsilon$] The vector of differences between the measured
+\item[$\epv$] The vector of differences between the measured
   velocities and the simulated velocities at the times of the
   measurements.
+\item[$\epf$] The vector of differences between the original
+  coefficients $c_f$ and the current estimate of the coefficients.
+  measurements (see \eqref{eq:epf}).
 \item[$i,j,k$:] Indices: $j$ for experimental sample times; $k$ for
   the velocity basis functions $\vbasis[k]$ and their coefficients
   $\cv[k]$; And $i$ for the EOS basis functions and their coefficients
@@ -214,16 +219,16 @@ where $f+\delta = \sum_i (\cf[i] + d[i])\fbasis[i]$, and
 Defining
 \begin{equation}
   \label{eq:epsilon}
-  \epsilon[j] \equiv \vexp[j] - \Vt_f(\texp[j])
+  \epv[j] \equiv \vexp[j] - \Vt_f(\texp[j])
 \end{equation}
 and dropping HOT, I write
 \begin{align}
-  S(d) &\equiv \tilde S(d) - \text{HOT} = \sum_j \left( \epsilon[j] -
+  S(d) &\equiv \tilde S(d) - \text{HOT} = \sum_j \left( \epv[j] -
   \sum_i \sum_k \partiald{\cv[k]}{\cf[i]}d[i]\vbasis[k](\texp[j])
   \right)^2 \nonumber \\
   \label{eq:sd}
-  &= (\epsilon - BDd)^T(\epsilon - BDd)\\
-  &= d^TD^TB^TBDd - 2 \epsilon^TBDd + \epsilon^T\epsilon \nonumber
+  &= (\epv - BDd)^T(\epv - BDd)\\
+  &= d^TD^TB^TBDd - 2 \epv^TBDd + \epv^T\epv \nonumber
 \end{align}
 Thus I seek $\hat d$ that minimizes $S(d)$ subject to the constraint
 \eqref{eq:constraint}.  The following manipulations put the constraint
@@ -240,13 +245,14 @@ This is the quadratic programming problem
   \label{eq:dhat}
   \begin{align}
     \text{Minimize } & \frac{1}{2} d^T P d + q^T d \\
+  \label{eq:dhatb}
     \text{Subject to } & Gd \preceq h
   \end{align}
 \end{subequations}
 with
 \begin{align*}
   P &= D^TB^TBD \\
-  q^T &= -\epsilon^TBD \\
+  q^T &= -\epv^TBD \\
   h &= -G\cf
 \end{align*}
 where I've put \eqref{eq:dhat} in a form that matches
@@ -256,42 +262,67 @@ where I've put \eqref{eq:dhat} in a form that matches
 \label{sec:app}
 
 I use Gaussians with constant diagonal covariances for priors and
-likelihood as follows:
+likelihood, and I will iterate to maximize the a posteriori
+probability starting from a prior model for the coefficients with a
+mean $c_{\fnom}$ and variance $\Sigma_f$.  If after a number of
+iterations the estimate of $f$ is given by $c_f$, I will consider
+changes $\delta$ to $f$ implemented by changes $d$ to $c_f$.  The
+prior distribution for the variable $d$ is
 \begin{align}
-\vexp,\texp | f+\delta &\sim
-\normal{\vexp-\Vt_{f+\delta}(\texp)}{\Sigma_v} \\
-\cf+d &\sim \normal{\cf+d - c_{\fnom}}{\Sigma_f}
+  \cf+d &\sim \normal{\cf+d - c_{\fnom}}{\Sigma_f} \nonumber \\
+  \label{eq:priord}
+  d &\sim \normal{d - \epf}{\Sigma_f}
 \end{align}
-Up to irrelevant constants $K$ the log probabilities are:
+where
+\begin{equation}
+  \label{eq:epf}
+  \epf \equiv c_{\fnom} - c_f,
+\end{equation}
+and its likelihood is
+\begin{equation}
+  \label{eq:liked}
+  \vexp,\texp | d \sim
+  \normal{\vexp-\Vt_{f+\delta(d)}(\texp)}{\Sigma_v}.
+\end{equation}
+From \eqref{eq:taylor} I use the first order (ie, affine)
+approximation
+\begin{equation*}
+  \Vt_{f+\delta(d)}(\texp) \approx \epv - BDd,
+\end{equation*}
+and write the log probabilities:
 \begin{align}
-  L_c(\cf+d) & \equiv \log(K_2) + \log \left(\Prob(\cf+d) \right)\\
-  & = \normalexp{\cf+d}{c_{\fnom}}{\Sigma_f}\\
+  L_c(\cf+d) & \equiv \log(K_2) + \log \left(\Prob(d) \right)\nonumber\\
+  \label{eq:L_c}
+  & = \log(K_2) + \normalexp{d}{\epf}{\Sigma_f}\\
   L_v(\Vt_{f+\delta}) & \equiv \log(K_1) + \log
-  \left(\Prob(\vexp,\texp | f+\delta) \right)
-  \nonumber \\
-  & = \normalexp{\vexp}{\Vt_{f+\delta}(\texp)}{\Sigma_v} \\
-  &= \normalexp{\epsilon}{BDd}{\Sigma_v}.
+  \left(\Prob(\vexp,\texp | f+\delta) \right) \nonumber\\
+  \label{eq:L_v}
+  &\approx \log(K_1) + \normalexp{BDd}{\epv}{\Sigma_v}.
 \end{align}
 
 Given $f$ (in terms of $\cf$) and the functions $\Vt$, $\DVDf$, etc.\
 that depend on it, an optimization step consists of ignoring the
-\emph{higher order terms} (HOT) and solving for the vector $d$ that
-maximizes
-\begin{equation}
+\emph{higher order terms} (HOT) in $\Vt_{f+\delta}$ and solving for
+the vector $d$ that maximizes
+\begin{align}
   \label{eq:L}
-  \Lbb(\cf,d) = L_c(\cf + d) + L_v(\Vt_{f+\delta}(\texp)).
-\end{equation}
-Differentiating, I find
-\begin{align*}
-  \partiald{\Lbb(\cf,d)}{d} &= (c_{\fnom} - \cf - d)^T
-  \Sigma^{-1}_f + (\epsilon - BDd)^T \Sigma_v^{-1}BD.
-\end{align*}
-Thus I seek $\hat d$ that solves
-\begin{equation}
-  \label{eq:dmap}
-  (BD)^T\Sigma_v^{-1}\epsilon + \Sigma_f^{-1} (c_{\tilde f} - \cf) = 
-  \left((BD)^T\Sigma_v^{-1}BD + \Sigma_f^{-1} \right) \hat d.
-\end{equation}
+  \Lbb(\cf,d) &= L_c(\cf + d) + L_v(\Vt_{f+\delta}(\texp)) \\
+  & \equiv -\frac{1}{2} d^T P d - q^T d -
+    \frac{1}{2} R
+\end{align}
+subject to the constraints \eqref{eq:dhatb}.  Manipulation of
+\eqref{eq:L_c} and \eqref{eq:L_v} yields
+\label{eq:PqR}
+\begin{subequations}
+  \begin{align}
+    P &= \Sigma_f^{-1} + (BD)^T \Sigma_v^{-1} BD \\
+    q^T &= (\cf - c_{\tilde f})^T \Sigma_f^{-1} - \epv^T
+          \Sigma_v^{-1} BD  \\
+    \label{eq:R}
+    R &= (\cf - c_{\tilde f})^T \Sigma_f^{-1} (\cf - c_{\tilde f}) +
+        \epv^T \Sigma_v^{-1} \epv.
+  \end{align}
+\end{subequations}
 
 \subsection{The Code \emph{calc.py}}
 \label{sec:code}
@@ -355,10 +386,10 @@ not varied because they are fixed at 0.
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
   \begin{equation*}
-    S(d) = \left| \epsilon - BD\cdot d \right|^2.
+    S(d) = \left| \epv - BD\cdot d \right|^2.
   \end{equation*}
   The difference between the simulated and measured velocities is
-  $\epsilon$, and $d$ is the change in the vector of spline
+  $\epv$, and $d$ is the change in the vector of spline
   coefficients.  $BD$ is the derivative of the simulated velocities
   wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = \text{len}(c_f)-4$.
 \item[opt] Do a constrained optimization step.  The goal of \emph{opt}
