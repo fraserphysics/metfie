@@ -4,7 +4,8 @@ in parent directory.  Goals are:
 1. Develop, analyze and understand a procedure for estimating an
 isentrope on the basis of data and simulations.
 
-2. Demonstrate provenance tracking
+2. Demonstrate provenance tracking using Component, Provenance and Float
+   from cmf_models
 
 Run using python2 and scipy 0.14
 
@@ -135,6 +136,18 @@ class GUN:
         self.components = set(('C','xi','xf','m'))
         # Set of component instance names for exercising provenance tracking
         return
+    def opt_init(self):
+        ''' Assign the following to self:
+        original_eos: Serves as mean of prior
+        Sigma_f_inv:  Inverse covariance of prior
+        U_inv:        Preconditioner for optimization
+        '''
+        import copy
+        self.original_eos = copy.deepcopy(self.eos)
+        c_f = self.original_eos.get_c()[:-magic.end]
+        dev_f = 0.005*c_f # Sam Shaw's 1/2%
+        self.Sigma_f_inv = np.diag(1.0/(dev_f*dev_f))
+        self.U_inv = np.diag(dev_f)
     def _set_N(
             self,                 # GUN instance
             N,                    # Number of intervals between xi and xf
@@ -162,7 +175,7 @@ barrel and the forces at those positons respectively. '''
 # t[4]=x[2].  Similarly the last 4 knots are at x[-1] and t[-5]=x[-3].
         self.eos = Spline(x, f, s)
         self.components.add('eos')
-        return
+        return self.eos
     def E(self, # GUN instance
           x     # Scalar position at which to calculate energy
           ):
@@ -271,17 +284,16 @@ barrel and the forces at those positons respectively. '''
             delta_t2v = self.t2v.new_c(c_)
             self.B[:,j] = delta_t2v(t)
             c_[j] = 0.0
-    def set_BD(self, BD):
-        '''For testing'''
-        self.BD = BD
-    def func(self, d):
-        '''The objective function, S(d) in notes.tex.
+        return self.B, self.ep
+    def func(self, d, BD):
+        '''The linearized objective function, S(d), in notes.tex.
         '''
-        r = self.ep - np.dot(self.BD,d) # Residual
+        r = self.ep - np.dot(BD,d) # Residual
         return float(np.dot(r.T,r))
-    def G_matrix(self):
-        ''' Get constraint matrix G.  The constraint enforced by
-        cvxopt.solvers.qp is
+    def Gh(self):
+        ''' Calculate and return constraint matrix G and vector h.  The
+        constraint enforced by cvxopt.solvers.qp is
+        
         Gx leq_component_wise h
 
         Want the following constraints:
@@ -292,7 +304,8 @@ barrel and the forces at those positons respectively. '''
         
         '''
         original_eos = self.eos
-        dim = len(original_eos.get_c()) - magic.end
+        new_c = self.eos.get_c().copy()
+        dim = len(new_c) - magic.end
         t_all = self.eos.get_t()
         t_unique = t_all[magic.end-1:1-magic.end]
         c = np.zeros(dim + magic.end)
@@ -306,58 +319,65 @@ barrel and the forces at those positons respectively. '''
             G[-1,i] = -f(t_unique[-1])
             c[i] = 0.0
         self.eos = original_eos
-        return G
+        h = -np.dot(G,new_c[:-magic.end])
+        return G,h
+    def Pq(self, BD, ep_f, ep_v):
+        '''From the section "A Posteriori Probability" of notes.tex,
+
+        P = Sigma_f^{-1} + (BD)^T Sigma^{-1}_v BD
+        q^T = ep_f^T Sigma_f^{-1} - ep_v^T Sigma_v^{-1} BD
+        R = ep_f^T Sigma_f^{-1} ep_f + ep_v^T Sigma_v^{-1} ep_v
+
+        This method returns R and preconditioned P and q, namely:
+
+        \tilde P = U^{-1} P U^{-1} (variable t_P here)
+        \tilde q^T = q^T U^{-1} (variable t_q here)
+        '''
+
+        UIS = np.dot(self.U_inv, self.Sigma_f_inv) # U^{-1} Sigma_f^{-1}
+        BDUI = np.dot(BD, self.U_inv)              # BD  U^{-1}
+        t_P = np.dot(UIS,self.U_inv) + np.dot(BDUI.T/self.sigma_sq_v,BDUI)
+        t_q = np.dot(ep_f, UIS.T)-np.dot(ep_v/self.sigma_sq_v, BDUI)
+        return t_P,t_q
     def opt(
-            self, # GUN instance
-            vt,   # Simulated experimental data
+            self,        # GUN instance
+            vt,          # Simulated experimental data
             ):
         ''' Does a constrained optimization step.
+
+            minimize (1/2) x^TPx + q^T x
+            ubject to G x \preceq h (\preceq is \leq for each component)
         '''
         # Takes ~ 20 seconds on watcher
         from cvxopt import matrix, solvers
         solvers.options['maxiters']=1000 # 100 default
         solvers.options['feastol']=1e-12
-        solvers.options['show_progress']=False
+        solvers.options['show_progress']=True#False
         # default, 1e-7 allows non-monotonic, 1e-16 -> "singular KKT matrix"
 
-        # Make self.BD and self.ep
-        self.set_D() # Expensive
-        self.set_B_ep(vt)
-        self.BD = np.dot(self.B, self.D)
-
-        # P is quadratic term in form used by cvxopt.solvers.qp
-        P = np.dot(self.BD.T,self.BD)
-        # Calculate reg, an attempt to regularize problem
-        from numpy import linalg as LA
-        vals = LA.eigvalsh(P)
-        max_val = float(vals.max())
-        reg = np.eye(len(vals))*max_val/1e10 # /1e13 -> rough d_hat
-        # FixMe: do MAP with prior instead
-
-        # Calculate G and h for use by cvxopt.solvers.qp
-        G = self.G_matrix()
-        G *= max_val/float(G.max()) # Make objective and constraint
-                                    # rougly the same scale
-        new_c = self.eos.get_c().copy()
-
-        # Put P, h, G and h in cvxopt.matrix form
-        P = matrix(P+reg)
-        G = matrix(G)
-        q = matrix(-np.dot(self.BD.T,self.ep))
-        h = matrix(-np.dot(G,new_c[:-magic.end]))
-        
-        # minimize (1/2) x^TPx + q^T x
-        # subject to G x \preceq h (\preceq is \leq for each component)
-        sol=solvers.qp(P, q, G, h )
-        #sol=solvers.qp(P, q)  # Unconstrained optimization
+        D = self.set_D() # Expensive
+        B,ep_v = self.set_B_ep(vt)
+        ep_f = (self.eos.get_c() - self.original_eos.get_c())[:-magic.end]
+        BD = np.dot(B, D)
+        P,q = self.Pq(BD, ep_f, ep_v) # P and q are preconditioned
+        G,h = self.Gh()
+        G = np.dot(G, self.U_inv)
+        #sol=solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h) )
+        sol=solvers.qp(matrix(P), matrix(q))  # Unconstrained optimization
         if sol['status'] != 'optimal':
             for key,value in sol.items():
                 print(key, value)
             raise RuntimeError
-        d_hat = np.array(sol['x']).reshape(-1)
+        z = np.array(sol['x']).reshape(-1)
+        d_hat = np.dot(self.U_inv, z)
+        new_c = self.eos.get_c().copy()
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.new_c(new_c)
-        return d_hat
+        B,ep_v = self.set_B_ep(vt)
+        ep_f = (new_c - self.original_eos.get_c())[:-magic.end]
+        quad = lambda M, v: np.dot(v, np.dot(M,v)) # Quadratic
+        cost = quad(1.0/self.sigma_sq_v, ep_v) + quad(self.Sigma_f_inv, ep_f)
+        return cost, d_hat
     def free_opt(
             self, # GUN instance
             vt,   # Simulated experimental data
@@ -367,12 +387,12 @@ barrel and the forces at those positons respectively. '''
         ''' 
         from numpy.linalg import lstsq
         new_c = self.eos.get_c().copy()
-        self.set_B_ep(vt)
-        BD = np.dot(self.B, self.set_D())
-        d_hat = lstsq(BD, self.ep, rcond=rcond)[0]
+        B,ep = self.set_B_ep(vt)
+        BD = np.dot(B, self.set_D())
+        d_hat = lstsq(BD, ep, rcond=rcond)[0]
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.new_c(new_c)
-        return d_hat
+        return -self.log_like(vt), d_hat
     def log_like(
             self, # GUN instance
             vt,   # Arrays of measured times and velocities
@@ -381,25 +401,12 @@ barrel and the forces at those positons respectively. '''
 
             L(m) = log(p(v|m)) =\sum_t - \frac{(v-m)^2}{2\sigma^2}
 
-            g = dL/dm = \frac{v-m}{\sigma^2}
-
-            h = \frac{d^2 L(m + ag)}{d a^2} = -\frac{1}{\sigma^2}
-
-        This problem is easy because H is -\frac{1}{\sigma^2}\cdot I
-        In general:
-
-            m_hat = m + H^{-1} g
-
-        Return: L, g, h
         '''
         v,t = vt
         t2v = self.set_t2v()
         m = t2v(t)
         d = v-m
-        g = d/self.sigma_sq_v
-        L = -np.dot(d,g)/2
-        h = -1.0/self.sigma_sq_v
-        return L, g, h
+        return -np.dot(d/self.sigma_sq_v,d)/2
 def plot_f_v_e(
         data, # Tuple with elements (mod,(x,y,name))
         t,   # "Experimental" times
@@ -528,29 +535,35 @@ def experiment(plot_data=None):
     return (v, t)
 def best_fit(vt, constrained=True):
     '''Create new gun, adjust spline description of eos to make simulated
-    velocities match vt and return adjusted gun.
+    velocities match "experimental" data vt and return adjusted gun.
     '''
     gun = GUN(N=magic.fit_dim)
     # Start with spline approximation to nominal eos
     gun.set_eos_spline(gun.x, gun.eos(gun.x))
-    last, g,h = gun.log_like(vt)
-    print('L[-1]=%e'%(last,))
-    e = []
+    eps = []
+    costs = []
+    gun.opt_init() # Creates prior and preconditioner
     for i in range(magic.like_iter):
         old_eos = gun.eos
         if constrained:
-            gun.opt(vt)
+            cost, d_hat = gun.opt(vt)      # -log a posteriori probability
         else:
-            gun.free_opt(vt)
-        e.append(gun.ep)
-        L, g, h = gun.log_like(vt)
-        Delta = L - last
-        print('L[%2d]=%e, delta=%e'%(i,L,Delta))
-        if Delta <= abs(L)*magic.converge:
-            gun.eos = old_eos
-            e.pop()
-            return gun,e
-        last=L
+            cost, d_hat = gun.free_opt(vt) # -log likelihood
+        eps.append(gun.ep)
+        costs.append(cost)
+        if i == 0:
+            tol = abs(cost)*magic.converge
+            print('initial cost={0}'.format(cost))
+            last = cost
+            continue
+        Delta = last - cost # Should be positive
+        print('cost[%2d]=%e, delta=%e'%(i,cost,Delta))
+        if Delta <= tol:
+            if Delta < 0:
+                gun.eos = old_eos
+                eps.pop()
+            return gun,eps
+        last=cost
     raise RuntimeError('best_fit failed to converge')
 def main():
     ''' Diagnostic plots
@@ -656,24 +669,8 @@ def test_set_B_ep(gun, v_exp, t_exp, plot_file=None):
     ax.legend(loc='upper left')
     fig.savefig(plot_file,format='pdf')
     return 0
-def test_set_BD(gun, plot_file=None, t_exp=None):
-    B = gun.B
-    D = gun.D
-    BD = np.dot(B, D)
-    gun.set_BD(BD)
-    if plot_file == None:
-        return 0
-    n_f = len(gun.eos.get_c()) - magic.end
-    fig = plt.figure('BD', figsize=(7,6))
-    ax = fig.add_subplot(1,1,1)
-    for j in range(n_f):
-        ax.plot(t_exp*1e6, BD[:,j])
-    ax.set_xlabel(r'$t/(\mu \rm{sec})$')
-    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]} /(\rm{cm/s})$')
-    fig.savefig(plot_file,format='pdf')
-    return 0
-def plot_d_hat(d_hat):
-    fig = plt.figure('d_hat', figsize=(7,6))
+def plot_d_hat(d_hat, title='d_hat'):
+    fig = plt.figure(title, figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(d_hat)
     ax.set_xlabel(r'$i$')
@@ -684,20 +681,24 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
 
     ep_0 = gun.ep
     gun.set_eos(eos_0)
+    D = gun.set_D() # Expensive
+    vt = (v_exp, t_exp)
+    B,ep_v = gun.set_B_ep(vt)
+    BD = np.dot(B, D)
     d = np.zeros(len(d_hat))
-    S_0 = gun.func(d)        # Original cost function
-    G_0 = gun.G_matrix()
-    ll_0 = gun.log_like((v_exp,t_exp))[0] # Original log likelihood
-    f_0 = gun.eos(gun.x)                  # Original eos values
+    S_0 = gun.func(d, BD)        # Original cost function
+    G_0,h = gun.Gh()
+    ll_0 = gun.log_like((v_exp,t_exp))  # Original log likelihood
+    f_0 = gun.eos(gun.x)                # Original eos values
     
-    S_1 = gun.func(d_hat)                # Updated cost function
+    S_1 = gun.func(d_hat, BD)           # Updated cost function
     gun.set_eos(eos_1)
-    G_1 = gun.G_matrix() # FixMe: Should devise test of G_0 and G_1
+    G_1,h = gun.Gh() # FixMe: Should devise test of G_0 and G_1
     
     # Get epsilon for updated EOS
     gun.set_B_ep((v_exp,t_exp))
-    ll_1 = gun.log_like((v_exp,t_exp))[0] # Updated log likelihood
-    f_1 = gun.eos(gun.x)                  # Updated eos values
+    ll_1 = gun.log_like((v_exp,t_exp))  # Updated log likelihood
+    f_1 = gun.eos(gun.x)                # Updated eos values
 
     if plot_files == None:
         return 0
@@ -706,8 +707,6 @@ def test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files=None):
  and the increase in log likelihood is {2:.3e} to {3:.3e}'''.format(
         S_0, S_1, ll_0, ll_1))
     if 'errors' in plot_files:
-        fig = plt.figure('errors')
-        ax = fig.add_subplot(1,1,1)
         # Plot orignal errors
         fig = plt.figure('errors')
         ax = fig.add_subplot(1,1,1)
@@ -725,26 +724,30 @@ def test_opt():
     # Set up gun with spline eos
     gun = GUN()
     gun.set_eos_spline(gun.x,gun.eos(gun.x))
+    gun.opt_init()
     old_eos = gun.eos
-
     # Make experimental data
     vt = experiment()
-    
+    # Calculate initial error
     gun.set_B_ep(vt)
     error_0 = gun.ep
-    d_hat = gun.opt(vt)
+
+    cost, d_hat = gun.opt(vt)
+
+    # Calculate new error
     gun.set_B_ep(vt)
     error_1 = gun.ep
-    #d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
+    #cost, d_hat = gun.free_opt((v_exp,t_exp), rcond=1e-6)
     fig = plt.figure('opt_result', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(d_hat)
     ax.set_xlabel(r'$i$')
     ax.set_ylabel(r'$\hat d[i]$')
-    fig = plt.figure('errors', figsize=(7,6))
+    fig = plt.figure('opt_errors', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
-    ax.plot(error_0,label='error_0')
-    ax.plot(error_1,label='error_1')
+    ax.plot(vt[1]*1e6,error_0,label='error_0')
+    ax.plot(vt[1]*1e6,error_1,label='error_1')
+    ax.set_xlabel(r'$t/(\mu\rm{sec})$')
     ax.legend()
     fig = plt.figure('eos', figsize=(7,6))
     ax = fig.add_subplot(1,1,1)
@@ -767,15 +770,14 @@ def test():
     assert s  == '79200000000.0','gun.E(4)={0}'.format(s)
 
     test_gun_splines(gun) # Makes gun.eos and gun.t2v splines
-    G = gun.G_matrix()
+    G,h = gun.Gh()
     eos_0 = gun.eos
     v_exp, t_exp = experiment()
     test_set_D(gun, 'D_test.pdf')
     test_set_B_ep(gun, v_exp, t_exp, 'vt_test.pdf')
-    test_set_BD(gun, 'BD_test.pdf', t_exp)
     
     # Solve BD*d=epsilon for d without constraints
-    d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
+    cost, d_hat = gun.free_opt((v_exp, t_exp), rcond=1e-5)
     plot_d_hat(d_hat)
     eos_1 = gun.eos
     
@@ -786,15 +788,39 @@ def test():
     test_func_etc(gun, eos_0, eos_1, d_hat, t_exp, v_exp, plot_files)
     
     #plt.show()
-    # FixMe: What about derivative of constraint?
+    return 0
+def work():
+    ''' This code for debugging stuff will change often
+    '''
+    v_exp, t_exp = experiment()
+    gun = GUN()
+    x = gun.x
+    y = gun.eos(x)
+    eos = gun.set_eos_spline(x,y)
+    print('initial cost={0:.3e}'.format(-gun.log_like((v_exp,t_exp))))
+    # Use numpy.linalg.lstsq
+    for rcond in (1e-3, 1e-9):
+        gun.eos = eos
+        cost, d_hat = gun.free_opt((v_exp, t_exp), rcond=rcond)
+        print('cost={0:.3e}, rcond={1:.2e}'.format(cost, rcond))
+        plot_d_hat(d_hat, title='d_hat, rcond={0:.2e}'.format(rcond))
+    # Use cvxopt.qp
+    gun.eos = eos
+    gun.opt_init()
+    cost, d_hat = gun.opt((v_exp, t_exp))
+    print('cost={0:.3e} for opt'.format(cost))
+    plot_d_hat(d_hat, title='d_hat from cvxopt.qp(P,q)')
+    
+    plt.show()
     return 0
     
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        #sys.exit(test())
-        test()
-        sys.exit(test_opt())
+        rv = test() + test_opt()
+        sys.exit(rv)
+    if len(sys.argv) >1 and sys.argv[1] == 'work':
+        sys.exit(work())
     main()
 
 #---------------

@@ -304,25 +304,63 @@ Given $f$ (in terms of $\cf$) and the functions $\Vt$, $\DVDf$, etc.\
 that depend on it, an optimization step consists of ignoring the
 \emph{higher order terms} (HOT) in $\Vt_{f+\delta}$ and solving for
 the vector $d$ that maximizes
-\begin{align}
-  \label{eq:L}
+\begin{align*}
   \Lbb(\cf,d) &= L_c(\cf + d) + L_v(\Vt_{f+\delta}(\texp)) \\
   & \equiv -\frac{1}{2} d^T P d - q^T d -
     \frac{1}{2} R
-\end{align}
+\end{align*}
 subject to the constraints \eqref{eq:dhatb}.  Manipulation of
 \eqref{eq:L_c} and \eqref{eq:L_v} yields
 \label{eq:PqR}
 \begin{subequations}
   \begin{align}
     P &= \Sigma_f^{-1} + (BD)^T \Sigma_v^{-1} BD \\
-    q^T &= (\cf - c_{\tilde f})^T \Sigma_f^{-1} - \epv^T
+    q^T &= \epf^T \Sigma_f^{-1} - \epv^T
           \Sigma_v^{-1} BD  \\
     \label{eq:R}
-    R &= (\cf - c_{\tilde f})^T \Sigma_f^{-1} (\cf - c_{\tilde f}) +
-        \epv^T \Sigma_v^{-1} \epv.
+    R &= \epf^T \Sigma_f^{-1} \epf + \epv^T \Sigma_v^{-1} \epv.
   \end{align}
 \end{subequations}
+\subsubsection{Preconditioning}
+\label{sec:preconditioning}
+
+If the interval explored by the experiment is inside the domain of $f$
+in $X$, then $B$ will be singular.  Since the variance of the prior at
+$x$ is proportional $(f(x))^2$ and $f(x) \approx \frac{C}{x^3}$,
+\begin{equation}
+  \label{eq:var_f}
+  \sigma^2_{c_{f,i}} \propto x_i^{-6}.
+\end{equation}
+Thus the condition of $P$ (the ratio of the largest eigenvalue to the
+smallest eigenvalue) is bad.  By changing to the variable $z$ defined
+by
+\begin{align*}
+  z_i &\equiv x_i^3 d_i \\
+  z &\equiv U \cdot d \text{ with} \\
+  U_{i,j} &= \delta_{i,j} x_i^3,
+\end{align*}
+\newcommand{\UI}{U^{-1}}
+instead of $P$ the optimization code will use $\UI P \UI$, which
+is better conditioned.  In more detail, first solve the quadratic
+program specified by
+\begin{align*}
+  \tilde P &= \UI P \UI \\
+  \tilde q &= \UI q \\
+  \tilde G &= G \UI \\
+  \tilde h &= h
+\end{align*}
+for $z$, and then derive the estimate of $d$ from
+\begin{equation*}
+  d = \UI z.
+\end{equation*}
+
+
+
+Aaron suggested ``Stability of Symmetric Ill-Conditioned Systems
+Arising in Interior Methods for Constrained Optimization'' by Anders
+Forsgren, Philip E. Gill, and Joseph R. Shinnerl in SIAM. J. Matrix
+Anal. \& Appl., 17(1),
+187–211. http://epubs.siam.org/doi/abs/10.1137/S0895479894270658
 
 \subsection{The Code \emph{calc.py}}
 \label{sec:code}
