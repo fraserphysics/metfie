@@ -321,27 +321,43 @@ barrel and the forces at those positons respectively. '''
         self.eos = original_eos
         h = -np.dot(G,new_c[:-magic.end])
         return G,h
-    def Pq(self, BD, ep_f, ep_v):
+    def Pq(
+            self,         # GUN instance
+            BD,           # dv/df matrix
+            ep_f,         # f_orig - f_current
+            ep_v,         # v_exp - v_sim
+            precondition, # 
+            MAP,          # Use prior.  If false must use ad hoc regularizer
+            ):
         '''From the section "A Posteriori Probability" of notes.tex,
 
         P = Sigma_f^{-1} + (BD)^T Sigma^{-1}_v BD
         q^T = ep_f^T Sigma_f^{-1} - ep_v^T Sigma_v^{-1} BD
         R = ep_f^T Sigma_f^{-1} ep_f + ep_v^T Sigma_v^{-1} ep_v
 
-        This method returns R and preconditioned P and q, namely:
+        In future versions, this method will return preconditioned P and
+        q, namely:
 
         \tilde P = U^{-1} P U^{-1} (variable t_P here)
         \tilde q^T = q^T U^{-1} (variable t_q here)
         '''
-
-        UIS = np.dot(self.U_inv, self.Sigma_f_inv) # U^{-1} Sigma_f^{-1}
-        BDUI = np.dot(BD, self.U_inv)              # BD  U^{-1}
-        t_P = np.dot(UIS,self.U_inv) + np.dot(BDUI.T/self.sigma_sq_v,BDUI)
-        t_q = np.dot(ep_f, UIS.T)-np.dot(ep_v/self.sigma_sq_v, BDUI)
-        return t_P,t_q
+        P = np.dot(BD.T, BD)
+        q = -np.dot(ep_v, BD)
+        if MAP:
+            P = self.Sigma_f_inv + P/self.sigma_sq_v
+            q = np.dot(ep_f,self.Sigma_f_inv) + q/self.sigma_sq_v
+        s = np.linalg.svd(P, compute_uv=False)[0]
+        P /= s
+        q /= s
+        if not MAP:
+            P += np.identity(len(q))*1e-10 # Ad hoc regularize
+        return P,q
     def opt(
-            self,        # GUN instance
-            vt,          # Simulated experimental data
+            self,              # GUN instance
+            vt,                # Simulated experimental data
+            precondition=True,
+            constrain=True,
+            MAP=True
             ):
         ''' Does a constrained optimization step.
 
@@ -359,24 +375,27 @@ barrel and the forces at those positons respectively. '''
         B,ep_v = self.set_B_ep(vt)
         ep_f = (self.eos.get_c() - self.original_eos.get_c())[:-magic.end]
         BD = np.dot(B, D)
-        P,q = self.Pq(BD, ep_f, ep_v) # P and q are preconditioned
+        P,q = self.Pq(BD, ep_f, ep_v, precondition, MAP)
         G,h = self.Gh()
-        G = np.dot(G, self.U_inv)
-        #sol=solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h) )
-        sol=solvers.qp(matrix(P), matrix(q))  # Unconstrained optimization
+        if precondition:
+            G = np.dot(G, self.U_inv)
+        if constrain:
+            sol=solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h) )
+        else:
+            sol=solvers.qp(matrix(P), matrix(q))
         if sol['status'] != 'optimal':
             for key,value in sol.items():
                 print(key, value)
             raise RuntimeError
-        z = np.array(sol['x']).reshape(-1)
-        d_hat = np.dot(self.U_inv, z)
+        d_hat = np.array(sol['x']).reshape(-1)
+        #d_hat = np.dot(self.U_inv, z)
         new_c = self.eos.get_c().copy()
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.new_c(new_c)
         B,ep_v = self.set_B_ep(vt)
         ep_f = (new_c - self.original_eos.get_c())[:-magic.end]
         quad = lambda M, v: np.dot(v, np.dot(M,v)) # Quadratic
-        cost = quad(1.0/self.sigma_sq_v, ep_v) + quad(self.Sigma_f_inv, ep_f)
+        cost = quad(1.0/self.sigma_sq_v, ep_v)/2# + quad(self.Sigma_f_inv, ep_f)
         return cost, d_hat
     def free_opt(
             self, # GUN instance
@@ -797,19 +816,26 @@ def work():
     x = gun.x
     y = gun.eos(x)
     eos = gun.set_eos_spline(x,y)
-    print('initial cost={0:.3e}'.format(-gun.log_like((v_exp,t_exp))))
+    print('cost={0:.5e} initial'.format(-gun.log_like((v_exp,t_exp))))
     # Use numpy.linalg.lstsq
     for rcond in (1e-3, 1e-9):
         gun.eos = eos
         cost, d_hat = gun.free_opt((v_exp, t_exp), rcond=rcond)
-        print('cost={0:.3e}, rcond={1:.2e}'.format(cost, rcond))
+        print('cost={0:.5e}, rcond={1:.2e}'.format(cost, rcond))
         plot_d_hat(d_hat, title='d_hat, rcond={0:.2e}'.format(rcond))
     # Use cvxopt.qp
-    gun.eos = eos
     gun.opt_init()
-    cost, d_hat = gun.opt((v_exp, t_exp))
-    print('cost={0:.3e} for opt'.format(cost))
-    plot_d_hat(d_hat, title='d_hat from cvxopt.qp(P,q)')
+    for constrain,MAP in (
+            (False, False),
+            (False, True),
+            (True, False),
+            (True, True)):
+        gun.eos = eos
+        cost, d_hat = gun.opt((v_exp, t_exp), constrain=constrain,MAP=MAP)
+        print('cost={0:.5e} for opt'.format(cost))
+        plot_d_hat(
+            d_hat, title=
+                   'd_hat from gun.opt(vt, constrain={0}, MAP={1}')
     
     plt.show()
     return 0
