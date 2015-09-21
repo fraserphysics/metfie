@@ -125,7 +125,7 @@ class GUN:
                     oneliner.a('Mass', href='http://en.wikipedia.org/wiki/Mass')
                 )),
             N=400,            # Number of intervals between xi and xf
-            sigma_sq_v=1.0e5, # Variance attributed to v measurements
+            sigma_sq_v=1.0e0, # Variance attributed to v measurements
             ):
         self.C = C + 0.0 # Vacuous demonstration of Float + float
         self.xi = xi
@@ -290,7 +290,7 @@ barrel and the forces at those positons respectively. '''
         '''
         r = self.ep - np.dot(BD,d) # Residual
         return float(np.dot(r.T,r))
-    def Gh(self):
+    def Gh(self, precondition):
         ''' Calculate and return constraint matrix G and vector h.  The
         constraint enforced by cvxopt.solvers.qp is
         
@@ -320,7 +320,10 @@ barrel and the forces at those positons respectively. '''
             c[i] = 0.0
         self.eos = original_eos
         h = -np.dot(G,new_c[:-magic.end])
-        return G,h
+        if precondition:
+            G = np.dot(G, self.U_inv)
+        s = np.linalg.svd(G, compute_uv=False)[0]
+        return G/s,h/s  # Make largest singular value of G 1
     def Pq(
             self,         # GUN instance
             BD,           # dv/df matrix
@@ -350,12 +353,15 @@ barrel and the forces at those positons respectively. '''
         P /= s
         q /= s
         if not MAP:
-            P += np.identity(len(q))*1e-10 # Ad hoc regularize
+            P += np.identity(len(q))*1e-12 # Ad hoc regularize
+        if precondition:
+            P = np.dot(self.U_inv, np.dot(P, self.U_inv))
+            q = np.dot(self.U_inv, q)
         return P,q
     def opt(
             self,              # GUN instance
             vt,                # Simulated experimental data
-            precondition=True,
+            precondition=True, #
             constrain=True,
             MAP=True
             ):
@@ -367,18 +373,19 @@ barrel and the forces at those positons respectively. '''
         # Takes ~ 20 seconds on watcher
         from cvxopt import matrix, solvers
         solvers.options['maxiters']=1000 # 100 default
-        solvers.options['feastol']=1e-12
-        solvers.options['show_progress']=True#False
-        # default, 1e-7 allows non-monotonic, 1e-16 -> "singular KKT matrix"
+        solvers.options['reltol']=1e-8   # 1e-6 default
+        solvers.options['abstol']=1e-9   # 1e-7 default
+        solvers.options['feastol']=1e-12 # 1e-7 default
+        # default, 1e-7 allows non-monotonic, ,1e-13 works, 1e-14 ->
+        # "singular KKT matrix"
+        solvers.options['show_progress']=False#True
 
         D = self.set_D() # Expensive
         B,ep_v = self.set_B_ep(vt)
         ep_f = (self.eos.get_c() - self.original_eos.get_c())[:-magic.end]
         BD = np.dot(B, D)
         P,q = self.Pq(BD, ep_f, ep_v, precondition, MAP)
-        G,h = self.Gh()
-        if precondition:
-            G = np.dot(G, self.U_inv)
+        G,h = self.Gh(precondition)
         if constrain:
             sol=solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h) )
         else:
@@ -386,9 +393,16 @@ barrel and the forces at those positons respectively. '''
         if sol['status'] != 'optimal':
             for key,value in sol.items():
                 print(key, value)
+            for name in 'P G'.split():
+                s = np.linalg.svd(locals()[name], compute_uv=False)
+                print('Singular values of {0}:\n{1}'.format(name,s))
             raise RuntimeError
+        for name in 'P G'.split():
+            s = np.linalg.svd(locals()[name], compute_uv=False)
+            print('Condition of {0}:{1:.3e}'.format(name,s[0]/s[-1]))
         d_hat = np.array(sol['x']).reshape(-1)
-        #d_hat = np.dot(self.U_inv, z)
+        if precondition:
+            d_hat = np.dot(self.U_inv, d_hat)
         new_c = self.eos.get_c().copy()
         new_c[:-magic.end] += d_hat
         self.eos = self.eos.new_c(new_c)
@@ -818,25 +832,34 @@ def work():
     eos = gun.set_eos_spline(x,y)
     print('cost={0:.5e} initial'.format(-gun.log_like((v_exp,t_exp))))
     # Use numpy.linalg.lstsq
-    for rcond in (1e-3, 1e-9):
+    for rcond in ():#(1e-3, 1e-9):
         gun.eos = eos
         cost, d_hat = gun.free_opt((v_exp, t_exp), rcond=rcond)
         print('cost={0:.5e}, rcond={1:.2e}'.format(cost, rcond))
         plot_d_hat(d_hat, title='d_hat, rcond={0:.2e}'.format(rcond))
     # Use cvxopt.qp
     gun.opt_init()
-    for constrain,MAP in (
-            (False, False),
-            (False, True),
-            (True, False),
-            (True, True)):
+    for constrain,MAP,precondition in (
+            (True, True, True),
+            (True, True, False),
+            #(False, False, True),
+            #(False, False, False),
+            ):
         gun.eos = eos
-        cost, d_hat = gun.opt((v_exp, t_exp), constrain=constrain,MAP=MAP)
-        print('cost={0:.5e} for opt'.format(cost))
-        plot_d_hat(
-            d_hat, title=
-                   'd_hat from gun.opt(vt, constrain={0}, MAP={1}')
-    
+        try:
+            cost, d_hat = gun.opt(
+                (v_exp, t_exp),
+                precondition=precondition, constrain=constrain, MAP=MAP)
+        except:
+            print('precondition={0}, constrain={1}, MAP={2} Failed\n\n'.format(
+                precondition, constrain, MAP))
+            raise
+        print(
+'cost={0:.5e} for opt precondition={1}, constrain={2}, MAP={3}\n'.format(
+            cost, precondition, constrain, MAP))
+        plot_d_hat(d_hat, title=
+            'precondition={0}, constrain={1}, MAP={2}'.format(
+                precondition, constrain, MAP))
     plt.show()
     return 0
     
