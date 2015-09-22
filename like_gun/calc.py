@@ -97,7 +97,7 @@ magic = go(
     n_t_sim=1000,         # len(vt), simulated velocity time pairs
     fit_dim=50,           # Number of x points for EOS fit
     like_iter=50,         # Bound for iterations maximizing likelihood
-    converge=1.0e-3,      # Fractional tolerance for max like
+    converge=1.0e-5,      # Fractional tolerance for cost
     stretch=1.25,         # Expansion of x beyond (xi,xf)
     k_factor=1.0e6,       # (f(xi)/f(xf))^2
     end=4,                # Last 4 coefficients of all splines are 0
@@ -320,8 +320,15 @@ barrel and the forces at those positons respectively. '''
             c[i] = 0.0
         self.eos = original_eos
         h = -np.dot(G,new_c[:-magic.end])
-        if precondition:
+        
+        # Scale to make |h[i]| = 1 for all i
+        HI = np.diag(1.0/np.abs(h))
+        h = np.dot(HI,h)
+        G = np.dot(HI,G)
+
+        if precondition: # If P is preconditioned, must modify G
             G = np.dot(G, self.U_inv)
+        
         s = np.linalg.svd(G, compute_uv=False)[0]
         return G/s,h/s  # Make largest singular value of G 1
     def Pq(
@@ -349,15 +356,14 @@ barrel and the forces at those positons respectively. '''
         if MAP:
             P = self.Sigma_f_inv + P/self.sigma_sq_v
             q = np.dot(ep_f,self.Sigma_f_inv) + q/self.sigma_sq_v
-        s = np.linalg.svd(P, compute_uv=False)[0]
-        P /= s
-        q /= s
-        if not MAP:
-            P += np.identity(len(q))*1e-12 # Ad hoc regularize
+        else:
+            s = np.linalg.svd(P, compute_uv=False)[0]
+            P += np.identity(len(q))*s*1e-12 # Ad hoc regularize
         if precondition:
             P = np.dot(self.U_inv, np.dot(P, self.U_inv))
             q = np.dot(self.U_inv, q)
-        return P,q
+        s = np.linalg.svd(P, compute_uv=False)[0] # Largest singular value
+        return P/s,q/s
     def opt(
             self,              # GUN instance
             vt,                # Simulated experimental data
@@ -441,7 +447,7 @@ barrel and the forces at those positons respectively. '''
         d = v-m
         return -np.dot(d/self.sigma_sq_v,d)/2
 def plot_f_v_e(
-        data, # Tuple with elements (mod,(x,y,name))
+        data, # Dict with values ((x, eos(x), 'f'), ...)
         t,   # "Experimental" times
         e,    # Tuple of time series of velocity errors
         fig   # plt.figure instance
@@ -586,7 +592,7 @@ def best_fit(vt, constrained=True):
         costs.append(cost)
         if i == 0:
             tol = abs(cost)*magic.converge
-            print('initial cost={0}'.format(cost))
+            print('initial cost={0:e}'.format(cost))
             last = cost
             continue
         Delta = last - cost # Should be positive
@@ -837,29 +843,31 @@ def work():
         cost, d_hat = gun.free_opt((v_exp, t_exp), rcond=rcond)
         print('cost={0:.5e}, rcond={1:.2e}'.format(cost, rcond))
         plot_d_hat(d_hat, title='d_hat, rcond={0:.2e}'.format(rcond))
+    eps = []       # For plot_f_v_e
+    plot_dict = {} # For plot_f_v_e
     # Use cvxopt.qp
     gun.opt_init()
-    for constrain,MAP,precondition in (
+    plot_dict['nominal']=((x, gun.eos(x), 'f'),(x, gun.x_dot(x)/1e5, 'v'))
+    for precondition,constrain,MAP in (
             (True, True, True),
+            (True, False, True),
             (True, True, False),
-            #(False, False, True),
-            #(False, False, False),
             ):
+        temp = tuple('{0}'.format(x) for x in (precondition, constrain, MAP))
+        key = 'precondition={0:5s}, constrain={1:5s}, MAP={2:5s}'.format(*temp)
         gun.eos = eos
         try:
             cost, d_hat = gun.opt(
                 (v_exp, t_exp),
                 precondition=precondition, constrain=constrain, MAP=MAP)
         except:
-            print('precondition={0}, constrain={1}, MAP={2} Failed\n\n'.format(
-                precondition, constrain, MAP))
+            print('{0} Failed\n\n'.format(key))
             raise
-        print(
-'cost={0:.5e} for opt precondition={1}, constrain={2}, MAP={3}\n'.format(
-            cost, precondition, constrain, MAP))
-        plot_d_hat(d_hat, title=
-            'precondition={0}, constrain={1}, MAP={2}'.format(
-                precondition, constrain, MAP))
+        print('cost={0:.5e} for opt {1}\n'.format(cost, key))
+        plot_d_hat(d_hat, title=key)
+        eps.append(gun.ep)
+        plot_dict[key] = ((x,gun.eos(x), 'f'), (x, gun.x_dot(x)/1e5,'v'))
+    plot_f_v_e(plot_dict, t_exp, eps, plt.figure('fve',figsize=(8,10)))
     plt.show()
     return 0
     
