@@ -339,15 +339,21 @@ by
   z &\equiv U \cdot d \text{ with} \\
   U_{i,j} &= \delta_{i,j} x_i^3,
 \end{align*}
-\newcommand{\UI}{U^{-1}}
-instead of $P$ the optimization code will use $\UI P \UI$, which
-is better conditioned.  In more detail, first solve the quadratic
-program specified by
+\newcommand{\UI}{U^{-1}} instead of $P$, the optimization code will use
+$\UI P \UI$, which is better conditioned.  I also rescale the
+constraint equation to ensure that $\left| h_i \right|=1~\forall i$
+using the matrix
+\begin{equation*}
+  H^{-1}_{i,j} \equiv \delta_{i,j} \frac{1}{\left|h_i\right|}
+\end{equation*}
+
+
+The procudure is to first solve the quadratic program specified by
 \begin{align*}
   \tilde P &= \UI P \UI \\
   \tilde q &= \UI q \\
-  \tilde G &= G \UI \\
-  \tilde h &= h
+  \tilde G &= H^{-1}G \UI \\
+  \tilde h &= H^{-1}h
 \end{align*}
 for $z$, and then derive the estimate of $d$ from
 \begin{equation*}
@@ -562,18 +568,10 @@ integration.
 
 See other information in cmfSuite/doc/HE.tex on moonlight.
 
-One may fetch source code for this project from Google code and build
-this document as follows:
-\begin{verbatim}
-->git clone https://github.com/fraserphysics/metfie
-->cd metfie/like_gun
-->make notes.pdf
-\end{verbatim}
-
 %
 \vfill \hrule
 
-Source file: https://code.google.com/p/metfie/like\_gun/notes.tex
+Source file: https://github.com/fraserphysics/metfie/like\_gun/notes.tex
 
 \end{document}
 

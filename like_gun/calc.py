@@ -415,7 +415,7 @@ barrel and the forces at those positons respectively. '''
         B,ep_v = self.set_B_ep(vt)
         ep_f = (new_c - self.original_eos.get_c())[:-magic.end]
         quad = lambda M, v: np.dot(v, np.dot(M,v)) # Quadratic
-        cost = quad(1.0/self.sigma_sq_v, ep_v)/2# + quad(self.Sigma_f_inv, ep_f)
+        cost=quad(1.0/self.sigma_sq_v, ep_v)/2 + quad(self.Sigma_f_inv, ep_f)/2
         return cost, d_hat
     def free_opt(
             self, # GUN instance
@@ -835,7 +835,7 @@ def work():
     gun = GUN()
     x = gun.x
     y = gun.eos(x)
-    eos = gun.set_eos_spline(x,y)
+    eos = gun.set_eos_spline(x,y) # initial ep_f = 0
     print('cost={0:.5e} initial'.format(-gun.log_like((v_exp,t_exp))))
     # Use numpy.linalg.lstsq
     for rcond in ():#(1e-3, 1e-9):
@@ -850,8 +850,7 @@ def work():
     plot_dict['nominal']=((x, gun.eos(x), 'f'),(x, gun.x_dot(x)/1e5, 'v'))
     for precondition,constrain,MAP in (
             (True, True, True),
-            (True, False, True),
-            (True, True, False),
+            (False, True, True),
             ):
         temp = tuple('{0}'.format(x) for x in (precondition, constrain, MAP))
         key = 'precondition={0:5s}, constrain={1:5s}, MAP={2:5s}'.format(*temp)
