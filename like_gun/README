@@ -24,3 +24,16 @@ Plans:
 7. Devise MAP scheme and explain in notes.tex
 
 8. Implement MAP scheme
+
+-----------------------------------------------------------------
+basis.py:
+Illustrate spline basis function and its derivatives.
+
+calc.py:
+Classes for EOS and gun simulation.
+
+cmf_models.py:
+Defines classes for representing model components with provenance
+
+markup.py:
+Public domain code for making html.  Called by cmf_models.py
