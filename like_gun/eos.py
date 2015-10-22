@@ -12,7 +12,6 @@ import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
 from cmf_models import Component, Provenance, Float
 from markup import oneliner
-#import matplotlib.pyplot as plt
 
 class go:
     ''' Generic object.  For storing magic numbers.
@@ -81,8 +80,8 @@ class Spline(IU_Spline, Component):
     
     Methods:
 
-    Pq
-    Gh
+    Pq   Describes portion of cost function due to the prior
+    Gh   Describes constraints: convex, monotonic and positive
     '''
     def __init__(
             self,   # Spline instance
@@ -125,20 +124,38 @@ class Spline(IU_Spline, Component):
             stack()[1], 'New coefficients', branches=[self.provenance],
             max_hist=50)
         return rv
+    def dev(self):
+        '''Calculate and return a spline for plotting uncertainty of
+        the pressure function.
+
+        The function is the square root of the marginal of the covariance.
+        '''
+        n = len(self.get_c())
+        c_work = np.zeros(n)
+        c_ = c_work[:-self.end]
+        c_dev = np.zeros(n)
+        for i in range(len(c_)):
+            c_[i] = 1.0
+            var_x_i = np.linalg.solve(self.prior_var_inv, c_)
+            c_dev[i] = np.sqrt(var_x_i[i])
+            c_[i] = 0.0
+        return self.new_c(c_dev)
     def display(
             self,      # Spline instance
-            show=False # Call plt.show() for debugging
             ):
         '''This method serves the Component class and the make_html
         function defined in the cmf_models module.  It returns an html
         description of self and writes a plot to 'eos.jpg'.
         '''
+        import matplotlib.pyplot as plt
         x_label = r'$v*{\rm cm}^3/{\rm g}$'
         y_label = r'$p/{\rm GPa}$'
         t = self.get_t()
+        dev = self.dev()
         
-        fig = plt.figure('eos', figsize=(7,10))
-        ax = fig.add_subplot(2,1,1)
+        fig = plt.figure(figsize=(8,12))
+        
+        ax = fig.add_subplot(3,1,1)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         low = magic.v_0/2
@@ -149,7 +166,7 @@ class Spline(IU_Spline, Component):
         ax.plot(x, self(x))
         ax.plot(x_, self(x_),'rx')
         
-        ax = fig.add_subplot(2,1,2)
+        ax = fig.add_subplot(3,1,2)
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         x = np.logspace(
@@ -158,8 +175,14 @@ class Spline(IU_Spline, Component):
             500)
         ax.loglog(x, self(x))
         ax.loglog(t, self(t), 'rx')
-        if show:
-            plt.show()
+        
+        ax = fig.add_subplot(3,1,3)
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(r'$p \pm 100\sigma_p$')
+        ax.loglog(x, self(x) + 100*dev(x), linestyle=':', color='k')
+        ax.plot(x, self(x), color='r')
+        ax.loglog(x, self(x) - 100*dev(x), linestyle=':', color='k')
+        
         fig.savefig('eos.jpg', format='jpg')
 
         # Make an html formated return value
@@ -168,7 +191,7 @@ class Spline(IU_Spline, Component):
         as a function of position along the barrel''')
         html += oneliner.p(self.get_c().__str__())
         html += oneliner.p('''
-        Plot of force as a function of position along the barrel''')
+        Plot of pressure as a function of specific volume''')
         html += oneliner.img(
             width=700, height=500, alt='plot of eos', src='eos.jpg')
         return html
@@ -176,20 +199,20 @@ class Spline(IU_Spline, Component):
     def Pq(
         self,  # Spline instance
         c_P,   # Current spline coefficients
-        ep_f,  # c_f - c_{\tilde f}
-        BD,    # Derivative of v wrt c_f
-        ep_v,  # Array of errors
         ):
-        '''From eq:PqR (Eqn17) of metfie/like_gun/notes.tex
+        '''Contribution of prior to cost is
+
+           (x^T P x)/2 + q^T x
         '''
-        P = self.Sigma_f_inv
+        P = self.prior_var_inv
         ep_f = c_P - self.prior_mean
         q = np.dot(ep_f, self.prior_var_inv)
         if self.precondition:
             P = np.dot(self.U_inv, np.dot(P, self.U_inv))
-            q = np.dot(self.U_inv, q)
-        s = np.linalg.svd(P, compute_uv=False)[0] # Largest singular value
-        return P/s,q/s
+            q = np.dot(q, self.U_inv)
+        # Could scale by largest singular value of P
+        # np.linalg.svd(P, compute_uv=False)[0]
+        return P, q
     
     def Gh(
             self,  # Spline instance
@@ -199,6 +222,8 @@ class Spline(IU_Spline, Component):
         constraint enforced by cvxopt.solvers.qp is
 
         G*x leq_component_wise h
+
+        Equivalent to max(G*x - h) leq 0
 
         Since
 
@@ -223,20 +248,19 @@ class Spline(IU_Spline, Component):
         and it is sufficient to check eq:star at the knots.
         
         '''
-        P_work = self.spline.copy()
-        c_work = P_work.get_c()
         dim = len(self.prior_mean)
-        v_all = self.spline.get_t()
+        v_all = self.get_t()
         v_unique = v_all[self.end-1:1-self.end]
         n_v = len(v_unique)
         n_constraints = n_v + 2
         G = np.zeros((n_constraints, dim))
+        c = np.zeros(dim+self.end)
         for i in range(dim):
             c[i] = 1.0
-            P_work.set_c(c)
-            G[:-2,i] = -P_work.derivative(2)(t_unique)
-            G[-2,i] = P_work.derivative(1)(t_unique[-1])
-            G[-1,i] = -P_work(t_unique[-1])
+            P_work = self.new_c(c)
+            G[:-2,i] = -P_work.derivative(2)(v_unique)
+            G[-2,i] = P_work.derivative(1)(v_unique[-1])
+            G[-1,i] = -P_work(v_unique[-1])
             c[i] = 0.0
         h = -np.dot(G,c_P)
 
@@ -247,18 +271,45 @@ class Spline(IU_Spline, Component):
 
         if self.precondition: # If P is preconditioned, must modify G
             G = np.dot(G, self.U_inv)
-        return -G,h
+        return G,h
     
 # Test functions
 import numpy.testing as nt
 def test_spline():
+    '''For convex combinations of nominal and experimental, ensure that
+    minimum cost is at nominal and that feasible boundary is between
+    .55 and .60.  Also check preconditioning.
+    '''
+
     nominal = Nominal()
     experiment = Experiment()
-    spline = Spline(experiment)
+    for pre_c in (True, False):
+        s_nom = Spline(nominal,precondition=pre_c)
+        c_nom = s_nom.get_c()[:-s_nom.end] # Coefficients for nominal spline
+    
+        s_exp = Spline(experiment, precondition=pre_c) # provenance
+        c_exp = s_exp.get_c()[:-s_exp.end] # Coefficients for experiment spline
+        assert (s_exp.provenance.line ==
+                's_exp = Spline(experiment, precondition=pre_c) # provenance')
+        # spline should match data at the knots
+        t = s_exp.get_knots()
+        nt.assert_allclose(s_exp(t), experiment(t), rtol=1e-15)
+    
+        d_c = c_exp - c_nom
+        P,q = s_nom.Pq(c_nom)
+        G,h = s_nom.Gh(c_nom)
 
-    assert spline.provenance.line == 'spline = Spline(experiment)'
-    x = spline.get_knots()
-    nt.assert_allclose(spline(x), experiment(x), rtol=1e-15)
+        cost = np.empty(21)
+        feasible = np.empty(21)
+        for i,a in enumerate(np.linspace(0,1,21)):
+            c = d_c*a
+            if pre_c:
+                c = np.linalg.solve(s_nom.U_inv, c)
+            cost[i] = np.dot(c,np.dot(P,c))/2 + np.dot(q,c)
+            y = np.dot(G,c) - h
+            feasible[i] = float(y.max())
+        assert np.argmin(cost) == 0
+        assert feasible[11]*feasible[12] < 0
     return 0
 def test():
     ''' Execute collection of test functions
@@ -268,11 +319,17 @@ def test():
 def work():
     ''' This code for debugging stuff will change often
     '''
+    import matplotlib.pyplot as plt
     nominal = Nominal()
     experiment = Experiment()
+    
+    spline = Spline(nominal)
+    spline.display()
+    
     spline = Spline(experiment)
-
-    spline.display(show=True)
+    spline.display()
+    
+    plt.show()
     return 0
     
 if __name__ == "__main__":
