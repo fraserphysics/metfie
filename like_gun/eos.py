@@ -9,9 +9,6 @@ Used in calc.py. Goals:
 
 """
 import numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
-from cmf_models import Component, Provenance, Float
-from markup import oneliner
 
 class go:
     ''' Generic object.  For storing magic numbers.
@@ -20,7 +17,7 @@ class go:
         for key, value in kwargs.items():
             setattr(self, key, value)
 magic = go(
-    C=2.56,                  # For nominal eos. GPa at 1 cm^3 / gram
+    C=2.56e9,                # For nominal eos. Pa at 1 cm^3 / gram
     spline_N=50,             # Number of samples (number of knots - 4)
     spline_min=0.1,          # Minimum volume
     spline_max=100,          # Maximum volume
@@ -75,7 +72,33 @@ class Experiment:
         w = self.w
         pert = 2*np.sin(freq*(v-v_0))*np.exp(-(v-v_0)**2/(2*w**2))
         return self.C/v**3 + pert*self.C/(freq*v_0**3)
-class Spline(IU_Spline, Component):
+    
+from cmf_models import Component, Provenance, Float
+from markup import oneliner
+from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
+# For scipy.interpolate.InterpolatedUnivariateSpline. See:
+# https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
+class Spline(IU_Spline):
+    def get_t(self):
+        'Return the knot locations'
+        return self._eval_args[0]
+    def get_c(self):
+        'Return the coefficients for the basis functions'
+        return self._eval_args[1]
+    def new_c(self,c):
+        '''Return a new Spline_eos instance that is copy of self except
+        that the coefficients for the basis functions are c and
+        provenance is updated.'''
+        import copy
+        from inspect import stack
+        rv = copy.deepcopy(self)
+        rv._eval_args = self._eval_args[0], c, self._eval_args[2]
+        # stack()[1] is context that called new_c
+        rv.provenance = Provenance(
+            stack()[1], 'New coefficients', branches=[self.provenance],
+            max_hist=50)
+        return rv
+class Spline_eos(Spline, Component):
     '''Model of pressure as function of volume implemented as a spline.
     
     Methods:
@@ -84,7 +107,7 @@ class Spline(IU_Spline, Component):
     Gh   Describes constraints: convex, monotonic and positive
     '''
     def __init__(
-            self,   # Spline instance
+            self,   # Spline_eos instance
             P,      # Pressure function (usually the nominal eos)
             N=magic.spline_N,
             v_min=magic.spline_min,
@@ -105,25 +128,6 @@ class Spline(IU_Spline, Component):
         if precondition:
             self.U_inv = np.diag(dev)
         return
-    def get_t(self):
-        'Return the knot locations'
-        return self._eval_args[0]
-    def get_c(self):
-        'Return the coefficients for the basis functions'
-        return self._eval_args[1]
-    def new_c(self,c):
-        '''Return a new Spline instance that is copy of self except
-        that the coefficients for the basis functions are c and
-        provenance is updated.'''
-        import copy
-        from inspect import stack
-        rv = copy.deepcopy(self)
-        rv._eval_args = self._eval_args[0], c, self._eval_args[2]
-        # stack()[1] is context that called new_c
-        rv.provenance = Provenance(
-            stack()[1], 'New coefficients', branches=[self.provenance],
-            max_hist=50)
-        return rv
     def dev(self):
         '''Calculate and return a spline for plotting uncertainty of
         the pressure function.
@@ -141,7 +145,7 @@ class Spline(IU_Spline, Component):
             c_[i] = 0.0
         return self.new_c(c_dev)
     def display(
-            self,      # Spline instance
+            self,      # Spline_eos instance
             ):
         '''This method serves the Component class and the make_html
         function defined in the cmf_models module.  It returns an html
@@ -197,7 +201,7 @@ class Spline(IU_Spline, Component):
         return html
 
     def Pq(
-        self,  # Spline instance
+        self,  # Spline_eos instance
         c_P,   # Current spline coefficients
         ):
         '''Contribution of prior to cost is
@@ -215,7 +219,7 @@ class Spline(IU_Spline, Component):
         return P, q
     
     def Gh(
-            self,  # Spline instance
+            self,  # Spline_eos instance
             c_P,   # Current spline coefficients
     ):
         ''' Calculate constraint matrix G and vector h.  The
@@ -284,13 +288,13 @@ def test_spline():
     nominal = Nominal()
     experiment = Experiment()
     for pre_c in (True, False):
-        s_nom = Spline(nominal,precondition=pre_c)
+        s_nom = Spline_eos(nominal,precondition=pre_c)
         c_nom = s_nom.get_c()[:-s_nom.end] # Coefficients for nominal spline
     
-        s_exp = Spline(experiment, precondition=pre_c) # provenance
+        s_exp = Spline_eos(experiment, precondition=pre_c) # provenance
         c_exp = s_exp.get_c()[:-s_exp.end] # Coefficients for experiment spline
         assert (s_exp.provenance.line ==
-                's_exp = Spline(experiment, precondition=pre_c) # provenance')
+                's_exp = Spline_eos(experiment, precondition=pre_c) # provenance')
         # spline should match data at the knots
         t = s_exp.get_knots()
         nt.assert_allclose(s_exp(t), experiment(t), rtol=1e-15)
@@ -323,10 +327,10 @@ def work():
     nominal = Nominal()
     experiment = Experiment()
     
-    spline = Spline(nominal)
+    spline = Spline_eos(nominal)
     spline.display()
     
-    spline = Spline(experiment)
+    spline = Spline_eos(experiment)
     spline.display()
     
     plt.show()
