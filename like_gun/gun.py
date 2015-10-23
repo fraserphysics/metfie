@@ -1,10 +1,9 @@
-"""gun.py: Classes for gun experiment.  Goals are: to develop, analyze
+"""gun.py: Class for gun experiment.  Goals are: to develop, analyze
 and understand a procedure for estimating an isentrope on the basis of
 data and simulations.
 
 """
 import numpy as np
-import matplotlib.pyplot as plt
     
 class go:
     ''' Generic object.  For storing magic numbers.
@@ -16,6 +15,8 @@ magic = go(
     x_i=0.4,             # Initial position of projectile / cm'
     x_f=4.0,             # Final/muzzle position of projectile /cm'
     m=100.0,             # Mass of projectile / g
+    area=1e-4,           # Projectile cross section in m^2
+    newton2dyne=1e5,     # dynes per newton
     var=1.0e0,           # Variance attributed to v measurements
     n_t=500,             # Number of ts for t2v spline
     t_min=-5.0e-6,       # Range of times for t2v spline
@@ -43,12 +44,12 @@ class Gun:
 
     shoot()       Integrate ode(eos) to get t,x,v
     
-    set_t2v()     Fit t->v spline
+    fit_t2v()     Fit t->v spline
 
-    set_D         Calculates derivative of velocity wrt to eos in
+    fit_D         Calculates derivative of velocity wrt to eos in
                   terms of spline coefficients
 
-    set_B_ep(vt)  Calculates ep = errors of predictions of experimental
+    fit_B_ep(vt)  Calculates ep = errors of predictions of experimental
                   velocities and B = dv/dc_v
 
     Pq(BD,ep_v)   Return P,q for a quadratic approximation of the log
@@ -74,14 +75,8 @@ class Gun:
         return
     def f(self, x):
         ''' Force in dynes.
-
-        area = 1e-4 m^2
-        1 Newton = 10^5 dynes
-
-        eos(x) is in Pa = Newtons/m^2
-        f = eos(x)*1e-4 Newtons = eos(x)*10 dynes
         '''
-        return 10*self.eos(x)
+        return magic.newton2dyne*magic.area*self.eos(x)
     def E(self, # Gun instance
           x     # Scalar position at which to calculate energy
           ):
@@ -107,7 +102,12 @@ class Gun:
             return np.sqrt(2*self.E(x)/self.m) # Invert E = (mv^2)/2
         else:
             raise RuntimeError('x has type %s'%(type(x),))
-    def shoot(self):
+    def shoot(
+            self,              # Gun instance
+            t_min,
+            t_max,
+            n_t,
+            ):
         '''Run a simulation and return the results: t, [x,v]
         '''
         from scipy.integrate import odeint
@@ -122,7 +122,7 @@ class Gun:
             else:
                 acceleration = self.f(x[0])/self.m # F = MA
             return np.array([x[1], acceleration])
-        t = np.linspace(magic.t_min, magic.t_max, magic.n_t)
+        t = np.linspace(t_min, t_max, n_t)
         xv = odeint(
             F,            # 
             [self.x_i,0],
@@ -133,22 +133,29 @@ class Gun:
         assert xv.shape == (len(t),2)
         # xv is array of calculated positions and velocities at times in t
         return t, xv
-    def set_t2v(self):
+    def fit_t2v(
+            self,
+            t_min=magic.t_min,
+            t_max=magic.t_max,
+            n_t=magic.n_t,
+            ):
         '''Run a simulation and build a spline that maps times to
-        velocities.  Return the spline and save it as self.t2v.
+        velocities.  Return the spline.
         '''
         from eos import Spline
-        t, xv = self.shoot()
+        t, xv = self.shoot(t_min, t_max, n_t)
         # xv is array of calculated positions and velocities at times in t
-        self.t2v = Spline(t,xv[:,1])
-        return self.t2v
-    def set_D(
+        return Spline(t,xv[:,1])
+    def fit_D(
             self,                   # Gun instance
-            fraction=magic.D_frac   # Finite difference fraction
+            fraction=magic.D_frac,  # Finite difference fraction
+            t_min=magic.t_min,
+            t_max=magic.t_max,
+            n_t=magic.n_t
             ):
-        '''Calculate dv/df in terms of spline coefficients and save as self.D.
+        '''Calculate dv/df in terms of spline coefficients and return,
               
-        Note self.D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
+        Note D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
         last 4 which are always 0.
         '''
         # Spline.new_c(c) does not modify Spline.  It returns a copy
@@ -157,10 +164,10 @@ class Gun:
         end = eos_nom.end            # Length of padding on cubic splines
         c_f_nom = eos_nom.get_c()    # Nominal coefficients for eos
         n_f = len(c_f_nom) - end     # Dimension of optimization var
-        t2v_nom = self.set_t2v()
+        t2v_nom = self.fit_t2v(t_min, t_max, n_t)
         c_v_nom = t2v_nom.get_c()
         n_v = len(c_v_nom) - end
-        self.D = np.empty((n_v,n_f)) # To be dv/df matrix
+        D = np.empty((n_v,n_f)) # To be dv/df matrix
         for i in range(n_f):
             c_f = c_f_nom.copy()
             # Next set size of finite difference for derivative approximation
@@ -168,37 +175,37 @@ class Gun:
             c_f[i] += d_f
             # Next run a simulation to get a v(t) spline a for a modified eos
             self.eos = eos_nom.new_c(c_f)
-            c_v = self.set_t2v().get_c()
+            c_v = self.fit_t2v(t_min, t_max, n_t).get_c()
             D_i = ((c_v - c_v_nom)[:-end])/d_f
-            self.D[:,i] = D_i
+            D[:,i] = D_i
         self.eos = eos_nom
-        self.t2v = t2v_nom
-        return self.D
-    def set_B_ep(
+        return D
+    def fit_B_ep(
             self, # Gun instance
             vt,   # (velocities, times)
             ):
         '''Map experimental velocities v and times t to the error ep
         and B = dv/dc_v more specifically:
         
-        self.ep[i]=v[i] - t2v(t[i]) Difference between simulation and data
+        ep[i]=v[i] - t2v(t[i]) Difference between simulation and data
         
-        self.B[i,j] = b_j(t[i]) Where b_j is the jth basis function for
+        B[i,j] = b_j(t[i]) Where b_j is the jth basis function for
                                 the t2v spline
         '''
         v,t = vt
         n_vt = len(v)
         assert len(t) == n_vt
-        c_ = np.zeros(self.set_t2v().get_c().shape) # Also creates self.t2v
-        self.ep = v - self.t2v(t)   # Calculate errors
-        v_dim = len(c_) - magic.end # end values are always 0
-        self.B = np.zeros((n_vt,v_dim))
+        t2v = self.fit_t2v()
+        c_ = np.zeros(t2v.get_c().shape) # Also creates self.t2v
+        ep = v - t2v(t)   # Calculate errors
+        v_dim = len(c_) - self.eos.end # end values are always 0
+        B = np.zeros((n_vt,v_dim))
         for j in range(v_dim):
             c_[j] = 1.0
-            delta_t2v = self.t2v.new_c(c_)
-            self.B[:,j] = delta_t2v(t)
+            delta_t2v = t2v.new_c(c_)
+            B[:,j] = delta_t2v(t)
             c_[j] = 0.0
-        return self.B, self.ep
+        return B, ep
     def Pq(
             self,         # Gun instance
             BD,           # dv/df matrix
@@ -237,47 +244,125 @@ class Gun:
 
         '''
         v,t = vt
-        t2v = self.set_t2v()
-        m = t2v(t)
+        m = self.fit_t2v()(t)  # Model
         d = v-m
         return -np.dot(d/self.var,d)/2
 
 def experiment():
-    '''Make "experimental" data from gun with eos defined in eos.
+    '''Make "experimental" data from gun with eos from eos.Experiment
     '''
     from eos import Experiment
     gun = Gun(Experiment())
     # Make simulated measurements
-    t2v = gun.set_t2v()
+    t2v = gun.fit_t2v()
     t = np.linspace(0, magic.t_max,magic.n_t_sim)
     v = t2v(t)
     return (v, t)
+# Test functions
+import numpy.testing as nt
+close = lambda a,b: a*(1-1e-7) < b < a*(1+1e-7)
+def test_log_like():
+    from eos import Nominal, Spline_eos
+    vt = (experiment())
+    ll = Gun(Spline_eos(Nominal())).log_like(vt)
+    if close(-ll, 970963830.012):
+        return 0
+    else:
+        return 1
+def test_shoot_t2v():
+    from eos import Experiment
+    gun = Gun(Experiment())
+    t,xv = gun.shoot(magic.t_min, magic.t_max, magic.n_t)
+    t2v = gun.fit_t2v()
+    v_ = t2v(t[-1])
+    this_computation = list(xv[-1,:]) + [t2v(t[-1])]
+    old_results = (4.52167252, 4.12180082e+04, 4.12180082e+04)
+    for old, this, name in zip(old_results, this_computation,
+                               'x v spline'.split()):
+        assert close(old,this),'{0}: old={1:.8e}, new={2:.8e}'.format(
+            name, old, this)
+    return 0
+def test_x_dot():
+    from eos import Experiment
+    v = Gun(Experiment()).x_dot(4.0)
+    assert close(v, 4.121800824e+04)
+    return 0
+def test_D():
+    from eos import Experiment, Spline_eos
+
+    n_t = 15
+    N = 10
+    eos = Spline_eos(Experiment(), N=N, v_min=.38, v_max=4.2)
+    D = Gun(eos).fit_D(n_t=n_t)
+    assert D.shape == (n_t, N)
+    assert close(D[1,0], 2.05695528e-07)
+    assert close(D[-1,-1], 6.45823399e-07)
+    return 0
+def test_B_ep():
+    ''' B[i,j] = dv(t[i])/dc_velocity[j]
+    ep[i] = v_simulation(t[i]) - v_experiment(t[i])
+    '''
+    from eos import Nominal, Spline_eos
+    vt = (experiment())
+    eos = Spline_eos(Nominal())
+    B,ep = Gun(eos).fit_B_ep(vt)
+    assert B.shape == (1000,500)
+    assert ep.shape == (1000,)
+    assert np.argmax(ep) == 345
+    assert close(ep[345], 1461.8632379214614)
+    assert np.argmax(B[300,:]) == 165
+    assert close(B[300,165], 0.66576300914271824)
+    return 0 
+def test_Pq():
+    '''
+    '''
+    from eos import Nominal, Spline_eos
+    vt = (experiment())
+    eos = Spline_eos(Nominal(),precondition=True)
+    gun = Gun(eos)
+    D = gun.fit_D()
+    B,ep = gun.fit_B_ep(vt)
+    BD = np.dot(B,D)
+    P,q = gun.Pq(BD, ep)
+    assert P.shape == (50,50)
+    assert q.shape == (50,)
+    assert P[10,10] == P.max()
+    assert close(P.max(), 5.62897374e+05)
+    assert np.argmin(q) == 11
+    assert close(-q[11], 18186211.043204699)
+    return 0    
+def test():
+    for name,value in globals().items():
+        if not name.startswith('test_'):
+            continue
+        if value() == 0:
+            print('{0} passed'.format(name))
+        else:
+            print('\nFAILED            {0}\n'.format(name))
+    return 0
+    
 def work():
     ''' This code for debugging stuff will change often
     '''
-    from eos import Experiment
-    gun = Gun(Experiment())
-    x = np.linspace(gun.x_i, gun.x_f, 500)
-    f = Experiment()(x)
-    e = np.array([gun.E(x_) for x_ in x])
-    v = gun.x_dot(x)
-    t,xv = gun.shoot()
+    from eos import Experiment, Spline_eos
+    from calc import GUN, plot_dv_df
+
+    vt = (experiment())
+    eos = Spline_eos(Experiment(), N=10, v_min=.38, v_max=4.2)
     
-    fig = plt.figure('t,x')
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(t, xv[:,0])
-    
-    v_exp, t_exp = experiment()
-    fig = plt.figure('exp')
-    ax = fig.add_subplot(1,1,1)
-    ax.plot(t_exp, v_exp)
-    plt.show()
+    calc_gun = GUN()
+    calc_gun.set_eos(eos)
+
+    gun = Gun(eos)
+
+    for a,b in zip(gun.fit_B_ep(vt), calc_gun.set_B_ep(vt)):
+        nt.assert_allclose(a,b)
     return 0
     
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        rv = test() + test_opt()
+        rv = test()
         sys.exit(rv)
     if len(sys.argv) >1 and sys.argv[1] == 'work':
         sys.exit(work())

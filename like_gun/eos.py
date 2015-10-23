@@ -93,6 +93,7 @@ class Spline(IU_Spline):
         from inspect import stack
         rv = copy.deepcopy(self)
         rv._eval_args = self._eval_args[0], c, self._eval_args[2]
+        return rv # FixMe
         # stack()[1] is context that called new_c
         rv.provenance = Provenance(
             stack()[1], 'New coefficients', branches=[self.provenance],
@@ -314,12 +315,17 @@ def test_spline():
             feasible[i] = float(y.max())
         assert np.argmin(cost) == 0
         assert feasible[11]*feasible[12] < 0
-    return 0
+    return 0  
 def test():
-    ''' Execute collection of test functions
-    '''
-    test_spline()
+    for name,value in globals().items():
+        if not name.startswith('test_'):
+            continue
+        if value() == 0:
+            print('{0} passed'.format(name))
+        else:
+            print('\nFAILED            {0}\n'.format(name))
     return 0
+    
 def work():
     ''' This code for debugging stuff will change often
     '''
