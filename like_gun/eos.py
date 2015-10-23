@@ -84,7 +84,7 @@ class Spline(IU_Spline):
         return self._eval_args[0]
     def get_c(self):
         'Return the coefficients for the basis functions'
-        return self._eval_args[1]
+        return self._eval_args[1][:-magic.spline_end]
     def new_c(self,c):
         '''Return a new Spline_eos instance that is copy of self except
         that the coefficients for the basis functions are c and
@@ -92,7 +92,9 @@ class Spline(IU_Spline):
         import copy
         from inspect import stack
         rv = copy.deepcopy(self)
-        rv._eval_args = self._eval_args[0], c, self._eval_args[2]
+        c_ = np.zeros(self._eval_args[1].shape)
+        c_[:-magic.spline_end] = c
+        rv._eval_args = self._eval_args[0], c_, self._eval_args[2]
         return rv # FixMe
         # stack()[1] is context that called new_c
         rv.provenance = Provenance(
@@ -117,13 +119,11 @@ class Spline_eos(Spline, Component):
             precondition=False,
             comment='',
             ):
-        self.end = magic.spline_end
         v = np.logspace(np.log10(v_min), np.log10(v_max), N)
         IU_Spline.__init__(self,v,P(v))
         Component.__init__(self, self.get_c(), comment)
-        c_P = self.get_c()[:-self.end]
-        self.prior_mean = c_P.copy()
-        dev = c_P*uncertainty
+        self.prior_mean = self.get_c().copy()
+        dev = self.prior_mean*uncertainty
         self.prior_var_inv = np.diag(1.0/(dev*dev))
         self.precondition = precondition
         if precondition:
@@ -135,15 +135,13 @@ class Spline_eos(Spline, Component):
 
         The function is the square root of the marginal of the covariance.
         '''
-        n = len(self.get_c())
-        c_work = np.zeros(n)
-        c_ = c_work[:-self.end]
-        c_dev = np.zeros(n)
-        for i in range(len(c_)):
-            c_[i] = 1.0
-            var_x_i = np.linalg.solve(self.prior_var_inv, c_)
+        c = np.zeros(len(self.get_c()))
+        c_dev = np.zeros(len(c))
+        for i in range(len(c)):
+            c[i] = 1.0
+            var_x_i = np.linalg.solve(self.prior_var_inv, c)
             c_dev[i] = np.sqrt(var_x_i[i])
-            c_[i] = 0.0
+            c[i] = 0.0
         return self.new_c(c_dev)
     def display(
             self,      # Spline_eos instance
@@ -255,11 +253,11 @@ class Spline_eos(Spline, Component):
         '''
         dim = len(self.prior_mean)
         v_all = self.get_t()
-        v_unique = v_all[self.end-1:1-self.end]
+        v_unique = v_all[magic.spline_end-1:1-magic.spline_end]
         n_v = len(v_unique)
         n_constraints = n_v + 2
         G = np.zeros((n_constraints, dim))
-        c = np.zeros(dim+self.end)
+        c = np.zeros(dim)
         for i in range(dim):
             c[i] = 1.0
             P_work = self.new_c(c)
@@ -290,10 +288,10 @@ def test_spline():
     experiment = Experiment()
     for pre_c in (True, False):
         s_nom = Spline_eos(nominal,precondition=pre_c)
-        c_nom = s_nom.get_c()[:-s_nom.end] # Coefficients for nominal spline
+        c_nom = s_nom.get_c() # Coefficients for nominal spline
     
         s_exp = Spline_eos(experiment, precondition=pre_c) # provenance
-        c_exp = s_exp.get_c()[:-s_exp.end] # Coefficients for experiment spline
+        c_exp = s_exp.get_c() # Coefficients for experiment spline
         assert (s_exp.provenance.line ==
                 's_exp = Spline_eos(experiment, precondition=pre_c) # provenance')
         # spline should match data at the knots

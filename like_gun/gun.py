@@ -11,6 +11,8 @@ class go:
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+#import fit.magic.D_frac as D_f # FixMe: Import go and pass D_frac
+D_f=2.0e-2
 magic = go(
     x_i=0.4,             # Initial position of projectile / cm'
     x_f=4.0,             # Final/muzzle position of projectile /cm'
@@ -21,7 +23,7 @@ magic = go(
     n_t=500,             # Number of ts for t2v spline
     t_min=-5.0e-6,       # Range of times for t2v spline
     t_max=110.0e-6,      # Range of times for t2v spline
-    D_frac=2.0e-2,       # Fractional finte difference for esimating dv/df
+    D_frac=D_f   ,       # Fractional finte difference for esimating dv/df
     cm2km=1.0e5,         # For conversion from cm/sec to km/sec
     n_t_sim=1000,        # len(vt), simulated velocity time pairs
            )
@@ -161,23 +163,18 @@ class Gun:
         # Spline.new_c(c) does not modify Spline.  It returns a copy
         # of Spline with the coefficients c and an updated provenance.
         eos_nom = self.eos
-        end = eos_nom.end            # Length of padding on cubic splines
         c_f_nom = eos_nom.get_c()    # Nominal coefficients for eos
-        n_f = len(c_f_nom) - end     # Dimension of optimization var
         t2v_nom = self.fit_t2v(t_min, t_max, n_t)
         c_v_nom = t2v_nom.get_c()
-        n_v = len(c_v_nom) - end
-        D = np.empty((n_v,n_f)) # To be dv/df matrix
-        for i in range(n_f):
+        D = np.empty((len(c_v_nom),len(c_f_nom))) # To be dv/df matrix
+        for i in range(len(c_f_nom)):
             c_f = c_f_nom.copy()
             # Next set size of finite difference for derivative approximation
             d_f = float(c_f[i]*fraction)
             c_f[i] += d_f
             # Next run a simulation to get a v(t) spline a for a modified eos
             self.eos = eos_nom.new_c(c_f)
-            c_v = self.fit_t2v(t_min, t_max, n_t).get_c()
-            D_i = ((c_v - c_v_nom)[:-end])/d_f
-            D[:,i] = D_i
+            D[:,i] = (self.fit_t2v(t_min, t_max, n_t).get_c() -c_v_nom)/d_f
         self.eos = eos_nom
         return D
     def fit_B_ep(
@@ -193,18 +190,16 @@ class Gun:
                                 the t2v spline
         '''
         v,t = vt
-        n_vt = len(v)
-        assert len(t) == n_vt
+        assert len(t) == len(v)
         t2v = self.fit_t2v()
-        c_ = np.zeros(t2v.get_c().shape) # Also creates self.t2v
+        c = np.zeros(t2v.get_c().shape)
         ep = v - t2v(t)   # Calculate errors
-        v_dim = len(c_) - self.eos.end # end values are always 0
-        B = np.zeros((n_vt,v_dim))
-        for j in range(v_dim):
-            c_[j] = 1.0
-            delta_t2v = t2v.new_c(c_)
+        B = np.zeros((len(v), len(c)))
+        for j in range(len(c)):
+            c[j] = 1.0
+            delta_t2v = t2v.new_c(c)
             B[:,j] = delta_t2v(t)
-            c_[j] = 0.0
+            c[j] = 0.0
         return B, ep
     def Pq(
             self,         # Gun instance
