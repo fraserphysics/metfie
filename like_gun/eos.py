@@ -106,8 +106,9 @@ class Spline_eos(Spline, Component):
     
     Methods:
 
-    Pq   Describes portion of cost function due to the prior
-    Gh   Describes constraints: convex, monotonic and positive
+    Pq_prior  Describes portion of cost function due to the prior
+    Pq_like   Describes portion of cost function due to a likelihood
+    Gh        Describes constraints: convex, monotonic and positive
     '''
     def __init__(
             self,   # Spline_eos instance
@@ -133,7 +134,7 @@ class Spline_eos(Spline, Component):
         '''Calculate and return a spline for plotting uncertainty of
         the pressure function.
 
-        The function is the square root of the marginal of the covariance.
+        The function is the square root of the marginal covariance.
         '''
         c = np.zeros(len(self.get_c()))
         c_dev = np.zeros(len(c))
@@ -199,7 +200,7 @@ class Spline_eos(Spline, Component):
             width=700, height=500, alt='plot of eos', src='eos.jpg')
         return html
 
-    def Pq(
+    def Pq_prior(
         self,  # Spline_eos instance
         c_P,   # Current spline coefficients
         ):
@@ -216,7 +217,36 @@ class Spline_eos(Spline, Component):
         # Could scale by largest singular value of P
         # np.linalg.svd(P, compute_uv=False)[0]
         return P, q
-    
+    def Pq_like(
+            self,        # Eos instance
+            D_k,         # d sim /d f matrix
+            ep_k,        # v_exp - v_sim
+            Sigma_inv_k, # Covariance martix for exp
+            ):
+        '''See the section "A Posteriori Probability" of notes.tex,
+
+        P = Sigma_f^{-1} + \sum_k D_k^T Sigma^{-1}_k D_k
+        q^T = ep_f^T Sigma_f^{-1} - \sum_k ep_k^T Sigma_v^{-1} D_k
+        R = ep_f^T Sigma_f^{-1} ep_f + ep_k^T Sigma_k^{-1} ep_k
+
+        This method calculates the contributions to P and q from the
+        likelihood of an experiment, ie:
+        
+        P_k =  D_k^T Sigma^{-1}_k D_k
+        q_k^T =  - ep_k^T Sigma_k^{-1} D_k
+
+        If eos.precondition use these \tilde values instead:
+
+        \tilde P = U^{-1} P U^{-1} (variable t_P here)
+        \tilde q^T = q^T U^{-1} (variable t_q here)
+        '''
+        Sigma_inv_D = np.dot(Sigma_inv_k, D_k)
+        P = np.dot(D_k.T, Sigma_inv_D)
+        q = -np.dot(ep_k, Sigma_inv_D)
+        if self.precondition:
+            P = np.dot(self.U_inv, np.dot(P, self.U_inv))
+            q = np.dot(self.U_inv, q)
+        return P, q
     def Gh(
             self,  # Spline_eos instance
             c_P,   # Current spline coefficients
@@ -275,6 +305,16 @@ class Spline_eos(Spline, Component):
         if self.precondition: # If P is preconditioned, must modify G
             G = np.dot(G, self.U_inv)
         return G,h
+    def log_prior(
+            self, # Spline_eos instance
+            c,    # Proposed new spline coefficients
+            ):
+        ''' log of prior evaluated at c is ep_f^T * P/2 * ep_f where:
+             ep_f is c - mu and
+             P is inverse covariance
+        '''
+        ep_f = c - self.prior_mean
+        return -np.dot(ep_f, np.dot(self.prior_var_inv, ep_f))/2
     
 # Test functions
 import numpy.testing as nt
@@ -299,7 +339,7 @@ def test_spline():
         nt.assert_allclose(s_exp(t), experiment(t), rtol=1e-15)
     
         d_c = c_exp - c_nom
-        P,q = s_nom.Pq(c_nom)
+        P,q = s_nom.Pq_prior(c_nom)
         G,h = s_nom.Gh(c_nom)
 
         cost = np.empty(21)

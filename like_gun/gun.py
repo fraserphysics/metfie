@@ -19,7 +19,7 @@ magic = go(
     m=100.0,             # Mass of projectile / g
     area=1e-4,           # Projectile cross section in m^2
     newton2dyne=1e5,     # dynes per newton
-    var=1.0e0,           # Variance attributed to v measurements
+    var=1.0e-0,          # Variance attributed to v measurements
     n_t=500,             # Number of ts for t2v spline
     t_min=-5.0e-6,       # Range of times for t2v spline
     t_max=110.0e-6,      # Range of times for t2v spline
@@ -27,7 +27,6 @@ magic = go(
     cm2km=1.0e5,         # For conversion from cm/sec to km/sec
     n_t_sim=1000,        # len(vt), simulated velocity time pairs
            )
-
 class Gun:
     '''Represents an imagined experiment and actual simulations.
 
@@ -44,23 +43,22 @@ class Gun:
 
     x_dot(x)      Velocity
 
-    shoot()       Integrate ode(eos) to get t,x,v
+    shoot(...)    Integrate ode(eos) to get t,x,v
     
-    fit_t2v()     Fit t->v spline
+    fit_t2v(...)  Fit t->v spline
 
-    fit_D         Calculates derivative of velocity wrt to eos in
+    compare(vt,c) Return d_ep/d_c, ep, Sigma_inv
+
+    fit_D()       Calculates derivative of velocity wrt to eos in
                   terms of spline coefficients
 
     fit_B_ep(vt)  Calculates ep = errors of predictions of experimental
                   velocities and B = dv/dc_v
 
-    Pq(BD,ep_v)   Return P,q for a quadratic approximation of the log
-                  likelihood.  For a small change d in the spline
-                  coefficients, delta L = d*P*d + q*d
-
-    log_like(vt)  Calculate the exponent of the likelihood function
+    log_like(...) Calculate the exponent of the likelihood function
     
     '''
+    from eos import Spline_eos
     def __init__(
             self,            # Gun instance
             eos,             # Pressure(specific volume)
@@ -148,6 +146,22 @@ class Gun:
         t, xv = self.shoot(t_min, t_max, n_t)
         # xv is array of calculated positions and velocities at times in t
         return Spline(t,xv[:,1])
+    def compare(
+            self,
+            vt,
+            c=None
+            ):
+        ''' Calculate:
+        ep = prediction - data
+        D = d prediction / d c_eos
+        '''
+        if type(c) != type(None):
+            self.eos = self.eos.new_c(c)
+        D = self.fit_D()
+        B,ep = self.fit_B_ep(vt)
+        BD = np.dot(B,D)
+        Sigma_inv = np.diag(np.ones(len(ep))/self.var)
+        return (BD, ep, Sigma_inv)
     def fit_D(
             self,                   # Gun instance
             fraction=magic.D_frac,  # Finite difference fraction
@@ -201,49 +215,47 @@ class Gun:
             B[:,j] = delta_t2v(t)
             c[j] = 0.0
         return B, ep
-    def Pq(
-            self,         # Gun instance
-            BD,           # dv/df matrix
-            ep_v,         # v_exp - v_sim
-            ):
-        '''From the section "A Posteriori Probability" of notes.tex,
-
-        P = Sigma_f^{-1} + (BD)^T Sigma^{-1}_v BD
-        q^T = ep_f^T Sigma_f^{-1} - ep_v^T Sigma_v^{-1} BD
-        R = ep_f^T Sigma_f^{-1} ep_f + ep_v^T Sigma_v^{-1} ep_v
-
-        This method calculates the contribution from the likelihood of
-        the gun data, ie:
-        
-        P =  (BD)^T Sigma^{-1}_v BD
-        q^T =  - ep_v^T Sigma_v^{-1} BD
-
-        If eos.precondition use these \tilde values instead:
-
-        \tilde P = U^{-1} P U^{-1} (variable t_P here)
-        \tilde q^T = q^T U^{-1} (variable t_q here)
-        '''
-        P = np.dot(BD.T, BD)
-        q = -np.dot(ep_v, BD)
-        if self.eos.precondition:
-            P = np.dot(self.eos.U_inv, np.dot(P, self.eos.U_inv))
-            q = np.dot(self.eos.U_inv, q)
-        return P, q
     def log_like(
             self, # Gun instance
-            vt,   # Arrays of measured times and velocities
+            BD,
+            ep,
+            Sigma_inv,
             ):
         ''' Assume t are accurate and that for model velocities m
 
             L(m) = log(p(v|m)) =\sum_t - \frac{(v-m)^2}{2\sigma^2}
 
         '''
-        v,t = vt
-        m = self.fit_t2v()(t)  # Model
-        d = v-m
-        return -np.dot(d/self.var,d)/2
+        return -np.dot(ep, np.dot(Sigma_inv, ep))/2
+    def debug_plot(self, vt, key, show=False):
+        import matplotlib.pyplot as plt
 
-def experiment():
+        if show:
+            self.ax1.legend(loc='lower right')
+            self.ax2.legend()
+            plt.show()
+            return
+        t_mic = vt[1]*1e6
+        plotv = lambda v,s: self.ax1.plot(
+            t_mic, v/1e5, label=r'$v_{{\rm {0}}}$'.format(s))
+        if not hasattr(self, 'fig'):
+            self.fig = plt.figure('debug gun',figsize=(8,12))
+            
+            self.ax1 = self.fig.add_subplot(2,1,1)
+            self.ax1.set_xlabel(r'$t/(\mu \rm sec)$')
+            self.ax1.set_ylabel(r'$v/(\rm{km/s})$')
+            plotv(vt[0],'exp')
+            
+            self.ax2 = self.fig.add_subplot(2,1,2)
+            self.ax2.set_xlabel(r'$x/\rm cm$')
+            self.ax2.set_ylabel(r'$f/{\rm dyn}$')
+        plotv(self.fit_t2v()(vt[1]),key)
+        x = np.linspace(magic.x_i, magic.x_f, 500)
+        self.ax2.plot(x, self.f(x), label=r'$f_{{\rm {0}}}$'.format(key))
+        t2v = self.fit_t2v()
+        return
+
+def data():
     '''Make "experimental" data from gun with eos from eos.Experiment
     '''
     from eos import Experiment
@@ -258,8 +270,9 @@ import numpy.testing as nt
 close = lambda a,b: a*(1-1e-7) < b < a*(1+1e-7)
 def test_log_like():
     from eos import Nominal, Spline_eos
-    vt = (experiment())
-    ll = Gun(Spline_eos(Nominal())).log_like(vt)
+    vt = (data())
+    gun = Gun(Spline_eos(Nominal()))
+    ll = gun.log_like(*gun.compare(vt))
     if close(-ll, 970963830.012):
         return 0
     else:
@@ -298,7 +311,7 @@ def test_B_ep():
     ep[i] = v_simulation(t[i]) - v_experiment(t[i])
     '''
     from eos import Nominal, Spline_eos
-    vt = (experiment())
+    vt = (data())
     eos = Spline_eos(Nominal())
     B,ep = Gun(eos).fit_B_ep(vt)
     assert B.shape == (1000,500)
@@ -307,24 +320,28 @@ def test_B_ep():
     assert close(ep[345], 1461.8632379214614)
     assert np.argmax(B[300,:]) == 165
     assert close(B[300,165], 0.66576300914271824)
-    return 0 
+    return 0
 def test_Pq():
     '''
     '''
     from eos import Nominal, Spline_eos
-    vt = (experiment())
-    eos = Spline_eos(Nominal(),precondition=True)
+    vt = (data())
+    eos = Spline_eos(Nominal(),precondition=False)
+    c = eos.get_c()
     gun = Gun(eos)
-    D = gun.fit_D()
-    B,ep = gun.fit_B_ep(vt)
-    BD = np.dot(B,D)
-    P,q = gun.Pq(BD, ep)
+    P,q = eos.Pq_like(*gun.compare(vt, c))
     assert P.shape == (50,50)
     assert q.shape == (50,)
-    assert P[10,10] == P.max()
-    assert close(P.max(), 5.62897374e+05)
-    assert np.argmin(q) == 11
-    assert close(-q[11], 18186211.043204699)
+    assert P[23,23] == P.max()
+    value = 3.286529435e-10
+    assert close(P.max(), value), 'P.max={0:.9e} != {1:.9e}'.format(
+        P.max(), value)
+    i = 22
+    assert np.argmin(q) == i, 'argmin={0} != 11'.format(
+        np.argmin(q), i)
+    value = 5.680863201e-01
+    assert close(-q[i], value), '-q[{2}]={0:.9e} != {1:.9e}'.format(
+        -q[i], value, i)
     return 0    
 def test():
     for name,value in globals().items():
@@ -339,19 +356,12 @@ def test():
 def work():
     ''' This code for debugging stuff will change often
     '''
-    from eos import Experiment, Spline_eos
-    from calc import GUN, plot_dv_df
-
-    vt = (experiment())
-    eos = Spline_eos(Experiment(), N=10, v_min=.38, v_max=4.2)
-    
-    calc_gun = GUN()
-    calc_gun.set_eos(eos)
-
-    gun = Gun(eos)
-
-    for a,b in zip(gun.fit_B_ep(vt), calc_gun.set_B_ep(vt)):
-        nt.assert_allclose(a,b)
+    import matplotlib.pyplot as plt
+    from eos import Nominal, Spline_eos
+    vt = (data())
+    gun = Gun(Spline_eos(Nominal(),precondition=False))
+    gun.debug_plot(vt, 'test')
+    gun.debug_plot(None, None, show=True)
     return 0
     
 if __name__ == "__main__":
