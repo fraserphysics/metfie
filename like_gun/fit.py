@@ -44,11 +44,11 @@ class Opt:
             P += P_
             q += q_
         from cvxopt import matrix, solvers
-        solvers.options['show_progress']=False#True
-        solvers.options['maxiters']=1000 # 100 default
-        solvers.options['reltol']=1e-8   # 1e-6 default
-        solvers.options['abstol']=1e-9   # 1e-7 default
-        solvers.options['feastol']=1e-12 # 1e-7 default
+        solvers.options['show_progress']=True
+        solvers.options['maxiters']=100  # 100 default
+        solvers.options['reltol']=1e-6   # 1e-6 default
+        solvers.options['abstol']=1e-7   # 1e-7 default
+        solvers.options['feastol']=1e-7  # 1e-7 default
         if constrain:
             sol=solvers.qp(matrix(P), matrix(q), matrix(G), matrix(h) )
         else:
@@ -62,7 +62,7 @@ class Opt:
         
         if self.eos.precondition:
             d_hat = np.dot(self.eos.U_inv, d_hat)
-        n_steps = 10
+        n_steps = 4
         costs = np.empty(n_steps)
         xs = np.linspace(0,1, n_steps)
         for i,x in enumerate(xs):
@@ -129,7 +129,7 @@ def work():
 def make_opt():
     import gun
     import eos
-    nominal_eos = eos.Spline_eos(eos.Nominal())
+    nominal_eos = eos.Spline_eos(eos.Nominal(), precondition=True)
     experiment = {'gun':gun.Gun(nominal_eos)}
     data = {'gun':gun.data()}
     return Opt(nominal_eos, experiment, data)
