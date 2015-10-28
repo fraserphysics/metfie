@@ -422,10 +422,9 @@ not varied because they are fixed at 0.
       Note that each trace is a from a difference between splines fit
       to simulations with a finite difference in $f$.  I believe that
       the negative values of some of the traces are spline
-      approximation errors and not integration errors.  I also believe
-      that plots of the derivative of energy, ie,
-      $\frac{\partial E(t)}{\partial c_f[i]}$ would increase
-      monotonically.}
+      approximation errors and not integration errors.  Plots of the
+      derivative of energy, ie,
+      $\frac{\partial E(t)}{\partial c_f[i]}$ increase monotonically.}
     \label{fig:BD_test}
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
@@ -438,10 +437,7 @@ not varied because they are fixed at 0.
   wrt to $d$.  Note that $d\in \REAL^{n_c}$ where $n_c = \text{len}(c_f)-4$.
 \item[opt] Do a constrained optimization step.  The goal of \emph{opt}
   is to find the change $d$ in spline coefficients $c_f$ that yields a
-  function $f(c_f+d)$ that minimizes $F(f)$.  The key to \emph{opt} is
-  a call to cvxopt.solvers.qp
-  \lstinputlisting[language=Python, firstline=327,
-  lastline=352]{calc.py} The result appears in
+  function $f(c_f+d)$ that minimizes $F(f)$.  The result appears in
   Fig.~\ref{fig:opt_result}.
   \begin{figure}
     \centering

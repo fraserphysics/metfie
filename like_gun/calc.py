@@ -290,7 +290,7 @@ barrel and the forces at those positons respectively. '''
         '''
         r = self.ep - np.dot(BD,d) # Residual
         return float(np.dot(r.T,r))
-    def Gh(self, precondition):
+    def Gh(self, precondition=False):
         ''' Calculate and return constraint matrix G and vector h.  The
         constraint enforced by cvxopt.solvers.qp is
         
@@ -448,7 +448,7 @@ barrel and the forces at those positons respectively. '''
         return -np.dot(d/self.sigma_sq_v,d)/2
 def plot_f_v_e(
         data, # Dict with values ((x, eos(x), 'f'), ...)
-        t,   # "Experimental" times
+        t,    # "Experimental" times
         e,    # Tuple of time series of velocity errors
         fig   # plt.figure instance
         ):
@@ -464,11 +464,14 @@ def plot_f_v_e(
         'v':{'ax':fig.add_subplot(3,1,2), 'l_x':cm,
             'l_y':v_key, 'loc':'lower right'},
         'e':{'ax':fig.add_subplot(3,1,3), 'l_x':mu_sec,
-             'l_y':e_key, 'loc':'lower right'}
+             'l_y':e_key, 'loc':'upper right'}
     }
     for mod,xyn in data.items():
         for x,y,name in xyn:
-            ax_d[name]['ax'].plot(x,y,label=r'$\rm %s$'%mod)
+            if mod == 'experimental':
+                ax_d[name]['ax'].plot(x,y,'r-.',label=r'$\rm %s$'%mod)
+            else:
+                ax_d[name]['ax'].plot(x,y,label=r'$\rm %s$'%mod)
     for i in range(len(e)):
         ax_d['e']['ax'].plot(t*1e6,e[i]/100,label='%d'%i)
     for name,d in ax_d.items():
@@ -828,6 +831,24 @@ def test():
     
     #plt.show()
     return 0
+def plot_BD():
+    v_exp, t_exp = experiment()
+    gun = GUN()
+    x = gun.x
+    y = gun.eos(x)
+    eos = gun.set_eos_spline(x,y)
+    D = gun.set_D(fraction=1.0e-2) # 11.6 user seconds
+    B, ep = gun.set_B_ep((v_exp,t_exp))
+    BD = np.dot(B,D)
+    n_t,n_c = BD.shape
+    fig = plt.figure()
+    ax = fig.add_subplot(1,1,1)
+    for i in range(n_c):
+        ax.plot(t_exp*1e6, BD[:,i])
+    ax.set_xlabel(r'$t/(\mu\rm{sec})$')
+    ax.set_ylabel(r'$\frac{\partial v(t)}{\partial c_f[i]}/({\rm cm/s})$')
+    fig.savefig('BD_test.pdf', format='pdf')
+    return 0
 def work():
     ''' This code for debugging stuff will change often
     '''
@@ -872,6 +893,9 @@ def work():
     
 if __name__ == "__main__":
     import sys
+    if len(sys.argv) >1 and sys.argv[1] == 'BD':
+        rv = plot_BD()
+        sys.exit(rv)
     if len(sys.argv) >1 and sys.argv[1] == 'test':
         rv = test() + test_opt()
         sys.exit(rv)
