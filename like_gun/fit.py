@@ -44,7 +44,7 @@ class Opt:
             P += P_
             q += q_
         from cvxopt import matrix, solvers
-        solvers.options['show_progress']=True
+        solvers.options['show_progress']=False
         solvers.options['maxiters']=100  # 100 default
         solvers.options['reltol']=1e-6   # 1e-6 default
         solvers.options['abstol']=1e-7   # 1e-7 default
@@ -72,7 +72,7 @@ class Opt:
         return costs[i], costs
     def fit(
             self,                # Opt instance
-            max_it=magic.max_iter,
+            max_iter=magic.max_iter,
             tol=magic.converge,
             constrain=True,
             debug=False,
@@ -83,7 +83,7 @@ class Opt:
         costs = [self.cost(cs[-1],debug=debug, key='initial')]
         tol *= abs(costs[-1])
         plot_data = []
-        for i in range(max_it):
+        for i in range(max_iter):
             cost, x = self.step(constrain=constrain)
             if debug:
                 print('costs along line:\n{0}\n'.format(x))
@@ -93,13 +93,14 @@ class Opt:
             cs.append(self.eos.get_c().copy())
             delta = costs[-2] - costs[-1]
             if delta < tol:
-                if debug:
-                    self.experiment['gun'].debug_plot(
-                        None, None, show=True) # FixMe: For plt.show()
                 if delta < 0:
                     self.eos.new_c(cs[-2])
-                return
-        return
+                break
+        if debug:
+            print('delta={0:.3e} tol={1:.3e}, i={2}'.format(delta, tol, i))
+            self.experiment['gun'].debug_plot(
+                        None, None, show=True) # FixMe: For plt.show()
+        return cs
     def cost(
             self,        # Opt instance
             c,           # Trial eos parameters
@@ -113,23 +114,27 @@ class Opt:
             print('log_prior=    {0:4e}'.format(rv))
         for k in self.data.keys():
             exp = self.experiment[k]
-            comparison = exp.compare(self.data[k], c)
-            if debug and hasattr(exp, 'debug_plot'):
-                exp.debug_plot(self.data[k], key)
-            log_like = exp.log_like(*comparison) # FixMe: fix gun.Pq functions
+            log_like = exp.log_like(*exp.compare(self.data[k], c))
             if debug:
                 print('log_like({0})={1:4e}'.format(k, log_like))
+                if hasattr(exp, 'debug_plot'):
+                    exp.debug_plot(self.data[k], key)
             rv += log_like
+        if debug:
+            print('sum=          {0:4e}'.format(rv))
         return -rv
 def work():
     ''' This code for debugging stuff will change often
     '''
     return 0
 
-def make_opt():
+# Test functions
+import numpy.testing as nt
+close = lambda a,b: a*(1-1e-7) < b < a*(1+1e-7)
+def make_opt(precondition=False):
     import gun
     import eos
-    nominal_eos = eos.Spline_eos(eos.Nominal(), precondition=True)
+    nominal_eos = eos.Spline_eos(eos.Nominal(), precondition=precondition)
     experiment = {'gun':gun.Gun(nominal_eos)}
     data = {'gun':gun.data()}
     return Opt(nominal_eos, experiment, data)
@@ -140,7 +145,11 @@ def test_step():
     make_opt().step()
     return 0
 def test_fit():
-    make_opt().fit(constrain=True, debug=True)
+    for pre in (False, True):
+        cs = make_opt(precondition=pre).fit(max_iter=1)
+        assert len(cs) == 2
+        assert len(cs[-1]) == 50
+        assert close(cs[-1][20], 502239535.66)
     return 0
 def test():
     for name,value in globals().items():
@@ -154,7 +163,7 @@ def test():
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':
-        rv = test_fit()
+        rv = test()
         sys.exit(rv)
     if len(sys.argv) >1 and sys.argv[1] == 'work':
         sys.exit(work())

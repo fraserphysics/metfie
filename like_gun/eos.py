@@ -204,7 +204,7 @@ class Spline_eos(Spline, Component):
         self,  # Spline_eos instance
         c_P,   # Current spline coefficients
         ):
-        '''Contribution of prior to cost is
+        '''Return P and q for the cost of the prior:
 
            (x^T P x)/2 + q^T x
         '''
@@ -214,6 +214,8 @@ class Spline_eos(Spline, Component):
         if self.precondition:
             P = np.dot(self.U_inv, np.dot(P, self.U_inv))
             q = np.dot(q, self.U_inv)
+        else:
+            P = P.copy() # Will be used as "P += ..."
         # Could scale by largest singular value of P
         # np.linalg.svd(P, compute_uv=False)[0]
         return P, q
@@ -297,8 +299,10 @@ class Spline_eos(Spline, Component):
             c[i] = 0.0
         h = -np.dot(G,c_P)
 
+        scale = np.abs(h)
+        scale = np.maximum(scale, scale.max()*1e-15)
         # Scale to make |h[i]| = 1 for all i
-        HI = np.diag(1.0/np.abs(h))
+        HI = np.diag(1.0/scale)
         h = np.dot(HI,h)
         G = np.dot(HI,G)
 
