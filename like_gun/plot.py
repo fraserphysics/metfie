@@ -241,24 +241,26 @@ def fve_gun(exp, nom, opt_args, plt):
     opt_gun = Gun(opt.eos)
     nom.gun.eos = nom.eos # Restore nominal eos after optimization
     t2vs = [Gun(eos).fit_t2v() for eos in [opt.eos.new_c(c) for c in cs]]
-    e = [exp.v - t2v(exp.t) for t2v in t2vs]
+    e = [exp.v - t2v(exp.t) for t2v in t2vs[1:]]
 
     data = {'nominal':(
-        (exp.x, nom.eos(exp.x), 'f'),
+        (exp.x, nom.eos(exp.x)*p2f, 'f'),
         (exp.x, nom.gun.x_dot(exp.x)/magic.cm2km, 'v'))}
     data['experimental']=(
-        (exp.x, exp.eos(exp.x), 'f'),
+        (exp.x, exp.eos(exp.x)*p2f, 'f'),
         (exp.x, exp.gun.x_dot(exp.x)/magic.cm2km, 'v'))
     data['fit']=(
-        (exp.x, opt.eos(exp.x), 'f'),
+        (exp.x, opt.eos(exp.x)*p2f, 'f'),
         (exp.x, opt_gun.x_dot(exp.x)/magic.cm2km, 'v'))
-
+    
     cm = r'$x/(\rm{cm})$'
     mu_sec = r'$t/(\mu\rm{sec})$'
+    f_key = r'$f/({\rm dyn}\cdot 10^{11})$'
     v_key = r'$v/(\rm{km/s})$'
-    e_key = r'$e/(\rm{m/s})$'
+    e_key = r'$\epsilon_k/(\rm{m/s})$'
     ax_d = {
-        'f':{'ax':fig.add_subplot(3,1,1), 'l_x':cm,'loc':'upper right'},
+        'f':{'ax':fig.add_subplot(3,1,1), 'l_x':cm,
+             'l_y':f_key, 'loc':'upper right'},
         'v':{'ax':fig.add_subplot(3,1,2), 'l_x':cm,
             'l_y':v_key, 'loc':'lower right'},
         'e':{'ax':fig.add_subplot(3,1,3), 'l_x':mu_sec,
@@ -271,7 +273,7 @@ def fve_gun(exp, nom, opt_args, plt):
             else:
                 ax_d[name]['ax'].plot(x,y,label=r'$\rm %s$'%mod)
     for i in range(len(e)):
-        ax_d['e']['ax'].plot(exp.t*1e6,e[i]/100,label='%d'%i)
+        ax_d['e']['ax'].plot(exp.t*1e6,e[i]/100,label=r'$\epsilon_%d$'%(i+1))
     for name,d in ax_d.items():
         d['ax'].legend(loc=ax_d[name]['loc'])
         d['ax'].set_xlabel(d['l_x'])

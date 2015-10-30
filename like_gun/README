@@ -1,29 +1,32 @@
 The like_gun directory is for exploring HE modeling issues using
-simple toy models.
+simple toy models.  To make notes.pdf:
 
-Plans:
+-> git clone https://github.com/fraserphysics/metfie
+-> cd metfie/like_gun
+-> make notes.pdf
 
-1. Make sure that that the EOS model used for generating simulated
-   data is not in any class of fitted models so that there will be
-   bias.
+Plans for multiple measurements:
 
-2. Develop a stochastic model for the measurements so that there will
-   be variance in the estimates of EOS models.
+1. Calulate detonation velocity from eos
 
-3. Write code that estimates polynomial models for the EOS.
+2. Simulate rate stick measurements
 
-4. Write code that calculates or estimates bias and variance of
-   estimated muzzle energy and muzzle time given a parametric EOS
-   model.
+3. Use rate stick data in eos estimation
 
-5. Plot bias/variance pairs for sequences of spline and polynomial
+4. Simulate expanding cylinder
+
+Plans for comparing coordinate systems:
+
+1. Write code that calculates or estimates uncertainty of estimated
+   EOS model.
+
+2. Write code that calculates or estimates uncertainty of estimated
+   muzzle energy and muzzle time given uncertain EOS model.
+   
+3. Plot bias/variance pairs for sequences of spline and polynomial
    models with increasing numbers of parameters.
 
-6. Explain all of the above work in notes.tex
-
-7. Devise MAP scheme and explain in notes.tex
-
-8. Implement MAP scheme
+4. Explain all of the above work in notes.tex
 
 -----------------------------------------------------------------
 basis.py:

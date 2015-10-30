@@ -51,6 +51,61 @@
     ideas for work on the 9501 model on moonlight.
 \end{abstract}
 
+\section{Introduction}
+\label{sec:introduction}
+
+I describe theory and code for numerical experiments based on functions
+(EOSs) that map specific volume to pressure along an isentrope.
+Running the code helps verify the theory.  I intend to describe how
+tightly a few different experiments constrain the EOS.  This document
+and the code are structured as follows:
+\begin{description}
+\item[EOS:] I characterize the EOS $f$ in terms of
+  \begin{description}
+  \item[Constraints:] The function $f$ must be positive, monotonic and
+    convex over its entire domain.
+  \item[Prior:] I use a Gaussian distribution over parameters of an ad
+    hoc choice of coordinates.  I don't know how seriously this flawed
+    choice affects the results.
+  \end{description}
+  The the class \emph{Spline\_eos} in the module \emph{eos.py}
+  provides methods that implement these characteristics.
+\item[Experiments:] I will consider a set of experiments
+  $\left\{ E_k: 0 \leq k < N \right\}$.  For each experiment, I will
+  need:
+  \begin{description}
+  \item[Data:] Theory and code for generating simulated data
+  \item[Likelihood:] Theory and code for calculating the likelihood of
+    data
+  \end{description}
+\item[Optimization:] If the likelihoods were exponentials of quadratic
+  functions of the parameters of the EOS, then the a posterori
+  distribution would be Gaussian if there were no constraints.  The
+  code for each experiment reports the dependence of the data on the
+  parameters as an affine approximation.  That lets me approximately
+  characterize the likelihoods as exponentials of quadratics.  I
+  enforce the constraints and ignore their effects on the
+  distributions.  The module \emph{fit.py} implements the resulting
+  constrained MAP estimation.
+\end{description}
+
+\section{The EOS}
+\label{sec:eos}
+
+\section{Optimization}
+\label{sec:optimization}
+
+
+ and for each I will have a module with
+  code that generates simulated data and that given data and an EOS
+  will calculate the following:
+  \begin{description}
+  \item[$D_k$:] 
+  \item[$\epsilon_k$:] 
+  \item[$\Sigma_k$:] 
+  \end{description}
+
+
 \section{Notation for and Implementation of Basic Functions}
 \label{sec:basic}
 
@@ -485,7 +540,7 @@ which was used to generate the simulated data.
       optimization starts with the \emph{initial} and ends with
       \emph{fit}.  The corresponding velocity as a function of
       position appears in the middle plot, and the sequence of errors
-      in the velocity time series for each step in the optimization
+      in the velocity time series after each step in the optimization
       appears in the lower plot. }
   \label{fig:fve_gun}
 \end{figure}
