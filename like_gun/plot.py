@@ -14,8 +14,11 @@ class Go:
     ''' Generic object.
     '''
     def __init__(self, **kwargs):
+        self.add(**kwargs)
+    def add(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
+        return self
 def main(argv=None):
     import argparse
     import os
@@ -59,44 +62,25 @@ def main(argv=None):
     if not os.path.exists(args.fig_dir):
         os.mkdir(args.fig_dir)
         
-    # Do quick calculations for all plots even if not necessary
+    # Do quick calculations to create exp, nom and opt_args
     import eos
     import gun
     
-    exp_eos = eos.Experiment()
-    exp_gun = gun.Gun(exp_eos)
-    exp_t2v = exp_gun.fit_t2v()
-    exp_t = np.linspace(0, gun.magic.t_max, gun.magic.n_t_sim)
-    exp_v = exp_t2v(exp_t)
-    exp_vt = (exp_v, exp_t)
-    exp_x = np.linspace(exp_gun.x_i, exp_gun.x_f, 500)
+    t=np.linspace(0, gun.magic.t_max, gun.magic.n_t_sim)
+    exp = Go(eos=eos.Experiment())
+    nom = Go(eos=eos.Spline_eos(eos.Nominal(), precondition=True))
+    for go in (exp, nom):
+        go.add(t=t, gun=gun.Gun(go.eos))
+        go.add(x=np.linspace(go.gun.x_i, go.gun.x_f, 500))
+        go.add(t2v=go.gun.fit_t2v())
+        go.add(v=go.t2v(t))
+        go.add(vt=(go.v, go.t))
+    D=nom.gun.fit_D()
+    B,ep = nom.gun.fit_B_ep(exp.vt)
+    nom.add(D=D, B=B, ep=ep, BD=np.dot(B,D))
     
-    nom_eos = eos.Spline_eos(eos.Nominal(), precondition=True)
-    nom_gun = gun.Gun(nom_eos)
-    nom_t2v = nom_gun.fit_t2v()
-    nom_D = nom_gun.fit_D()
-    nom_B, nom_ep = nom_gun.fit_B_ep(exp_vt)
-
-    opt_args = (nom_eos, {'gun':nom_gun}, {'gun':exp_vt})
+    opt_args = (nom.eos, {'gun':nom.gun}, {'gun':exp.vt})
     
-    calc = Go(
-        exp_eos=exp_eos,
-        exp_gun=exp_gun,
-        exp_t2v=exp_t2v,
-        exp_t=exp_t,
-        exp_v=exp_v,
-        exp_x=exp_x,
-
-        nom_gun=nom_gun,
-        nom_eos=nom_eos,
-        nom_t2v=nom_t2v,
-        nom_D=nom_D,
-        nom_B=nom_B,
-        nom_ep=nom_ep,
-
-        opt_args=opt_args,
-        )
-        
     # Make requested plots
     do_show = args.show
     for key in args.__dict__:
@@ -105,7 +89,7 @@ def main(argv=None):
         if args.__dict__[key] == None:
             continue
         print('work on %s'%(key,))
-        fig = plot_dict[key](calc, args, plt)
+        fig = plot_dict[key](exp, nom, opt_args, plt)
         file_name = getattr(args, key)
         if file_name == 'show':
             do_show = True
@@ -115,103 +99,83 @@ def main(argv=None):
         plt.show()
     return 0
 
-def D_gun(calc, args, plt):
-    D = calc.nom_D
-    eos = calc.nom_eos
-    t2v = calc.exp_t2v
+def D_gun(exp, nom, opt_args, plt):
     fig = plt.figure('D', figsize=fig_y_size(6.4))
-
-    n_f = len(eos.get_c())
-    n_v = len(t2v.get_c())
-    assert D.shape == (n_v, n_f)
+    n_f = len(nom.eos.get_c())
+    n_v = len(exp.t2v.get_c())
+    assert nom.D.shape == (n_v, n_f)
     ax = fig.add_subplot(1,1,1)
     for j in range(n_f):
-        ax.plot(D[:,j]*1e7)
+        ax.plot(nom.D[:,j]*1e7)
     ax.set_xlabel(r'$k$')
     ax.set_ylabel(
         r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)\cdot 10^7$')
     return fig
 plot_dict['D_gun'] = D_gun
 
-def vt_gun(calc, args, plt):
-    t = calc.exp_t
-    v = calc.exp_v
-    t2v = calc.nom_t2v
-    ep = calc.nom_ep
-
-    ts = t2v.get_t()
-    fig = plt.figure('vt', figsize=fig_y_size(6))
+def vt_gun(exp, nom, opt_args, plt):
+    fig = plt.figure('vt', figsize=fig_y_size(8))
+    ts = nom.t2v.get_t()
     ax = fig.add_subplot(1,1,1)
-    ax.plot(ts*1e6, t2v(ts)/1e5, label='simulation')
-    ax.plot(t*1e6, (v+ep)/1e5, label='experiment')
-    ax.plot(t*1e6, ep/1e5, label=r'error $\epsilon$')
+    ax.plot(nom.t*1e6, nom.v/1e5, label='simulation')
+    ax.plot(exp.t*1e6, exp.v/1e5, label='experiment')
+    ax.plot(nom.t*1e6, nom.ep/1e5, label=r'error $\epsilon$')
     ax.set_xlabel(r'$t/(\mu \rm{sec})$')
     ax.set_ylabel(r'$v/(\rm{km/s})$')
     ax.legend(loc='upper left')
     return fig
 plot_dict['vt_gun'] = vt_gun
 
-def BD_gun(calc, args, plt):
-    B = calc.nom_B
-    D = calc.nom_D
-    exp_t = calc.exp_t
-    BD = np.dot(B,D)
-    n_t,n_c = BD.shape
-    
+def BD_gun(exp, nom, opt_args, plt):
     fig = plt.figure('BD', figsize=fig_y_size(7))
-    
+    D = nom.D
+    BD = np.dot(nom.B,nom.D)
+    n_t,n_c = BD.shape
     ax = fig.add_subplot(1,1,1)
     for i in range(n_c):
-        ax.plot(exp_t*1e6, BD[:,i]*1e7)
+        ax.plot(exp.t*1e6, BD[:,i]*1e7)
     ax.set_xlabel(r'$t/(\mu\rm{sec})$')
     ax.set_ylabel(
         r'$\frac{\partial v(t)}{\partial c_f[i]}/({\rm cm/s})\cdot 10^7$')
     return fig
 plot_dict['BD_gun'] = BD_gun
 
-def opt_result(calc, args, plt):
+def opt_result(exp, nom, opt_args, plt):
     from fit import Opt
     from gun import magic
     
+    fig = plt.figure('opt_result', figsize=fig_y_size(6))    
     p2f = magic.newton2dyne*magic.area/1e11
-    opt = Opt(*calc.opt_args)
-    
-    x = calc.exp_x
-    
+    opt = Opt(*opt_args)
     eos_0 = opt.eos
     opt.fit(max_iter=1)
     eos_1 = opt.eos
-    
-    fig = plt.figure('opt_result', figsize=fig_y_size(6))
+    nom.gun.eos = nom.eos # Restore after optimization
     
     ax = fig.add_subplot(1,1,1)
-    ax.plot(x,eos_0(x)*p2f,label=r'$f_0$')
-    ax.plot(x,eos_1(x)*p2f,label=r'$f_1$')
+    ax.plot(exp.x,eos_0(exp.x)*p2f,label=r'$f_0$')
+    ax.plot(exp.x,eos_1(exp.x)*p2f,label=r'$f_1$')
     ax.legend()
     ax.set_xlabel(r'$x/{\rm cm}$')
     ax.set_ylabel(r'$f/({\rm dyn}\cdot 10^{11})$')
     return fig
 plot_dict['opt_result'] = opt_result
 
-def big_d(calc, args, plt):
+def big_d(exp, nom, opt_args, plt):
     ''' 3x3 matrix of plot that illustrate finite difference derivative
     '''
-    gun = calc.nom_gun
-    nom_eos = calc.nom_eos
-    t2v = calc.nom_t2v
-    x = calc.exp_x
-    
     fig = plt.figure('big_d', figsize=(14,16))
-
-
+    gun = nom.gun
+    t2v = nom.t2v
+    x = exp.x
     frac_a = 2.0e-2
     frac_b = 2.0e-3
     DA = gun.fit_D(fraction=frac_a)*1e7
     DB = gun.fit_D(fraction=frac_b)*1e7
     x_D = t2v.get_t()[2:-2]*1.0e6
 
-    c = nom_eos.get_c()
-    f = nom_eos(x)
+    c = nom.eos.get_c()
+    f = nom.eos(x)
     t = np.linspace(0,105.0e-6,500)
     v = t2v(t)
     def delta(frac):
@@ -220,7 +184,7 @@ def big_d(calc, args, plt):
         for i in range(len(c)):
             c_ = c.copy()
             c_[i] = c[i]*(1+frac)
-            gun.eos = nom_eos.new_c(c_)
+            gun.eos = nom.eos.new_c(c_)
             t2v_i = gun.fit_t2v()
             df.append(gun.eos(x)-f)
             dv.append(t2v_i(t) - v)
@@ -239,7 +203,7 @@ def big_d(calc, args, plt):
             (4, t, np.array([v]),mic_sec, r'$v/(\rm{km/s})$'),
             (5, t, dva,mic_sec, '$\Delta v$'),
             (6, t, dvb, mic_sec,'$\Delta v$'),
-            (7, x_D, DA.T-DB.T, mic_sec, r'$\rm Difference$'),
+            (7, x_D, (DA.T-DB.T)*1e3, mic_sec, r'$\rm Difference\cdot 10^3$'),
             (8, x_D, DA.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
             (9, x_D, DB.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
             ):
@@ -265,41 +229,29 @@ def big_d(calc, args, plt):
     return fig
 plot_dict['big_d'] = big_d
 
-def fve_gun(calc, args, plt):
+def fve_gun(exp, nom, opt_args, plt):
     from fit import Opt
     from gun import magic
     from gun import Gun
     
-    p2f = magic.newton2dyne*magic.area/1e11
-    opt = Opt(*calc.opt_args)
-    
-    x = calc.exp_x
-    nom_gun = calc.nom_gun
-    nom_eos = calc.nom_eos
-    v = calc.exp_v
-    t = calc.exp_t
-    exp_gun = calc.exp_gun
-    exp_eos = calc.exp_eos
-
+    fig = plt.figure('fve_gun',figsize=fig_y_size(9))    
+    p2f = magic.newton2dyne*magic.area/1e11    
+    opt = Opt(*opt_args)
     cs = opt.fit(max_iter=5)
-    opt_eos = opt.eos
-    opt_gun = Gun(opt_eos)
-
-    t2vs = [Gun(eos).fit_t2v() for eos in [opt_eos.new_c(c) for c in cs]]
-    e = [v - t2v(t) for t2v in t2vs]
-    
-    fig = plt.figure('fve_gun',figsize=fig_y_size(9))
-
+    opt_gun = Gun(opt.eos)
+    nom.gun.eos = nom.eos # Restore nominal eos after optimization
+    t2vs = [Gun(eos).fit_t2v() for eos in [opt.eos.new_c(c) for c in cs]]
+    e = [exp.v - t2v(exp.t) for t2v in t2vs]
 
     data = {'nominal':(
-        (x, nom_eos(x), 'f'),
-        (x, nom_gun.x_dot(x)/magic.cm2km, 'v'))}
+        (exp.x, nom.eos(exp.x), 'f'),
+        (exp.x, nom.gun.x_dot(exp.x)/magic.cm2km, 'v'))}
     data['experimental']=(
-        (x, exp_eos(x), 'f'),
-        (x, exp_gun.x_dot(x)/magic.cm2km, 'v'))
+        (exp.x, exp.eos(exp.x), 'f'),
+        (exp.x, exp.gun.x_dot(exp.x)/magic.cm2km, 'v'))
     data['fit']=(
-        (x, opt_eos(x), 'f'),
-        (x, opt_gun.x_dot(x)/magic.cm2km, 'v'))
+        (exp.x, opt.eos(exp.x), 'f'),
+        (exp.x, opt_gun.x_dot(exp.x)/magic.cm2km, 'v'))
 
     cm = r'$x/(\rm{cm})$'
     mu_sec = r'$t/(\mu\rm{sec})$'
@@ -319,7 +271,7 @@ def fve_gun(calc, args, plt):
             else:
                 ax_d[name]['ax'].plot(x,y,label=r'$\rm %s$'%mod)
     for i in range(len(e)):
-        ax_d['e']['ax'].plot(t*1e6,e[i]/100,label='%d'%i)
+        ax_d['e']['ax'].plot(exp.t*1e6,e[i]/100,label='%d'%i)
     for name,d in ax_d.items():
         d['ax'].legend(loc=ax_d[name]['loc'])
         d['ax'].set_xlabel(d['l_x'])
@@ -329,13 +281,6 @@ def fve_gun(calc, args, plt):
     
     return fig
 plot_dict['fve_gun'] = fve_gun
-
-def x(calc, args, plt):
-    '''Template
-    '''
-    fig = plt.figure('x', figsize=fig_y_size(6.4))
-    return fig
-plot_dict['x'] = x
 
 if __name__ == "__main__":
     sys.exit(main())

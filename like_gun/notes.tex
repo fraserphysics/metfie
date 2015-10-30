@@ -397,11 +397,7 @@ not varied because they are fixed at 0.
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{\fig{D_gun}}}
     \caption{The matrix $D$.  Each trace represents
-      $\frac{\partial \cv[k]}{\partial \cf[i]}$ for a different $i$.
-      While a positive change in $f$ anywhere can only increase $v(t)$
-      in the ideal gun, I believe that the negative values at low
-      values of $k$ are due primarily to the overlapping basis
-      functions for the spline that approximates the function $v$.}
+      $\frac{\partial \cv[k]}{\partial \cf[i]}$ for a different $i$.}
     \label{fig:D_gun}
   \end{figure}
 \item[set\_Be] Map experimental velocities v and times t to the
@@ -421,12 +417,10 @@ not varied because they are fixed at 0.
     \resizebox{\columnwidth}{!}{\includegraphics{\fig{BD_gun}}}
     \caption{The product $B D$.  Each trace represents
       $\frac{\partial v(t)}{\partial c_f[i]}$ for a different $i$.
-      Note that each trace is a from a difference between splines fit
-      to simulations with a finite difference in $f$.  I believe that
-      the negative values of some of the traces are spline
-      approximation errors and not integration errors.  Plots of the
-      derivative of energy, ie,
-      $\frac{\partial E(t)}{\partial c_f[i]}$ increase monotonically.}
+      Note that each trace is a difference between splines fit to
+      simulations with a finite difference in $f$.  Because the basis
+      functions for $v(t)$ are very narrow, this figure is very
+      similar to Fig.~\ref{fig:D_gun}.}
     \label{fig:BD_gun}
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
@@ -444,7 +438,7 @@ not varied because they are fixed at 0.
   \begin{figure}
     \centering
     \resizebox{\columnwidth}{!}{\includegraphics{\fig{opt_result}}}
-    \caption{The function $f_1 = f_0 + \hat d$ returned by gun.opt()
+    \caption{The function $f_1 = f_0 + \hat d$ returned by fit.opt()
       compared to $f_0$.}
     \label{fig:opt_result}
   \end{figure}
@@ -479,7 +473,7 @@ which was used to generate the simulated data.
       second and third columns correspond variations of the
       coefficients of basis functions that differ by a factor of ten.
       The lower left plot indicates that nonlinear part of the
-      response is a factor of a thousand smaller than the linear
+      response is a factor of a $10^4$ smaller than the linear
       response.  }
   \label{fig:big_d}
 \end{figure}
