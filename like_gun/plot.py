@@ -8,6 +8,8 @@ import sys
 import matplotlib as mpl
 import numpy as np
 
+figwidth = 8 # Determines apparent font size in figures
+fig_y_size = lambda y: (figwidth, figwidth/9.0*y)
 class Go:
     ''' Generic object.
     '''
@@ -40,7 +42,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     
     params = {'axes.labelsize': 18,     # Plotting parameters for latex
-              'text.fontsize': 15,
+              'font.size': 15,
               'legend.fontsize': 15,
               'text.usetex': True,
               'font.family':'serif',
@@ -109,7 +111,6 @@ def main(argv=None):
             do_show = True
         else:
             fig.savefig(os.path.join(args.fig_dir, file_name), format='pdf')
-    print('do_show={0}'.format(do_show))
     if do_show:
         plt.show()
     return 0
@@ -118,7 +119,7 @@ def D_gun(calc, args, plt):
     D = calc.nom_D
     eos = calc.nom_eos
     t2v = calc.exp_t2v
-    fig = plt.figure('D', figsize=(7,5))
+    fig = plt.figure('D', figsize=fig_y_size(6.4))
 
     n_f = len(eos.get_c())
     n_v = len(t2v.get_c())
@@ -139,7 +140,7 @@ def vt_gun(calc, args, plt):
     ep = calc.nom_ep
 
     ts = t2v.get_t()
-    fig = plt.figure('vt', figsize=(7,5))
+    fig = plt.figure('vt', figsize=fig_y_size(6))
     ax = fig.add_subplot(1,1,1)
     ax.plot(ts*1e6, t2v(ts)/1e5, label='simulation')
     ax.plot(t*1e6, (v+ep)/1e5, label='experiment')
@@ -157,7 +158,7 @@ def BD_gun(calc, args, plt):
     BD = np.dot(B,D)
     n_t,n_c = BD.shape
     
-    fig = plt.figure('BD')
+    fig = plt.figure('BD', figsize=fig_y_size(7))
     
     ax = fig.add_subplot(1,1,1)
     for i in range(n_c):
@@ -181,7 +182,7 @@ def opt_result(calc, args, plt):
     opt.fit(max_iter=1)
     eos_1 = opt.eos
     
-    fig = plt.figure('opt_result', figsize=(7,6))
+    fig = plt.figure('opt_result', figsize=fig_y_size(6))
     
     ax = fig.add_subplot(1,1,1)
     ax.plot(x,eos_0(x)*p2f,label=r'$f_0$')
@@ -287,7 +288,7 @@ def fve_gun(calc, args, plt):
     t2vs = [Gun(eos).fit_t2v() for eos in [opt_eos.new_c(c) for c in cs]]
     e = [v - t2v(t) for t2v in t2vs]
     
-    fig = plt.figure('fve_gun',figsize=(8,10))
+    fig = plt.figure('fve_gun',figsize=fig_y_size(9))
 
 
     data = {'nominal':(
@@ -332,7 +333,7 @@ plot_dict['fve_gun'] = fve_gun
 def x(calc, args, plt):
     '''Template
     '''
-    fig = plt.figure('x', figsize=(7,5))
+    fig = plt.figure('x', figsize=fig_y_size(6.4))
     return fig
 plot_dict['x'] = x
 

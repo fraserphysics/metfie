@@ -36,6 +36,8 @@
 \newcommand\Lbb{\mathbb{L}}
 \newcommand\epv{\epsilon_v}
 \newcommand\epf{\epsilon_f}
+\newcommand{\fig}[1]{figs/#1.pdf}
+
 \title{Notes on EOS Estimation Code}
 
 \author{Andrew M.\ Fraser}
@@ -377,30 +379,30 @@ not varied because they are fixed at 0.
 \begin{description}
 \item[set\_t2v] Run a simulation to build a spline for mapping times to
   velocities and save as self.$t2v$.  The result for the initial EOS
-  appears in Fig.~\ref{fig:vt_test}.
+  appears in Fig.~\ref{fig:vt_gun}.
   \begin{figure}
     \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{vt_test.pdf}}
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{vt_gun}}}
     \caption{Velocity as functions of time.  Traces for the
       \emph{experimental} data, a simulation with the initial EOS and
       the error.}
-    \label{fig:vt_test}
+    \label{fig:vt_gun}
   \end{figure}
 \item[set\_D] Use finite differences to calculate dv/df in terms of
   spline coefficients and save as self.$D$ with
   $D[k,i] = \frac{\Delta c_v[k]}{\Delta c_f[i]}$.  See
-  Fig.~\ref{fig:D_test} and note that $k$ and $i$ range over variable
+  Fig.~\ref{fig:D_gun} and note that $k$ and $i$ range over variable
   components of $\cv$ and $\cf$.
   \begin{figure}
     \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{D_test.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{D_gun}}}
     \caption{The matrix $D$.  Each trace represents
       $\frac{\partial \cv[k]}{\partial \cf[i]}$ for a different $i$.
       While a positive change in $f$ anywhere can only increase $v(t)$
       in the ideal gun, I believe that the negative values at low
       values of $k$ are due primarily to the overlapping basis
       functions for the spline that approximates the function $v$.}
-    \label{fig:D_test}
+    \label{fig:D_gun}
   \end{figure}
 \item[set\_Be] Map experimental velocities v and times t to the
   following:
@@ -413,10 +415,10 @@ not varied because they are fixed at 0.
   $B$ is the derivative of the simulated velocity function at the
   experimental sample times wrt the coefficients of the spline fit
   that implements that function, and $BD_{j,i}$ is the derivative of
-  $v(t[j])$ wrt $\cf[i]$.  See Fig.~\ref{fig:BD_test}.
+  $v(t[j])$ wrt $\cf[i]$.  See Fig.~\ref{fig:BD_gun}.
   \begin{figure}
     \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{BD_test.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{BD_gun}}}
     \caption{The product $B D$.  Each trace represents
       $\frac{\partial v(t)}{\partial c_f[i]}$ for a different $i$.
       Note that each trace is a from a difference between splines fit
@@ -425,7 +427,7 @@ not varied because they are fixed at 0.
       approximation errors and not integration errors.  Plots of the
       derivative of energy, ie,
       $\frac{\partial E(t)}{\partial c_f[i]}$ increase monotonically.}
-    \label{fig:BD_test}
+    \label{fig:BD_gun}
   \end{figure}
 \item[func] From \eqref{eq:sd} the objective function is:
   \begin{equation*}
@@ -441,7 +443,7 @@ not varied because they are fixed at 0.
   Fig.~\ref{fig:opt_result}.
   \begin{figure}
     \centering
-    \resizebox{.7\columnwidth}{!}{\includegraphics{opt_result.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{opt_result}}}
     \caption{The function $f_1 = f_0 + \hat d$ returned by gun.opt()
       compared to $f_0$.}
     \label{fig:opt_result}
@@ -452,7 +454,7 @@ not varied because they are fixed at 0.
 \label{sec:numerical-results}
 
 \newcommand{\freq}{k} %
-Figures \ref{fig:d} and \ref{fig:fve} illustrate iterative maximum
+Figures \ref{fig:big_d} and \ref{fig:fve_gun} illustrate iterative maximum
 likelihood fitting of an EOS.  The procedure starts with the following
 initial function
 \begin{equation}
@@ -471,7 +473,7 @@ and the iterations approach the \emph{actual} function
 which was used to generate the simulated data.
 \begin{figure}
   \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{fig_d.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{big_d}}}
     \caption{Illustration of the derivative of the velocity function
       with respect to the pressure function, $\frac{d v}{d p}$.  The
       second and third columns correspond variations of the
@@ -479,11 +481,11 @@ which was used to generate the simulated data.
       The lower left plot indicates that nonlinear part of the
       response is a factor of a thousand smaller than the linear
       response.  }
-  \label{fig:d}
+  \label{fig:big_d}
 \end{figure}
 \begin{figure}
   \centering
-    \resizebox{0.8\columnwidth}{!}{\includegraphics{fig_fve.pdf}}  
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{fve_gun}}}
     \caption{Maximum likelihood estimation of $f$.  The \emph{true}
       EOS appears as \emph{actual} in the upper plot, and the
       optimization starts with the \emph{initial} and ends with
@@ -491,7 +493,7 @@ which was used to generate the simulated data.
       position appears in the middle plot, and the sequence of errors
       in the velocity time series for each step in the optimization
       appears in the lower plot. }
-  \label{fig:fve}
+  \label{fig:fve_gun}
 \end{figure}
 
 \section{Comparing Model Classes}
