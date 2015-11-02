@@ -175,7 +175,7 @@ class Gun:
         last 4 which are always 0.
         '''
         # Spline.new_c(c) does not modify Spline.  It returns a copy
-        # of Spline with the coefficients c and an updated provenance.
+        # of Spline with the coefficients c.
         eos_nom = self.eos
         c_f_nom = eos_nom.get_c()    # Nominal coefficients for eos
         t2v_nom = self.fit_t2v(t_min, t_max, n_t)

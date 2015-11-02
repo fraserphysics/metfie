@@ -27,6 +27,8 @@ basis.pdf: basis.py
 	python basis.py $@
 test:
 	@echo FIGURES = ${FIGURES}
+clean:
+	rm -rf figs *.pdf *.pyc *.log *.aux
 
 ###---------------
 ### Local Variables:

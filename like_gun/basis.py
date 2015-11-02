@@ -1,7 +1,7 @@
 '''Illustrate spline basis function and its derivatives.
 '''
 from __future__ import print_function
-from calc import Spline
+from eos import Spline
 import numpy as np
 import matplotlib.pyplot as plt
 def make_figure():

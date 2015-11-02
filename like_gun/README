@@ -29,14 +29,27 @@ Plans for comparing coordinate systems:
 4. Explain all of the above work in notes.tex
 
 -----------------------------------------------------------------
+Here is an alphabetical list of source files under git in this directory
+
 basis.py:
-Illustrate spline basis function and its derivatives.
+Makes a plot that illustrates a spline basis function and its derivatives.
 
-calc.py:
-Classes for EOS and gun simulation.
+eos.py:
+Provides EOS classes for experiments and a nominal guess for
+optimization.  Also provides spline classes that other modules use.
 
-prov_models.py:
-Defines classes for representing model components with provenance
+fit.py:
+Contains optimization code.
 
-markup.py:
-Public domain code for making html.  Called by prov_models.py
+gun.py
+Code for the gun model.  Makes experimental data and used for
+optimization in fit.py
+
+Makefile
+First and only ultimate target is notes.pdf
+
+notes.tex
+Explains models and optimization
+
+plot.py
+Provides figures for notes.pdf

@@ -4,9 +4,6 @@ Used in calc.py. Goals:
 1. Develop, analyze and understand a procedure for estimating an
    isentrope on the basis of data and simulations.
 
-2. Demonstrate provenance tracking using Component, Provenance and Float
-   from prov_models
-
 """
 import numpy as np
 
@@ -73,8 +70,6 @@ class Experiment:
         pert = 2*np.sin(freq*(v-v_0))*np.exp(-(v-v_0)**2/(2*w**2))
         return self.C/v**3 + pert*self.C/(freq*v_0**3)
     
-from prov_models import Component, Provenance, Float
-from markup import oneliner
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
 # For scipy.interpolate.InterpolatedUnivariateSpline. See:
 # https://github.com/scipy/scipy/blob/v0.14.0/scipy/interpolate/fitpack2.py
@@ -87,21 +82,15 @@ class Spline(IU_Spline):
         return self._eval_args[1][:-magic.spline_end]
     def new_c(self,c):
         '''Return a new Spline_eos instance that is copy of self except
-        that the coefficients for the basis functions are c and
-        provenance is updated.'''
+        that the coefficients for the basis functions are c.'''
         import copy
         from inspect import stack
         rv = copy.deepcopy(self)
         c_ = np.zeros(self._eval_args[1].shape)
         c_[:-magic.spline_end] = c
         rv._eval_args = self._eval_args[0], c_, self._eval_args[2]
-        return rv # FixMe
-        # stack()[1] is context that called new_c
-        rv.provenance = Provenance(
-            stack()[1], 'New coefficients', branches=[self.provenance],
-            max_hist=50)
         return rv
-class Spline_eos(Spline, Component):
+class Spline_eos(Spline):
     '''Model of pressure as function of volume implemented as a spline.
     
     Methods:
@@ -122,7 +111,6 @@ class Spline_eos(Spline, Component):
             ):
         v = np.logspace(np.log10(v_min), np.log10(v_max), N)
         IU_Spline.__init__(self,v,P(v))
-        Component.__init__(self, self.get_c(), comment)
         self.prior_mean = self.get_c().copy()
         dev = self.prior_mean*uncertainty
         self.prior_var_inv = np.diag(1.0/(dev*dev))
@@ -144,62 +132,6 @@ class Spline_eos(Spline, Component):
             c_dev[i] = np.sqrt(var_x_i[i])
             c[i] = 0.0
         return self.new_c(c_dev)
-    def display(
-            self,      # Spline_eos instance
-            ):
-        '''This method serves the Component class and the make_html
-        function defined in the prov_models module.  It returns an html
-        description of self and writes a plot to 'eos.jpg'.
-        '''
-        import matplotlib.pyplot as plt
-        x_label = r'$v*{\rm cm}^3/{\rm g}$'
-        y_label = r'$p/{\rm GPa}$'
-        t = self.get_t()
-        dev = self.dev()
-        
-        fig = plt.figure(figsize=(8,12))
-        
-        ax = fig.add_subplot(3,1,1)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        low = magic.v_0/2
-        high = magic.v_0*3
-        x = np.linspace(low,high,200)
-        mask = np.where((low < t)*(t < high))[0]
-        x_ = t[mask]
-        ax.plot(x, self(x))
-        ax.plot(x_, self(x_),'rx')
-        
-        ax = fig.add_subplot(3,1,2)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        x = np.logspace(
-            np.log10(magic.spline_min),
-            np.log10(magic.spline_max),
-            500)
-        ax.loglog(x, self(x))
-        ax.loglog(t, self(t), 'rx')
-        
-        ax = fig.add_subplot(3,1,3)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(r'$p \pm 100\sigma_p$')
-        ax.loglog(x, self(x) + 100*dev(x), linestyle=':', color='k')
-        ax.plot(x, self(x), color='r')
-        ax.loglog(x, self(x) - 100*dev(x), linestyle=':', color='k')
-        
-        fig.savefig('eos.jpg', format='jpg')
-
-        # Make an html formated return value
-        html = oneliner.p('''
-        Table of coefficients for spline representation of force
-        as a function of position along the barrel''')
-        html += oneliner.p(self.get_c().__str__())
-        html += oneliner.p('''
-        Plot of pressure as a function of specific volume''')
-        html += oneliner.img(
-            width=700, height=500, alt='plot of eos', src='eos.jpg')
-        return html
-
     def Pq_prior(
         self,  # Spline_eos instance
         c_P,   # Current spline coefficients
@@ -334,10 +266,8 @@ def test_spline():
         s_nom = Spline_eos(nominal,precondition=pre_c)
         c_nom = s_nom.get_c() # Coefficients for nominal spline
     
-        s_exp = Spline_eos(experiment, precondition=pre_c) # provenance
+        s_exp = Spline_eos(experiment, precondition=pre_c)
         c_exp = s_exp.get_c() # Coefficients for experiment spline
-        assert (s_exp.provenance.line ==
-                's_exp = Spline_eos(experiment, precondition=pre_c) # provenance')
         # spline should match data at the knots
         t = s_exp.get_knots()
         nt.assert_allclose(s_exp(t), experiment(t), rtol=1e-15)
