@@ -23,6 +23,12 @@
 \newcommand\norm[1]{\left|#1\right|}
 \newcommand\bv{\mathbf{v}}
 \newcommand\bt{\mathbf{t}}
+\newcommand\vol{v}        % specific volume
+\newcommand{\pressure}{p}
+\newcommand{\eos}{f}
+\newcommand{\EOS}{{\cal F}}
+\newcommand{\data}{y}
+\newcommand{\DATA}{{\cal Y}}
 \newcommand\Vfunc{\mathbb{V}}
 \newcommand\Vt{\mathbf{V}}
 \newcommand\vexp{V_{\rm{exp}}}
@@ -92,52 +98,84 @@ and the code are structured as follows:
 \section{The EOS}
 \label{sec:eos}
 
-\section{Optimization}
-\label{sec:optimization}
+\subsection{Definitions and Notation}
+\label{sec:eos-notation}
+
+\begin{description}
+\item[$\vol$:] Specific volume
+\item[$\pressure$:] Pressure
+\item[$\eos$:] An EOS that maps specific volume to pressure, $\eos: \vol
+  \mapsto \pressure$.
+\item[$\cf,\fbasis$:] Vector of coefficients and cubic spline basis
+  functions that define an EOS
+\item[$\mu_\eos, \Sigma_\eos$:] Mean and covariance of prior
+  distribution of EOS
+\end{description}
+
+\subsection{An Inconsistently Defined Prior}
+\label{sec:eos-prior}
+
+I constrain $\eos$ to be positive and to be a convex fuction of
+$\vol$.  I have begun but not finished work to define a probability
+measure on a set of functions that obeys those constraints and is
+further constrained by $\frac{\left| \eos(\vol) - \mu_\eos(\vol)
+  \right|}{\mu_\eos(\vol)} \leq \delta$.  For now, I characterize the
+prior as Gaussian.  However as I search for the mean of the a
+posteriori distribution, I enforce the constraints.  This is
+inconsistent and requires justification or a different approach.
+
+\section{Experiments}
+\label{sec:experiments}
+
+As of 2015-11-1, I have code for only one experiment, the gun, but
+I've written the code with a structure that can accomodate other
+experiements easily.  Each experiment must have theory and code that
+provides faux data, Gaussian likelihood as a function of the EOS
+$\eos$ and the derivative of the conditional mean with respect to the
+EOS.  For the $k^{\rm th}$ experiment, here is the notation:
+\begin{description}
+\item[$\data_k\in \DATA_k$:] Faux data and the set over which the
+  likelihood is a density.
+\item[$\mu_k \in \DATA_k$:] A function $\EOS\mapsto \DATA_k$ that gives mean of
+  the likelihood,
+\item[$\Sigma_k$:] The covariance of the likelihood.  For now, I think
+  of this as independent of $\eos$.
+\item[$D_k$:] The derivative of $\mu_k$ with respect to $\eos$.  For a
+  spline representation of $\eos$, $D_{k(i,j)} =\frac{\partial
+    \data_{k(i)}}{\partial {\cf} _{(j)}}$.
+\item[$\epsilon_k$:] The difference between the data and the model
+  prediction, $\epsilon_k = \data_k - \mu_k(\eos)$.
+\item[log likelihood:] Ignoring constant terms that depend on
+  $\Sigma_k$, the log likelihood is $-\frac{1}{2}\epsilon_k^T
+  \Sigma^{-1} \epsilon_k$.
+\end{description}
+
+\subsection{The Gun}
+\label{sec:gun}
 
 
- and for each I will have a module with
-  code that generates simulated data and that given data and an EOS
-  will calculate the following:
-  \begin{description}
-  \item[$D_k$:] 
-  \item[$\epsilon_k$:] 
-  \item[$\Sigma_k$:] 
-  \end{description}
-
-
-\section{Notation for and Implementation of Basic Functions}
-\label{sec:basic}
-
-Given an experimental sequence of measured pairs of velocity and time
-values, $(\vexp, \texp)$ and an initial model, $\fnom$, I describe how
-to estimate a new model, $\fhat$.
-
-\subsection{Notation}
+\subsubsection{Notation}
 \label{sec:basic_notation}
 
 \begin{description}
-\item[$(\vexp, \texp)$:] An experimental sequence of measured pairs of
+\item[$y\equiv(\vexp, \texp)$:] An experimental sequence of measured pairs of
   velocity and time
-\item[$\bv$:] A sequence of model velocities
+\item[$\bv(\eos)$:] A sequence of model velocities
 \item[$\Vt$:] A map from times to model velocities, eg, $\bv =
   \Vt(\texp)$
 \item[$\tsim$:] A sequence of closely spaced sample times at which to record
   simulated position and velocity for constructing $\Vt$.
-\item[$f$:] An EOS function
 \item[$\Vfunc$:] An expensive procedure that maps an EOS function to a
-  function that maps time to velocity with $\Vt = \Vfunc(f)$
+  function that maps time to velocity with $\Vt = \Vfunc(\eos)$
 \item[$\cv,\vbasis$:] Vectors of spline coefficients and basis functions
   that define a $\Vt$
-\item[$\cf,\fbasis$:] Vector of spline coefficients and basis functions
-  that define an EOS
-\item[$D$] Matrix with elements $D[k,i] = \partiald{\cv[k]}{\cf[i]}$
+\item[$C$] Matrix with elements $C[k,i] = \partiald{\cv[k]}{\cf[i]}$
 \item[$B$] Matrix with elements $B[j,k] = \vbasis[k](\texp[j])$, ie,
   the exactly linear map from $c_v$ to simulated data.  The matrix
   elements are the velocity basis functions evaluated at the
   experimental sample times.
 \item[$\DVDf$:] The derivative of $\Vt$ with respect to $f$; expensive
-  to evaluate.  $\DVDf (\texp)$ is represented by the matrix $BD$.
+  to evaluate.  $\DVDf (\texp)$ is represented by the matrix $CD$.
 \item[$\epv$] The vector of differences between the measured
   velocities and the simulated velocities at the times of the
   measurements.
@@ -150,7 +188,7 @@ to estimate a new model, $\fhat$.
   $\cf[i]$.
 \end{description}
 
-\subsection{Implementation}
+\subsubsection{Implementation}
 \label{sec:basic_implementation}
 
 \begin{description}
@@ -162,99 +200,47 @@ to estimate a new model, $\fhat$.
   $\fbasis$
 \item[$\DVDf$:] Evaluate $\Vfunc(f)$ for $N(\cf)+1$ different sets of
   coefficients $\cf$, and use finite differences to get a matrix with
-  elements $D[k,i] = \partiald{\cv[k]}{\cf[i]}$.  Then
+  elements $C[k,i] = \partiald{\cv[k]}{\cf[i]}$.  Then
   \begin{equation*}
-    \partiald{\Vt(T)}{\cf[i]} = \sum_k D[k,i] \vbasis[k](T).
+    \partiald{\Vt[j]}{\cf[i]} = \sum_k C[k,i] \vbasis[k](T) = BC[j,i]
   \end{equation*}
 \end{description}
+
+\subsection{A Cylinder}
+\label{sec:cylinder}
+
+This is a simplification of measurements of cylinders.  Suppose that
+all of the material in a long cylinder detonates in an instant and
+that the density after that is uniform inside.  Thus the function
+$\left\{r(t): t>0 \right\}$ is a sufficient specification of an
+experimental result.  Letting $r(0) = r_0$ denote the initial radius
+the work done by the gas in expanding to $r$ is
+\begin{equation*}
+  U(r) = \int_{r_0}^r p(v(r)) \frac{dv}{dr} dr = \int_{r_0}^r p(\pi
+  r^2) 2\pi r dr.
+\end{equation*}
+That work is used to deform and accelerate the cladding.  We say that
+the energy of deformation is
+\begin{equation*}
+  D(r) = \sigma \log \left(\frac{r}{r_0} \right),
+\end{equation*}
+and the kinetic energy of the cladding is
+\begin{equation*}
+  K = \frac{1}{2} m \left( \dot r \right)^2.
+\end{equation*}
+Thus the velocity as a function of radius is
+\begin{equation*}
+  v(r) = \sqrt{\frac{2}{m} \left( U(r) - \sigma \log
+      \left(\frac{r}{r_0} \right) \right) },
+\end{equation*}
+and we can obtain the velocity as a function of time by numerical
+integration.
+
+\section{Optimization}
+\label{sec:optimization}
 
 \section{Priors, Likelihood and Optimization}
 \label{sec:opt}
-
-\subsection{Cubic Splines}
-\label{sec:splines}
-
-I use cubic splines to approximate both the force function $f$ and the
-velocity function $\Vt$.  Cubic splines are piecewise cubic.  I
-illustrate their basis functions for a grid of evenly spaced knots in
-Fig.~\ref{fig:basis}.  Note that the second derivative is affine
-between knots and that consequently if it is positive at the knots it
-is positive between them.  Also if the second derivative is positive
-over the domain and the first derivative is positive at the right hand
-end point, the function is monotonic and convex over the entire
-domain.  Finally, if the function is monotonic and positive a the
-right hand end point it is positive over the entire domain.
-\begin{figure}
-  \centering
-    \resizebox{\columnwidth}{!}{\includegraphics{basis.pdf}}  
-    \caption{Cubic spline basis functions and their first and second
-      derivatives. The dashed plots are for $f_5$ whose knot is
-      $t_5=3$.  Note that $t_k=0$ for $f_0,~f_1,~f_2$ and $f_3$, and
-      $t_4=2$.}
-  \label{fig:basis}
-\end{figure}
-
-Figure~\ref{fig:basis} also illustrates the symmetry of the right and
-left boundaries.  The knot location $t$ of each basis function is the
-point on the left where the function departs from zero.  There are
-four functions at $t=0$.  There are also four functions at $t=10$, but
-since their coefficients are always zero, they are not degrees of
-freedom in any fit.
-
-\subsection{Constraints}
-\label{sec:constraints}
-
-I require that the function $f$ be everywhere convex, monotonically
-decreasing and positive.  Since I am using cubic splines, the third
-derivative is piecewise constant, and for the knot positions in
-Fig.~\ref{fig:basis} the constraints are equivalent to the following:
-\begin{description}
-\item[Second derivative positive at each knot] The matrix
-  \setcounter{MaxMatrixCols}{12}
-  \begin{equation}
-    \label{eq:d2}
-    D_2 =
-    \begin{bmatrix}
-      \frac{3}{2} & -\frac{5}{2} & 1     & 0   & \cdots \\ \\
-      0   & \frac{2}{3} & -\frac{7}{6} & \frac{1}{2} & 0 & \cdots \\ \\
-      \vdots   & 0    & \frac{3}{4} & -\frac{7}{4} & 1 & 0 & \cdots \\ \\
-      & \vdots    & 0   & 1 & -2 & 1 & 0 & \cdots \\ \\
-       & & & 0 & 1 & -2 & 1 & 0  \\ \\
-      & & & & 0 & 1 & -2 & 1 & 0  \\ \\
-      &&&&& 0 & 1 & -\frac{7}{4} &\frac{3}{4} & 0 \\ \\
-      &&&&&& 0 & \frac{1}{2} & -\frac{7}{6} & \frac{2}{3} & 0 \\ \\
-      &&&&&&& 0 & 1 & -\frac{5}{2} & \frac{3}{2} \\ \\
-    \end{bmatrix}
-  \end{equation}
-  is the map from coefficients to the second derivative at the knots
-  in Fig.~\ref{fig:basis}.
-\item[First derivative negative at last knot] The vector
-  \begin{equation*}
-    D_1 = \begin{bmatrix}
-    0 & \cdots & 0 & -\frac{3}{2} & \frac{3}{2}
-  \end{bmatrix}
-  \end{equation*}
-  is the map from coefficients to the first derivative at the last knot
-  in Fig.~\ref{fig:basis}.
-\item[Function value positive at last knot] The vector
-  \begin{equation*}
-     D_0 = \begin{bmatrix}
-    0 & \cdots & 0 & 1
-  \end{bmatrix}
-  \end{equation*}
-  is the map from coefficients to the function value at the last knot
-  in Fig.~\ref{fig:basis}.
-\end{description}
-Thus for the knots in Fig.~\ref{fig:basis}, the constraints are
-\begin{align}
-  G & \equiv
-      \begin{bmatrix}
-        - D_2 \\ D_1 \\ -D_0
-      \end{bmatrix}\\
-  \label{eq:constraint}
-  G\cf & \preceq 0.
-\end{align}
-
 \subsection{Minimum Squared Error}
 \label{sec:minsq}
 
@@ -535,13 +521,14 @@ which was used to generate the simulated data.
 \begin{figure}
   \centering
     \resizebox{\columnwidth}{!}{\includegraphics{\fig{fve_gun}}}
-    \caption{Maximum likelihood estimation of $f$.  The \emph{true}
-      EOS appears as \emph{actual} in the upper plot, and the
-      optimization starts with the \emph{initial} and ends with
-      \emph{fit}.  The corresponding velocity as a function of
-      position appears in the middle plot, and the sequence of errors
-      in the velocity time series after each step in the optimization
-      appears in the lower plot. }
+    \caption{Sequential estimation of the maximum a posteriori
+      probability parameters of $f$.  The \emph{true} EOS appears as
+      \emph{actual} in the upper plot, and the optimization starts
+      with the \emph{initial} and ends with \emph{fit}.  The
+      corresponding velocity as a function of position appears in the
+      middle plot, and the sequence of errors in the forecast velocity
+      time series after each step in the optimization appears in the
+      lower plot. }
   \label{fig:fve_gun}
 \end{figure}
 
@@ -578,42 +565,97 @@ Here is the agenda:
   by pairs for polynomials.
 \end{enumerate}
 
-\subsection{Alternative Measurements}
-\label{sec:alternative}
+\appendix
 
-If we need measurements that are more different from the quantities of
-interest, we have could use the following simplification of
-measurements of cylinders.  Suppose that all of the material in a long
-cylinder detonates in an instant and that the density after that is
-uniform inside.  Thus the function $\left\{r(t): t>0 \right\}$ is a
-sufficient specification of an experimental result.  Letting
-$r(0) = r_0$ denote the initial radius the work done by the gas in
-expanding to $r$ is
-\begin{equation*}
-  U(r) = \int_{r_0}^r p(v(r)) \frac{dv}{dr} dr = \int_{r_0}^r p(\pi
-  r^2) 2\pi r dr.
-\end{equation*}
-That work is used to deform and accelerate the cladding.  We say that
-the energy of deformation is
-\begin{equation*}
-  D(r) = \sigma \log \left(\frac{r}{r_0} \right),
-\end{equation*}
-and the kinetic energy of the cladding is
-\begin{equation*}
-  K = \frac{1}{2} m \left( \dot r \right)^2.
-\end{equation*}
-Thus the velocity as a function of radius is
-\begin{equation*}
-  v(r) = \sqrt{\frac{2}{m} \left( U(r) - \sigma \log
-      \left(\frac{r}{r_0} \right) \right) },
-\end{equation*}
-and we can obtain the velocity as a function of time by numerical
-integration.
+\section{Cubic Splines}
+\label{sec:splines}
 
-\section*{Appendix}
+I use cubic splines to approximate both the force function $f$ and the
+velocity function $\Vt$.  Cubic splines are piecewise cubic.  I
+illustrate their basis functions for a grid of evenly spaced knots in
+Fig.~\ref{fig:basis}.  Note that the second derivative is affine
+between knots and that consequently if it is positive at the knots it
+is positive between them.  Also if the second derivative is positive
+over the domain and the first derivative is positive at the right hand
+end point, the function is monotonic and convex over the entire
+domain.  Finally, if the function is monotonic and positive a the
+right hand end point it is positive over the entire domain.
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{basis.pdf}}  
+    \caption{Cubic spline basis functions and their first and second
+      derivatives. The dashed plots are for $f_5$ whose knot is
+      $t_5=3$.  Note that $t_k=0$ for $f_0,~f_1,~f_2$ and $f_3$, and
+      $t_4=2$.}
+  \label{fig:basis}
+\end{figure}
+
+Figure~\ref{fig:basis} also illustrates the symmetry of the right and
+left boundaries.  The knot location $t$ of each basis function is the
+point on the left where the function departs from zero.  There are
+four functions at $t=0$.  There are also four functions at $t=10$, but
+since their coefficients are always zero, they are not degrees of
+freedom in any fit.
+
+\subsection{Constraints}
+\label{sec:constraints}
+
+I require that the function $f$ be everywhere convex, monotonically
+decreasing and positive.  Since I am using cubic splines, the third
+derivative is piecewise constant, and for the knot positions in
+Fig.~\ref{fig:basis} the constraints are equivalent to the following:
+\begin{description}
+\item[Second derivative positive at each knot] The matrix
+  \setcounter{MaxMatrixCols}{12}
+  \begin{equation}
+    \label{eq:d2}
+    D_2 =
+    \begin{bmatrix}
+      \frac{3}{2} & -\frac{5}{2} & 1     & 0   & \cdots \\ \\
+      0   & \frac{2}{3} & -\frac{7}{6} & \frac{1}{2} & 0 & \cdots \\ \\
+      \vdots   & 0    & \frac{3}{4} & -\frac{7}{4} & 1 & 0 & \cdots \\ \\
+      & \vdots    & 0   & 1 & -2 & 1 & 0 & \cdots \\ \\
+       & & & 0 & 1 & -2 & 1 & 0  \\ \\
+      & & & & 0 & 1 & -2 & 1 & 0  \\ \\
+      &&&&& 0 & 1 & -\frac{7}{4} &\frac{3}{4} & 0 \\ \\
+      &&&&&& 0 & \frac{1}{2} & -\frac{7}{6} & \frac{2}{3} & 0 \\ \\
+      &&&&&&& 0 & 1 & -\frac{5}{2} & \frac{3}{2} \\ \\
+    \end{bmatrix}
+  \end{equation}
+  is the map from coefficients to the second derivative at the knots
+  in Fig.~\ref{fig:basis}.
+\item[First derivative negative at last knot] The vector
+  \begin{equation*}
+    D_1 = \begin{bmatrix}
+    0 & \cdots & 0 & -\frac{3}{2} & \frac{3}{2}
+  \end{bmatrix}
+  \end{equation*}
+  is the map from coefficients to the first derivative at the last knot
+  in Fig.~\ref{fig:basis}.
+\item[Function value positive at last knot] The vector
+  \begin{equation*}
+     D_0 = \begin{bmatrix}
+    0 & \cdots & 0 & 1
+  \end{bmatrix}
+  \end{equation*}
+  is the map from coefficients to the function value at the last knot
+  in Fig.~\ref{fig:basis}.
+\end{description}
+Thus for the knots in Fig.~\ref{fig:basis}, the constraints are
+\begin{align}
+  G & \equiv
+      \begin{bmatrix}
+        - D_2 \\ D_1 \\ -D_0
+      \end{bmatrix}\\
+  \label{eq:constraint}
+  G\cf & \preceq 0.
+\end{align}
+
+
+\section{Other Information}
 \label{sec:appendix}
 
-See other information in cmfSuite/doc/HE.tex on moonlight.
+See other information in \~/doc/HE.tex on moonlight.
 
 %
 \vfill \hrule

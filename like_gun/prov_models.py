@@ -1,4 +1,4 @@
-'''cmf_models.py defines classes for representing model choices that keep
+'''prov_models.py defines classes for representing model choices that keep
 track of provenance.
 '''
 class Provenance:

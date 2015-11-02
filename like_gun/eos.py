@@ -5,7 +5,7 @@ Used in calc.py. Goals:
    isentrope on the basis of data and simulations.
 
 2. Demonstrate provenance tracking using Component, Provenance and Float
-   from cmf_models
+   from prov_models
 
 """
 import numpy as np
@@ -73,7 +73,7 @@ class Experiment:
         pert = 2*np.sin(freq*(v-v_0))*np.exp(-(v-v_0)**2/(2*w**2))
         return self.C/v**3 + pert*self.C/(freq*v_0**3)
     
-from cmf_models import Component, Provenance, Float
+from prov_models import Component, Provenance, Float
 from markup import oneliner
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
 # For scipy.interpolate.InterpolatedUnivariateSpline. See:
@@ -148,7 +148,7 @@ class Spline_eos(Spline, Component):
             self,      # Spline_eos instance
             ):
         '''This method serves the Component class and the make_html
-        function defined in the cmf_models module.  It returns an html
+        function defined in the prov_models module.  It returns an html
         description of self and writes a plot to 'eos.jpg'.
         '''
         import matplotlib.pyplot as plt

@@ -5,7 +5,7 @@ in parent directory.  Goals are:
 isentrope on the basis of data and simulations.
 
 2. Demonstrate provenance tracking using Component, Provenance and Float
-   from cmf_models
+   from prov_models
 
 Run using python2 and scipy 0.14
 
@@ -19,7 +19,7 @@ http://cvxopt.org/userguide/coneprog.html
 """
 import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
-from cmf_models import Component, Provenance, Float
+from prov_models import Component, Provenance, Float
 from markup import oneliner
 import matplotlib.pyplot as plt
 
@@ -57,7 +57,7 @@ class Spline(IU_Spline, Component):
         return rv
     def display(self):
         '''This method serves the Component class and the make_html
-        function defined in the cmf_models module.  It returns an html
+        function defined in the prov_models module.  It returns an html
         description of self and writes a plot to 'eos.jpg'.
         '''
         # Write file named eos.jpg

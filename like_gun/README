@@ -35,8 +35,8 @@ Illustrate spline basis function and its derivatives.
 calc.py:
 Classes for EOS and gun simulation.
 
-cmf_models.py:
+prov_models.py:
 Defines classes for representing model components with provenance
 
 markup.py:
-Public domain code for making html.  Called by cmf_models.py
+Public domain code for making html.  Called by prov_models.py
