@@ -7,18 +7,10 @@ plot_dict = {} # Keys are those keys in args.__dict__ that ask for
 import sys
 import matplotlib as mpl
 import numpy as np
+from eos import Go
 
 figwidth = 8 # Determines apparent font size in figures
 fig_y_size = lambda y: (figwidth, figwidth/9.0*y)
-class Go:
-    ''' Generic object.
-    '''
-    def __init__(self, **kwargs):
-        self.add(**kwargs)
-    def add(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        return self
 def main(argv=None):
     import argparse
     import os
@@ -33,9 +25,9 @@ def main(argv=None):
     'Directory of figures')
     # Plot requests
     h_format = lambda s:'File for figure of {0}'.format(s)
-    parser.add_argument('--D_gun', type=str, help=h_format('d c_v/ d c_p'))
+    parser.add_argument('--C_gun', type=str, help=h_format('d c_v/ d c_p'))
     parser.add_argument('--vt_gun', type=str, help=h_format('v(t)'))
-    parser.add_argument('--BD_gun', type=str, help=h_format('d v(t)/ d c_p'))
+    parser.add_argument('--BC_gun', type=str, help=h_format('d v(t)/ d c_p'))
     parser.add_argument('--opt_result', type=str, help=h_format(
         'one optimization step'))
     parser.add_argument('--big_d', type=str, help=h_format(
@@ -75,9 +67,9 @@ def main(argv=None):
         go.add(t2v=go.gun.fit_t2v())
         go.add(v=go.t2v(t))
         go.add(vt=(go.v, go.t))
-    D=nom.gun.fit_D()
+    C=nom.gun.fit_C()
     B,ep = nom.gun.fit_B_ep(exp.vt)
-    nom.add(D=D, B=B, ep=ep, BD=np.dot(B,D))
+    nom.add(C=C, B=B, ep=ep, BC=np.dot(B,C))
     
     opt_args = (nom.eos, {'gun':nom.gun}, {'gun':exp.vt})
     
@@ -99,19 +91,19 @@ def main(argv=None):
         plt.show()
     return 0
 
-def D_gun(exp, nom, opt_args, plt):
-    fig = plt.figure('D', figsize=fig_y_size(6.4))
+def C_gun(exp, nom, opt_args, plt):
+    fig = plt.figure('C', figsize=fig_y_size(6.4))
     n_f = len(nom.eos.get_c())
     n_v = len(exp.t2v.get_c())
-    assert nom.D.shape == (n_v, n_f)
+    assert nom.C.shape == (n_v, n_f)
     ax = fig.add_subplot(1,1,1)
     for j in range(n_f):
-        ax.plot(nom.D[:,j]*1e7)
+        ax.plot(nom.C[:,j]*1e7)
     ax.set_xlabel(r'$k$')
     ax.set_ylabel(
         r'$\left( \frac{\partial c_v[k]}{\partial c_f[i]} \right)\cdot 10^7$')
     return fig
-plot_dict['D_gun'] = D_gun
+plot_dict['C_gun'] = C_gun
 
 def vt_gun(exp, nom, opt_args, plt):
     fig = plt.figure('vt', figsize=fig_y_size(8))
@@ -126,19 +118,19 @@ def vt_gun(exp, nom, opt_args, plt):
     return fig
 plot_dict['vt_gun'] = vt_gun
 
-def BD_gun(exp, nom, opt_args, plt):
-    fig = plt.figure('BD', figsize=fig_y_size(7))
-    D = nom.D
-    BD = np.dot(nom.B,nom.D)
-    n_t,n_c = BD.shape
+def BC_gun(exp, nom, opt_args, plt):
+    fig = plt.figure('BC', figsize=fig_y_size(7))
+    C = nom.C
+    BC = np.dot(nom.B,nom.C)
+    n_t,n_c = BC.shape
     ax = fig.add_subplot(1,1,1)
     for i in range(n_c):
-        ax.plot(exp.t*1e6, BD[:,i]*1e7)
+        ax.plot(exp.t*1e6, BC[:,i]*1e7)
     ax.set_xlabel(r'$t/(\mu\rm{sec})$')
     ax.set_ylabel(
         r'$\frac{\partial v(t)}{\partial c_f[i]}/({\rm cm/s})\cdot 10^7$')
     return fig
-plot_dict['BD_gun'] = BD_gun
+plot_dict['BC_gun'] = BC_gun
 
 def opt_result(exp, nom, opt_args, plt):
     from fit import Opt
@@ -170,9 +162,9 @@ def big_d(exp, nom, opt_args, plt):
     x = exp.x
     frac_a = 2.0e-2
     frac_b = 2.0e-3
-    DA = gun.fit_D(fraction=frac_a)*1e7
-    DB = gun.fit_D(fraction=frac_b)*1e7
-    x_D = t2v.get_t()[2:-2]*1.0e6
+    CA = gun.fit_C(fraction=frac_a)*1e7
+    CB = gun.fit_C(fraction=frac_b)*1e7
+    x_C = t2v.get_t()[2:-2]*1.0e6
 
     c = nom.eos.get_c()
     f = nom.eos(x)
@@ -203,9 +195,9 @@ def big_d(exp, nom, opt_args, plt):
             (4, t, np.array([v]),mic_sec, r'$v/(\rm{km/s})$'),
             (5, t, dva,mic_sec, '$\Delta v$'),
             (6, t, dvb, mic_sec,'$\Delta v$'),
-            (7, x_D, (DA.T-DB.T)*1e3, mic_sec, r'$\rm Difference\cdot 10^3$'),
-            (8, x_D, DA.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
-            (9, x_D, DB.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
+            (7, x_C, (CA.T-CB.T)*1e3, mic_sec, r'$\rm Difference\cdot 10^3$'),
+            (8, x_C, CA.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
+            (9, x_C, CB.T, mic_sec, '$\Delta c_v/\Delta c_f\cdot 10^7$'),
             ):
         ax = fig.add_subplot(3,3,n_)
         ax.set_xlabel(l_x)

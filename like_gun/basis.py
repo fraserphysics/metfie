@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 def make_figure():
     x_n=10      # Xvalues from 0 to 10
     n_d = 4     # Number of derivatives f, f', f'', f'''
-    knots_0 = 4 # Last 4 knots are dummies
     n_x = 1000  # Number of x points for plots
     
     fig = plt.figure('basis functions',figsize=(8,10))
@@ -16,16 +15,15 @@ def make_figure():
     s = Spline(x,np.zeros(x.shape)) # Function is zero everywhere
     c = s.get_c()                   # The coefficients
     t = s.get_t()[3:-3]             # The knot locations
-    k_lim = len(c) - knots_0
     x = np.linspace(0, x_n, n_x)
     n_x = len(x)
     d = np.empty((n_d,n_x))
-    d2 = np.empty((len(t),k_lim))
+    d2 = np.empty((len(t),len(c)))
     np.set_printoptions(precision=3)
-    for k in range(k_lim):
+    for k in range(len(c)):
         c[k] = 1.0
         s.new_c(c)
-        if k >= k_lim-2:
+        if k >= len(c)-2:
             print("k={0}\n f'[-1]={1}\n f[-1]={2}".format(
                 k, s.derivative(1)(t[-1]), s(t[-1])))
         d2[:,k] = s.derivative(2)(t)

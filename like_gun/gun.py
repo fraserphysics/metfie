@@ -4,16 +4,10 @@ data and simulations.
 
 """
 import numpy as np
-    
-class go:
-    ''' Generic object.  For storing magic numbers.
-    '''
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-#import fit.magic.D_frac as D_f # FixMe: Import go and pass D_frac
-D_f=2.0e-2
-magic = go(
+
+from eos import Go
+import fit
+magic = Go(
     x_i=0.4,             # Initial position of projectile / cm'
     x_f=4.0,             # Final/muzzle position of projectile /cm'
     m=100.0,             # Mass of projectile / g
@@ -23,10 +17,10 @@ magic = go(
     n_t=500,             # Number of ts for t2v spline
     t_min=-5.0e-6,       # Range of times for t2v spline
     t_max=110.0e-6,      # Range of times for t2v spline
-    D_frac=D_f   ,       # Fractional finte difference for esimating dv/df
     cm2km=1.0e5,         # For conversion from cm/sec to km/sec
     n_t_sim=1000,        # len(vt), simulated velocity time pairs
            )
+magic.add(D_frac=fit.magic.D_frac) # Fractional finite difference for dv/df
 class Gun:
     '''Represents an imagined experiment and actual simulations.
 
@@ -49,7 +43,7 @@ class Gun:
 
     compare(vt,c) Return d_ep/d_c, ep, Sigma_inv
 
-    fit_D()       Calculates derivative of velocity wrt to eos in
+    fit_C()       Calculates derivative of velocity wrt to eos in
                   terms of spline coefficients
 
     fit_B_ep(vt)  Calculates ep = errors of predictions of experimental
@@ -157,12 +151,12 @@ class Gun:
         '''
         if type(c) != type(None):
             self.eos = self.eos.new_c(c)
-        D = self.fit_D()
+        C = self.fit_C()
         B,ep = self.fit_B_ep(vt)
-        BD = np.dot(B,D)
+        BC = np.dot(B,C)
         Sigma_inv = np.diag(np.ones(len(ep))/self.var)
-        return (BD, ep, Sigma_inv)
-    def fit_D(
+        return (BC, ep, Sigma_inv)
+    def fit_C(
             self,                   # Gun instance
             fraction=magic.D_frac,  # Finite difference fraction
             t_min=magic.t_min,
@@ -171,7 +165,7 @@ class Gun:
             ):
         '''Calculate dv/df in terms of spline coefficients and return,
               
-        Note D.shape = (len(c_v)-4, len(c_f)-4) because I drop the
+        Note C.shape = (len(c_v)-4, len(c_f)-4) because I drop the
         last 4 which are always 0.
         '''
         # Spline.new_c(c) does not modify Spline.  It returns a copy
@@ -180,7 +174,7 @@ class Gun:
         c_f_nom = eos_nom.get_c()    # Nominal coefficients for eos
         t2v_nom = self.fit_t2v(t_min, t_max, n_t)
         c_v_nom = t2v_nom.get_c()
-        D = np.empty((len(c_v_nom),len(c_f_nom))) # To be dv/df matrix
+        C = np.empty((len(c_v_nom),len(c_f_nom))) # To be dv/df matrix
         for i in range(len(c_f_nom)):
             c_f = c_f_nom.copy()
             # Next set size of finite difference for derivative approximation
@@ -188,9 +182,9 @@ class Gun:
             c_f[i] += d_f
             # Next run a simulation to get a v(t) spline a for a modified eos
             self.eos = eos_nom.new_c(c_f)
-            D[:,i] = (self.fit_t2v(t_min, t_max, n_t).get_c() -c_v_nom)/d_f
+            C[:,i] = (self.fit_t2v(t_min, t_max, n_t).get_c() -c_v_nom)/d_f
         self.eos = eos_nom
-        return D
+        return C
     def fit_B_ep(
             self, # Gun instance
             vt,   # (velocities, times)
@@ -217,7 +211,7 @@ class Gun:
         return B, ep
     def log_like(
             self, # Gun instance
-            BD,
+            BC,
             ep,
             Sigma_inv,
             ):
@@ -295,16 +289,16 @@ def test_x_dot():
     v = Gun(Experiment()).x_dot(4.0)
     assert close(v, 4.121800824e+04)
     return 0
-def test_D():
+def test_C():
     from eos import Experiment, Spline_eos
 
     n_t = 15
     N = 10
     eos = Spline_eos(Experiment(), N=N, v_min=.38, v_max=4.2)
-    D = Gun(eos).fit_D(n_t=n_t)
-    assert D.shape == (n_t, N)
-    assert close(D[1,0], 2.05695528e-07)
-    assert close(D[-1,-1], 6.45823399e-07)
+    C = Gun(eos).fit_C(n_t=n_t)
+    assert C.shape == (n_t, N)
+    assert close(C[1,0], 2.05695528e-07)
+    assert close(C[-1,-1], 6.45823399e-07)
     return 0
 def test_B_ep():
     ''' B[i,j] = dv(t[i])/dc_velocity[j]

@@ -3,13 +3,8 @@
 
 """
 import numpy as np
-class go:
-    ''' Generic object.  For storing magic numbers.
-    '''
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-magic = go(
+from eos import Go
+magic = Go(
     D_frac=2.0e-2,     # Fractional finte difference for esimating dv/df
     fit_dim=50,        # Number of x points for EOS fit
     max_iter=5,        # Bound for iterations maximizing likelihood

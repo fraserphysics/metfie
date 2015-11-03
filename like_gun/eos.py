@@ -7,13 +7,16 @@ Used in calc.py. Goals:
 """
 import numpy as np
 
-class go:
-    ''' Generic object.  For storing magic numbers.
+class Go:
+    ''' Generic object.
     '''
     def __init__(self, **kwargs):
+        self.add(**kwargs)
+    def add(self, **kwargs):
         for key, value in kwargs.items():
             setattr(self, key, value)
-magic = go(
+        return self
+magic = Go(
     C=2.56e9,                # For nominal eos. Pa at 1 cm^3 / gram
     spline_N=50,             # Number of samples (number of knots - 4)
     spline_min=0.1,          # Minimum volume
