@@ -189,9 +189,9 @@ def big_d(exp, nom, opt_args, plt):
     #  7  8  9
     mic_sec = r'$t/(\mu \rm{sec})$'
     for n_, x_, y_, l_x, l_y in (
-            (1, x, np.array([f]), '$x$', '$f$'),
-            (2, x, dfa, '$x$', '$\Delta f$'),
-            (3, x, dfb, '$x$', '$\Delta f$'),
+            (1, x, np.array([f]), '$v$', '$f$'),
+            (2, x, dfa, '$v$', '$\Delta f$'),
+            (3, x, dfb, '$v$', '$\Delta f$'),
             (4, t, np.array([v]),mic_sec, r'$v/(\rm{km/s})$'),
             (5, t, dva,mic_sec, '$\Delta v$'),
             (6, t, dvb, mic_sec,'$\Delta v$'),
@@ -229,7 +229,8 @@ def fve_gun(exp, nom, opt_args, plt):
     fig = plt.figure('fve_gun',figsize=fig_y_size(9))    
     p2f = magic.newton2dyne*magic.area/1e11    
     opt = Opt(*opt_args)
-    cs = opt.fit(max_iter=5)
+    cs,costs = opt.fit(max_iter=5)
+    print('costs={0}'.format(costs))
     opt_gun = Gun(opt.eos)
     nom.gun.eos = nom.eos # Restore nominal eos after optimization
     t2vs = [Gun(eos).fit_t2v() for eos in [opt.eos.new_c(c) for c in cs]]

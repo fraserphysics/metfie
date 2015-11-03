@@ -15,12 +15,14 @@
 FIG_ROOT = C_gun vt_gun BC_gun opt_result big_d fve_gun
 FIGURES = $(patsubst %, figs/%.pdf, ${FIG_ROOT}) basis.pdf
 
+CODE = plot.py fit.py eos.py gun.py
+
 notes.pdf: notes.aux ${FIGURES}
 	pdflatex notes
 notes.aux: notes.tex ${FIGURES}
 	pdflatex notes
 
-figs/%.pdf: plot.py
+figs/%.pdf: ${CODE}
 	python plot.py --$* $*.pdf
 
 basis.pdf: basis.py

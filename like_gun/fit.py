@@ -95,7 +95,7 @@ class Opt:
             print('delta={0:.3e} tol={1:.3e}, i={2}'.format(delta, tol, i))
             self.experiment['gun'].debug_plot(
                         None, None, show=True) # FixMe: For plt.show()
-        return cs
+        return cs, costs
     def cost(
             self,        # Opt instance
             c,           # Trial eos parameters
@@ -141,7 +141,7 @@ def test_step():
     return 0
 def test_fit():
     for pre in (False, True):
-        cs = make_opt(precondition=pre).fit(max_iter=1)
+        cs,costs = make_opt(precondition=pre).fit(max_iter=1)
         assert len(cs) == 2
         assert len(cs[-1]) == 50
         assert close(cs[-1][20], 502239535.66)
