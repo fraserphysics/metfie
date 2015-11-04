@@ -17,10 +17,14 @@ FIGURES = $(patsubst %, figs/%.pdf, ${FIG_ROOT}) basis.pdf
 
 CODE = plot.py fit.py eos.py gun.py
 
-notes.pdf: notes.aux ${FIGURES}
+notes.pdf: notes.aux notes.bbl ${FIGURES}
 	pdflatex notes
 notes.aux: notes.tex ${FIGURES}
 	pdflatex notes
+notes.bbl: notes.aux local.bib
+	bibtex notes
+local.bib: ../local.bib
+	ln -s $^ $@
 
 figs/%.pdf: ${CODE}
 	python plot.py --$* $*.pdf

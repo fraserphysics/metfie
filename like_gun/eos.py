@@ -29,7 +29,38 @@ magic = Go(
     scale=2.0,               # Scale of perturbation
            )
 
-class Nominal:
+R = lambda vel, vol_0, vol: vel*vel*(vol_0-vol)/(vol_0*vol_0)
+from scipy.optimize import brentq
+class Isentrope:
+    '''Provides method to calculate CJ conditions
+    '''
+    def CJ(self, vol_0):
+        '''Find CJ conditions using two nested line searches.
+        '''
+        # Search for det velocity between 1 and 10 km/sec
+        d_min = 1.0e5
+        d_max = 1.0e6
+        v_min = magic.spline_min
+        v_max = magic.spline_max
+
+        # R is Rayleigh line
+        R = lambda vel, vol: vel*vel*(vol_0-vol)/(vol_0*vol_0)
+        # F is self - R
+        F = lambda vel, vol, self : self(vol) - R(vel, vol)
+        # d_F is derivative of F wrt vol
+        d_F = lambda vol, vel, self: self.derivative(1)(vol) + (
+            vel/vol_0)**2
+        
+        # arg_min(vel, self) finds volume that minimizes self(v) - R(v)
+        arg_min = lambda vel,self: brentq(d_F,v_min,v_max,args=(vel,self))
+        
+        E = lambda vel, self: F(vel, arg_min(vel,self), self)
+        
+        vel_CJ = brentq(E, d_min, d_max, args=(self,))
+        vol_CJ = arg_min(vel_CJ,self)
+        p_CJ = self(vol_CJ)
+        return vel_CJ, vol_CJ, p_CJ
+class Nominal(Isentrope):
     '''Model of pressure as function of volume.  This is the nominal eos
 
     p = C/v^3
@@ -45,6 +76,9 @@ class Nominal:
             v          # Specific volume in cm^3/gram
             ):
         return self.C/v**3
+    def derivative(self, n):
+        assert n == 1
+        return lambda v: -3*self.C/v**4
 class Experiment:
     '''This is the "true" eos used for the experiments.
 
@@ -93,7 +127,7 @@ class Spline(IU_Spline):
         c_[:-magic.spline_end] = c
         rv._eval_args = self._eval_args[0], c_, self._eval_args[2]
         return rv
-class Spline_eos(Spline):
+class Spline_eos(Spline, Isentrope):
     '''Model of pressure as function of volume implemented as a spline.
     
     Methods:
@@ -256,7 +290,18 @@ class Spline_eos(Spline):
         return -np.dot(ep_f, np.dot(self.prior_var_inv, ep_f))/2
     
 # Test functions
+close = lambda a,b: a*(1-1e-7) < b < a*(1+1e-7)
 import numpy.testing as nt
+def test_CJ():
+    v_0 = 1/1.835
+    velocity, volume, pressure = Nominal().CJ(v_0)
+    #print('D_CJ={0:.4e}'.format( velocity))
+    assert close(volume, 0.408719346049324)
+    assert close(pressure, 3.749422497177544e10)
+    assert close(velocity,                            2.858868318e+05)
+    assert close(Spline_eos(Nominal()).CJ(v_0)[0],    2.858856308e+05)
+    assert close(Spline_eos(Experiment()).CJ(v_0)[0], 2.744335208e+05)
+    return 0
 def test_spline():
     '''For convex combinations of nominal and experimental, ensure that
     minimum cost is at nominal and that feasible boundary is between

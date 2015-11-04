@@ -2,6 +2,7 @@
 \usepackage{amsmath,amsfonts,afterpage}
 %\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
+\usepackage{url}
 \usepackage{listings}
 \newcommand{\normal}[2]{{\cal N}\left( #1,#2 \right)}
 \newcommand{\normalexp}[3]{ -\frac{1}{2}
@@ -321,7 +322,51 @@ following methods:
 
 Here the data are a sequence of times that a detonation shock is
 measured arriving a locations along a rate stick that is so thick that
-the detonation velocity is not reduced by curvature.
+the detonation velocity is not reduced by curvature.  The code for the
+faux data uses the average density and sensor positions given by
+Pemberton et al.\cite{Pemberton9501} for their \emph{Shot 1}.
+
+The Rayleigh line gives a relation implied by conservation laws
+between pressure and density (or specific volume) before and after a
+shock.  On page 17 of Fickett and Davis\cite{FickettDavis} Equation
+2.3 expresses the realation as
+\begin{equation}
+  \label{eq:Rayleigh}
+  \rho_0^2 D^2 - (p-p_0)/(v_0-v) = 0,
+\end{equation}
+with the following notation:
+\begin{description}
+\item[$\rho_0$] The initial density (before detonation wave arrives)
+\item[$v_0\equiv\frac{1}{\rho_0}$] The initial specific volume
+\item[$p_0$] The initial pressure
+\item[$D$] The velocity of the detonation wave
+\item[$p$] The pressure at positions behind the wave
+\item[$v$] The specific at positions behind the wave.
+\end{description}
+Rearranging the terms in \eqref{eq:Rayleigh} yields this relation
+between pressure and volume after the shock
+\begin{equation*}
+  p = R(v) \equiv p_0 + \frac{D^2(v_0-v)}{v_0^2}.
+\end{equation*}
+At the CJ point, the Rayleigh line is tangent to the isentrope.
+Using
+\begin{align*}
+  F(v) &= \eos(v) - R(v) \\
+  F'(v) &= \frac{d \eos}{d v} - \frac{D^2}{v_0^2},
+\end{align*}
+I can write the following conditions for the CJ point:
+\begin{align*}
+  F(v_{\text{CJ}}) &= 0 \\
+  F'(v_{\text{CJ}}) &= 0.
+\end{align*}
+
+
+
+
+where $D$ is the detonation velocity, $\rho_0\equiv\frac{1}{v_0}$ is
+the density before detonation and $p_0$ is the pressure before
+detonation.
+
 
 
 \subsection{A Cylinder}
@@ -660,6 +705,7 @@ for $z$, and then derive the estimate of $d$ from
 
 See other information in $\sim$/doc/HE.tex on moonlight.
 
+\bibliographystyle{unsrt} \bibliography{local}
 %
 \vfill \hrule
 

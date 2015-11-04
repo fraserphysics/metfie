@@ -153,9 +153,9 @@ class Gun:
             self.eos = self.eos.new_c(c)
         C = self.fit_C()
         B,ep = self.fit_B_ep(vt)
-        BC = np.dot(B,C)
+        D = np.dot(B,C)
         Sigma_inv = np.diag(np.ones(len(ep))/self.var)
-        return (BC, ep, Sigma_inv)
+        return (D, ep, Sigma_inv)
     def fit_C(
             self,                   # Gun instance
             fraction=magic.D_frac,  # Finite difference fraction
@@ -163,10 +163,7 @@ class Gun:
             t_max=magic.t_max,
             n_t=magic.n_t
             ):
-        '''Calculate dv/df in terms of spline coefficients and return,
-              
-        Note C.shape = (len(c_v)-4, len(c_f)-4) because I drop the
-        last 4 which are always 0.
+        '''Calculate dv/df in terms of spline coefficients and return
         '''
         # Spline.new_c(c) does not modify Spline.  It returns a copy
         # of Spline with the coefficients c.
@@ -211,7 +208,7 @@ class Gun:
         return B, ep
     def log_like(
             self, # Gun instance
-            BC,
+            D,
             ep,
             Sigma_inv,
             ):
