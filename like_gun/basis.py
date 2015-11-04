@@ -3,8 +3,7 @@
 from __future__ import print_function
 from eos import Spline
 import numpy as np
-import matplotlib.pyplot as plt
-def make_figure():
+def make_figure(plt):
     x_n=10      # Xvalues from 0 to 10
     n_d = 4     # Number of derivatives f, f', f'', f'''
     n_x = 1000  # Number of x points for plots
@@ -43,7 +42,11 @@ def make_figure():
   
 if __name__ == "__main__":
     import sys
-    fig = make_figure()
+    import matplotlib as mpl
+    if len(sys.argv) == 2:
+        mpl.use('PDF')
+    import matplotlib.pyplot as plt
+    fig = make_figure(plt)
     if len(sys.argv) == 2:
         fig.savefig(sys.argv[1], format='pdf')
     else:
