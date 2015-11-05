@@ -128,10 +128,17 @@ import numpy.testing as nt
 close = lambda a,b: a*(1-1e-7) < b < a*(1+1e-7)
 def make_opt(precondition=False):
     import gun
+    import stick
     import eos
     nominal_eos = eos.Spline_eos(eos.Nominal(), precondition=precondition)
-    experiment = {'gun':gun.Gun(nominal_eos)}
-    data = {'gun':gun.data()}
+    experiment = {
+        'gun':gun.Gun(nominal_eos),
+        'stick':stick.Stick(nominal_eos),
+        }
+    data = {
+        'gun':gun.data(),
+        'stick':stick.data()
+        }
     return Opt(nominal_eos, experiment, data)
 def test_init():
     make_opt()
@@ -144,7 +151,9 @@ def test_fit():
         cs,costs = make_opt(precondition=pre).fit(max_iter=1)
         assert len(cs) == 2
         assert len(cs[-1]) == 50
-        assert close(cs[-1][20], 502239535.66)
+        tmp = 5.075246992358e+08
+        calc = cs[-1][20]
+        assert close(calc, tmp),'cs[-1][20]={0:.10e}'.format(calc)
     return 0
 def test():
     for name,value in globals().items():
@@ -155,6 +164,11 @@ def test():
         else:
             print('\nFAILED            {0}\n'.format(name))
     return 0
+def work():
+    for pre in (False, True):
+        cs,costs = make_opt(precondition=pre).fit(max_iter=1)
+        assert len(cs[-1]) == 50
+        print('cs[-1][20]={0:.12e}, costs={1}'.format(cs[-1][20], costs))
 if __name__ == "__main__":
     import sys
     if len(sys.argv) >1 and sys.argv[1] == 'test':

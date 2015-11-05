@@ -113,11 +113,12 @@ class Stick:
         '''
         return -np.dot(ep, np.dot(Sigma_inv, ep))/2
 
-def data():
+def data(eos=None):
     '''Make "experimental" data from stick with eos from eos.Experiment
     '''
     from eos import Experiment, Spline_eos
-    eos = Spline_eos(Experiment()) # Use spline for derivative
+    if eos == None:
+        eos = Spline_eos(Experiment()) # Use spline for derivative
     vel_CJ, vol_CJ, p_CJ = eos.CJ(1/pemberton.densities.mean())
     stick = Stick(eos)
     # Make simulated measurements
