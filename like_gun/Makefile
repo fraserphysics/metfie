@@ -2,8 +2,8 @@
 # documents is:
 
 # 1. notes.pdf
-#    "rm *.pdf; time make notes.pdf" reports 0m51.413s on an intel
-#    G3220 @ 3.00GHz cpu
+#    make clean; time make -j8 notes.pdf" reports 0m59.368s on a
+#    4-core 8-thread intel E5-1620 v2 @ 3.70GHz cpu
 
 # Use python2 rather than python3 because debian doesn't have a
 # python3 cvxopt version.
@@ -19,14 +19,16 @@ CODE = plot.py fit.py eos.py gun.py
 
 notes.pdf: notes.aux notes.bbl ${FIGURES}
 	pdflatex notes
-notes.aux: notes.tex ${FIGURES}
+notes.aux: notes.tex notes.bbl ${FIGURES}
 	pdflatex notes
-notes.bbl: notes.aux local.bib
+notes.bbl: local.bib notes.tex ${FIGURES}
+	pdflatex notes
 	bibtex notes
 local.bib: ../local.bib
 	ln -s $^ $@
 
 figs/%.pdf: ${CODE}
+	mkdir -p figs
 	python plot.py --$* $*.pdf
 
 basis.pdf: basis.py
@@ -34,7 +36,7 @@ basis.pdf: basis.py
 test:
 	@echo FIGURES = ${FIGURES}
 clean:
-	rm -rf figs *.pdf *.pyc *.log *.aux
+	rm -rf figs *.pdf *.pyc *.log *.aux *.bbl
 
 ###---------------
 ### Local Variables:

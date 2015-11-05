@@ -1,7 +1,6 @@
 archive
 reference
 build
-figs
 *.so
 *.jpg
 *.c
@@ -27,3 +26,4 @@ nohup.out
 /test
 **/#*#
 /like_gun/local.bib
+*.png
