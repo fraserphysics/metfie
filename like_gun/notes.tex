@@ -197,12 +197,79 @@ EOS.  For the $k^{\rm th}$ experiment, here is the notation:
   \Sigma_k^{-1} \epsilon_k$.
 \end{description}
 
+\subsection{A Rate Stick}
+\label{sec:rate-stick}
+
+Here the data are a sequence of times that a detonation shock is
+measured arriving at locations along a rate stick that is so thick
+that the detonation velocity is not reduced by curvature.  The code
+for the faux data uses the average density and sensor positions given
+by Pemberton et al.\cite{Pemberton9501} for their \emph{Shot 1}.
+
+The Rayleigh line gives a relation implied by conservation laws
+between pressure and density (or specific volume) before and after a
+shock.  On page 17 of Fickett and Davis\cite{FickettDavis} Equation
+2.3 expresses the relation as
+\begin{equation}
+  \label{eq:Rayleigh}
+  \rho_0^2 V^2 - (p-p_0)/(v_0-v) = 0,
+\end{equation}
+with the following notation:
+\begin{description}
+\item[$\rho_0$] The initial density (before detonation wave arrives)
+\item[$v_0\equiv\frac{1}{\rho_0}$] The initial specific volume
+\item[$p_0$] The initial pressure
+\item[$V$] The velocity of the detonation wave
+\item[$p$] The pressure at positions behind the wave
+\item[$v$] The specific at positions behind the wave.
+\end{description}
+Rearranging the terms in \eqref{eq:Rayleigh} yields this relation
+between pressure and volume after the shock
+\begin{equation*}
+  p = R(v,V) \equiv p_0 + \frac{V^2(v_0-v)}{v_0^2}.
+\end{equation*}
+At the CJ point, the Rayleigh line is tangent to the isentrope.
+Using
+\begin{align*}
+  F(v,V) &= \eos(v) - R(v,V) \\
+  F'(v,V) &= \frac{d \eos}{d v} - \frac{V^2}{v_0^2},
+\end{align*}
+I can write the following conditions for the CJ point:
+\begin{subequations}
+  \begin{align}
+    \label{eq:Fcond}
+    F(v,V) &= 0 \\
+    \label{eq:dFcond}
+    F'(v,V) &= 0.
+  \end{align}
+\end{subequations}
+Given $V$, the code has function that numerically solves
+\eqref{eq:dFcond} for $v$.  Letting $v(V)$ denote that solution, I
+write \eqref{eq:Fcond} as
+\begin{equation}
+  \label{eq:FV}
+  F(v(V),V) = 0.
+\end{equation}
+The code numerically solves \eqref{eq:FV} to get $V_{\text{CJ}}$ and
+then assigns $v_{\text{CJ}} = v(V_{\text{CJ}})$.
+
+From $V_{\text{CJ}}(\eos)$, the code calculates
+\begin{equation}
+  \label{eq:t}
+  t[j] = \frac{x[j]}{V_{\text{CJ}}(\eos)}.
+\end{equation}
+Finally the code calculates
+\begin{equation}
+  \label{eq:Dstick}
+  D[j,i] \equiv \frac{\partial t[j]}{\partial c[i]}
+\end{equation}
+using finite differences.
+
 \subsection{The Gun}
 \label{sec:gun}
 
-The first experiment is a gun.  The data is a time series of
-of measurements of velocity of a projectile as it accelerates down a
-gun barrel.
+The data is a time series of measurements of the velocity of a
+projectile as it accelerates down a gun barrel.
 
 \subsubsection{Notation}
 \label{sec:basic_notation}
@@ -314,49 +381,6 @@ following methods:
     \label{fig:BC_gun}
   \end{figure}
 \end{description}
-
-\subsection{A Rate Stick}
-\label{sec:rate-stick}
-
-Here the data are a sequence of times that a detonation shock is
-measured arriving a locations along a rate stick that is so thick that
-the detonation velocity is not reduced by curvature.  The code for the
-faux data uses the average density and sensor positions given by
-Pemberton et al.\cite{Pemberton9501} for their \emph{Shot 1}.
-
-The Rayleigh line gives a relation implied by conservation laws
-between pressure and density (or specific volume) before and after a
-shock.  On page 17 of Fickett and Davis\cite{FickettDavis} Equation
-2.3 expresses the realation as
-\begin{equation}
-  \label{eq:Rayleigh}
-  \rho_0^2 V^2 - (p-p_0)/(v_0-v) = 0,
-\end{equation}
-with the following notation:
-\begin{description}
-\item[$\rho_0$] The initial density (before detonation wave arrives)
-\item[$v_0\equiv\frac{1}{\rho_0}$] The initial specific volume
-\item[$p_0$] The initial pressure
-\item[$V$] The velocity of the detonation wave
-\item[$p$] The pressure at positions behind the wave
-\item[$v$] The specific at positions behind the wave.
-\end{description}
-Rearranging the terms in \eqref{eq:Rayleigh} yields this relation
-between pressure and volume after the shock
-\begin{equation*}
-  p = R(v) \equiv p_0 + \frac{V^2(v_0-v)}{v_0^2}.
-\end{equation*}
-At the CJ point, the Rayleigh line is tangent to the isentrope.
-Using
-\begin{align*}
-  F(v) &= \eos(v) - R(v) \\
-  F'(v) &= \frac{d \eos}{d v} - \frac{V^2}{v_0^2},
-\end{align*}
-I can write the following conditions for the CJ point:
-\begin{align*}
-  F(v_{\text{CJ}}) &= 0 \\
-  F'(v_{\text{CJ}}) &= 0.
-\end{align*}
 
 \subsection{A Cylinder}
 \label{sec:cylinder}
