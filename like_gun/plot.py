@@ -25,6 +25,7 @@ def main(argv=None):
     'Directory of figures')
     # Plot requests
     h_format = lambda s:'File for figure of {0}'.format(s)
+    parser.add_argument('--tx_stick', type=str, help=h_format('t(x)'))
     parser.add_argument('--C_gun', type=str, help=h_format('d c_v/ d c_p'))
     parser.add_argument('--vt_gun', type=str, help=h_format('v(t)'))
     parser.add_argument('--BC_gun', type=str, help=h_format('d v(t)/ d c_p'))
@@ -54,7 +55,7 @@ def main(argv=None):
     if not os.path.exists(args.fig_dir):
         os.mkdir(args.fig_dir)
         
-    # Do quick calculations to create exp, nom and opt_args
+    # Do quick calculations to create exp and nom
     import eos
     import gun
     import stick
@@ -73,11 +74,6 @@ def main(argv=None):
     B,ep = nom.gun.fit_B_ep(exp.vt)
     nom.add(C=C, B=B, ep=ep, BC=np.dot(B,C))
     
-    opt_args = (
-        nom.eos,
-        {'gun':nom.gun,'stick':nom.stick},
-        {'gun':exp.vt,'stick':exp.stick_data})
-    
     # Make requested plots
     do_show = args.show
     for key in args.__dict__:
@@ -86,7 +82,7 @@ def main(argv=None):
         if args.__dict__[key] == None:
             continue
         print('work on %s'%(key,))
-        fig = plot_dict[key](exp, nom, opt_args, plt)
+        fig = plot_dict[key](exp, nom, plt)
         file_name = getattr(args, key)
         if file_name == 'show':
             do_show = True
@@ -96,7 +92,31 @@ def main(argv=None):
         plt.show()
     return 0
 
-def C_gun(exp, nom, opt_args, plt):
+def tx_stick(exp, nom, plt):
+    import stick
+    from fit import Opt
+    fig = plt.figure('tx_stick', figsize=fig_y_size(5.0))
+    opt = Opt(
+        nom.eos,
+        {'stick':nom.stick},
+        {'stick':exp.stick_data})
+    cs,costs = opt.fit(max_iter=10)
+    print('stick costs={0}'.format(costs))
+    opt_t = stick.data(opt.eos)
+    x = nom.stick.x / 10 #cm
+    ax = fig.add_subplot(1,1,1)
+    ax.plot(x, nom.stick_data*1e6, label='nom')
+    ax.plot(x, exp.stick_data*1e6, 'r+', label='exp')
+    ax.plot(x, opt_t*1e6, label='fit')
+    ax.set_xlabel(r'$x/{\rm cm}$')
+    ax.set_ylabel(r'$t/\mu{\rm sec}$')
+    ax.legend(loc='lower right')
+    fig.subplots_adjust(bottom=0.15) # Make more space for label
+
+    return fig
+plot_dict['tx_stick'] = tx_stick
+
+def C_gun(exp, nom, plt):
     fig = plt.figure('C', figsize=fig_y_size(6.4))
     n_f = len(nom.eos.get_c())
     n_v = len(exp.t2v.get_c())
@@ -110,7 +130,7 @@ def C_gun(exp, nom, opt_args, plt):
     return fig
 plot_dict['C_gun'] = C_gun
 
-def vt_gun(exp, nom, opt_args, plt):
+def vt_gun(exp, nom, plt):
     fig = plt.figure('vt', figsize=fig_y_size(8))
     ts = nom.t2v.get_t()
     ax = fig.add_subplot(1,1,1)
@@ -123,7 +143,7 @@ def vt_gun(exp, nom, opt_args, plt):
     return fig
 plot_dict['vt_gun'] = vt_gun
 
-def BC_gun(exp, nom, opt_args, plt):
+def BC_gun(exp, nom, plt):
     fig = plt.figure('BC', figsize=fig_y_size(7))
     C = nom.C
     BC = np.dot(nom.B,nom.C)
@@ -137,13 +157,16 @@ def BC_gun(exp, nom, opt_args, plt):
     return fig
 plot_dict['BC_gun'] = BC_gun
 
-def opt_result(exp, nom, opt_args, plt):
+def opt_result(exp, nom, plt):
     from fit import Opt
     from gun import magic
     
     fig = plt.figure('opt_result', figsize=fig_y_size(6))    
     p2f = magic.newton2dyne*magic.area/1e11
-    opt = Opt(*opt_args)
+    opt = Opt(
+        nom.eos,
+        {'gun':nom.gun,'stick':nom.stick},
+        {'gun':exp.vt,'stick':exp.stick_data})
     eos_0 = opt.eos
     opt.fit(max_iter=1)
     eos_1 = opt.eos
@@ -158,7 +181,7 @@ def opt_result(exp, nom, opt_args, plt):
     return fig
 plot_dict['opt_result'] = opt_result
 
-def big_d(exp, nom, opt_args, plt):
+def big_d(exp, nom, plt):
     ''' 3x3 matrix of plot that illustrate finite difference derivative
     '''
     fig = plt.figure('big_d', figsize=(14,16))
@@ -226,14 +249,17 @@ def big_d(exp, nom, opt_args, plt):
     return fig
 plot_dict['big_d'] = big_d
 
-def fve_gun(exp, nom, opt_args, plt):
+def fve_gun(exp, nom, plt):
     from fit import Opt
     from gun import magic
     from gun import Gun
     
     fig = plt.figure('fve_gun',figsize=fig_y_size(9))    
-    p2f = magic.newton2dyne*magic.area/1e11    
-    opt = Opt(*opt_args)
+    p2f = magic.newton2dyne*magic.area/1e11
+    opt = Opt(
+        nom.eos,
+        {'gun':nom.gun,'stick':nom.stick},
+        {'gun':exp.vt,'stick':exp.stick_data})
     cs,costs = opt.fit(max_iter=5)
     print('costs={0}'.format(costs))
     opt_gun = Gun(opt.eos)

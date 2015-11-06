@@ -140,13 +140,13 @@ coefficients $\left\{\tilde \cf[i] \right\}$.  Then I assign a variance to
   each coefficient:
 \begin{equation}
   \label{eq:3}
-  \sigma^2_i = \left( \cf[i] \Delta \right)^2.
+  \sigma^2[i] = \left( \cf[i] \Delta \right)^2.
 \end{equation}
 To match Shaw's $\frac{1}{2} \%$ claim, I set $\Delta = 0.005$.  These
 choices yield:
 \begin{align*}
-  \mu_\eos &\leftrightarrow \left\{\tilde c_i \right\} \\
-  \Sigma_\eos[i,j] &= \tilde \sigma^2_i \delta_{i,j}
+  \mu_\eos &\leftrightarrow \left\{\tilde c[i] \right\} \\
+  \Sigma_\eos[i,j] &= \tilde \sigma^2[i] \delta_{i,j}
 \end{align*}
 
 \subsection{The Nominal and \emph{True} EOS}
@@ -210,8 +210,8 @@ information may also be written as''
   \left[\left. \frac{\partial^2}{\partial\theta^2} \log
       p(Y;\theta)\right|\theta \right].
 \end{equation*}
-In my notation for experiments and models, the parameters are $c$ and
-dropping added constants, the log likelihood is
+In my notation for experiments and models, the parameters are $c$.
+Dropping added constants, the log likelihood is
 \begin{equation*}
   \log(p(y|c)) + C = -\frac{1}{2}\epsilon_k^T \Sigma_k^{-1} \epsilon_k
   = -\frac{1}{2}(y-\mu(c))^T \Sigma_k^{-1} (y-\mu(c)).
@@ -225,22 +225,10 @@ At the maximum, the first derivative is zero and I calculate
       \dmudc^T \Sigma_k^{-1} \dmudc +  (y-\mu(c))^T \Sigma_k^{-1}
        \left(\frac{\partial^2 \mu(c)}{\partial c^2} \right).
 \end{align*}
-I will take the first term as an approximation of the Fisher
-Information for the following reasons:
-\begin{enumerate}
-\item If the model fits the data well, the term $(y-\mu(c))$ will be
-  small where the expectation has weight.
-\item Since the code must provide estimates of the components of the
-  first term as part of the optimization procedure, it comes for
-  free.
-\item The number of simulations necessary to estimate
-  $\frac{\partial^2 \mu(c)}{\partial c^2}$ using finite differences is
-  $\frac{n_c(n_c+1)n_y}{2}$.
-\end{enumerate}
+Since the distribution of $Y$ is symmetric about its mean $\mu(c)$,
+the expected value of the second term is 0, and the first term is the
+Fisher Information.
 
-
-
-since
 \subsection{A Rate Stick}
 \label{sec:rate-stick}
 
@@ -327,7 +315,19 @@ Finally the code calculates
   \label{eq:Dstick}
   D[j,i] \equiv \frac{\partial t[j]}{\partial c[i]}
 \end{equation}
-using finite differences.
+using finite differences.  Illustrations of three simulations appear
+in Figure~\ref{fig:tx_stick}.
+
+\begin{figure}
+  \centering
+    \resizebox{\columnwidth}{!}{\includegraphics{\fig{tx_stick}}}
+    \caption{The rate stick data.  Red +'s denote measured shock
+      arrival time at 7 positions.  The blue line represents the shock
+      velocity calculated from the nominal EOS, and the green line
+      represents the velocity from an EOS optimized to fit the rate
+      stick data alone.}
+  \label{fig:tx_stick}
+\end{figure}
 
 \subsection{The Gun}
 \label{sec:gun}
@@ -752,16 +752,16 @@ and the condition\footnote{The condition of a symmetric matrix is the
 $\left( \frac{v_{\text{max}}}{v_{\text{min}}} \right)^6$.  By
 changing to the variable $z$ defined as
 \begin{align*}
-  z_i &\equiv v_i^3 d_i \\
+  z[i] &\equiv v[i]^3 d[i] \\
   z &\equiv U \cdot d \text{ with} \\
-  U_{i,j} &= \delta_{i,j} v_i^3,
+  U[i,j] &= \delta_{i,j} v[i]^3,
 \end{align*}
 \newcommand{\UI}{U^{-1}} instead of $P$, the optimization code will use
 $\UI P \UI$, which is better conditioned.  I also rescale the
-constraint equation to ensure that $\left| h_i \right|=1~\forall i$
+constraint equation to ensure that $\left| h[i] \right|=1~\forall i$
 using the matrix
 \begin{equation*}
-  H^{-1}_{i,j} \equiv \delta_{i,j} \frac{1}{\left|h_i\right|}
+  H^{-1}[i,j] \equiv \delta_{i,j} \frac{1}{\left|h[i]\right|}
 \end{equation*}
 
 
