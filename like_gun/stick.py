@@ -173,10 +173,55 @@ def work():
     '''
     import matplotlib.pyplot as plt
     from eos import Nominal, Spline_eos
-    vt = (data())
-    stick = Stick(Spline_eos(Nominal(),precondition=False))
-    stick.debug_plot(vt, 'test')
-    stick.debug_plot(None, None, show=True)
+    from fit import Opt
+    vt = data()
+    nom = Spline_eos(Nominal(),precondition=True)
+    stick = Stick(nom)
+    opt = Opt(
+        nom,
+        {'stick':stick},
+        {'stick':vt})
+    cs,costs = opt.fit(max_iter=10)
+    D, ep, Sigma_inv = stick.compare(vt, cs[-1])
+    info = np.dot(D.T, np.dot(Sigma_inv, D))
+    _vals,_vecs = np.linalg.eigh(info)
+    _vals = np.maximum(_vals, 0)
+    i = np.argsort(_vals)[-1::-1]
+    vals = _vals[i]
+    vecs = _vecs[i]
+    n_vals = len(np.where(vals > vals[0]*1e-20)[0])
+    n_vecs = len(np.where(vals > vals[0]*1e-2)[0])
+    fig = plt.figure()
+    ax = fig.add_subplot(2,2,1)
+    costs = np.array(costs)
+    x = range(len(costs))
+    c_min = costs.min()
+    c_max = costs.max()
+    if c_min > 0:
+        y = costs
+        ylabel = r'$\log_{e}(p(y|c_i))$'
+    else:
+        offset = (c_max-c_min)*1e-5 -c_min
+        y = costs + offset
+        ylabel = r'$\log_{e}(p(y|\hat c_i)) + {0:.3e}$'.format(offset)
+    ax.semilogy(x,y)
+    ax.semilogy(x,y, 'kx')
+    ax.set_ylabel(ylabel)
+    ax.set_xlabel(r'$i$')
+    ax.set_xticks(x)
+    v = np.linspace(.2,50,500)
+    ax = fig.add_subplot(2,2,2)
+    ax.loglog(v,nom(v))
+    ax = fig.add_subplot(2,2,3)
+    ax.semilogy(range(n_vals), vals[:n_vals])
+    ax = fig.add_subplot(2,2,4)
+    for vec in vecs[:n_vecs]:
+        f = nom.new_c(vec)
+        ax.semilogx(v,f(v))
+    plt.show()
+    vecs = _vecs[i]
+#    for j,v in enumerate(vals):
+#        print('v[{0:2d}] = {1:.3e}'.format(j,v))
     return 0
 
 if __name__ == "__main__":
