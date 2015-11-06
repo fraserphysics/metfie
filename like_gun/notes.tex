@@ -3,7 +3,6 @@
 %\usepackage{showlabels}
 \usepackage[pdftex]{graphicx,color}
 \usepackage{url}
-\usepackage{listings}
 \newcommand{\normal}[2]{{\cal N}\left( #1,#2 \right)}
 \newcommand{\normalexp}[3]{ -\frac{1}{2}
       (#1 - #2)^T #3^{-1} (#1 - #2) }
@@ -197,6 +196,51 @@ EOS.  For the $k^{\rm th}$ experiment, here is the notation:
   \Sigma_k^{-1} \epsilon_k$.
 \end{description}
 
+\subsection{Fisher Information}
+\label{sec:fisher-information}
+
+Fisher Information describes how tightly an experiment constrains
+unknown parameters.  Assume a parametric probability density function
+$p(Y|\theta)$ that gives the likelihood for data $Y$.  Quoting
+Wikipedia: ``If $p(y|\theta)$ is twice differentiable with respect to
+$\theta$, and under certain regularity conditions, then the Fisher
+information may also be written as''
+\begin{equation*}
+  \mathcal{I}(\theta) = - \operatorname{E}
+  \left[\left. \frac{\partial^2}{\partial\theta^2} \log
+      p(Y;\theta)\right|\theta \right].
+\end{equation*}
+In my notation for experiments and models, the parameters are $c$ and
+dropping added constants, the log likelihood is
+\begin{equation*}
+  \log(p(y|c)) + C = -\frac{1}{2}\epsilon_k^T \Sigma_k^{-1} \epsilon_k
+  = -\frac{1}{2}(y-\mu(c))^T \Sigma_k^{-1} (y-\mu(c)).
+\end{equation*}
+At the maximum, the first derivative is zero and I calculate
+\newcommand{\dmudc}{\left(\frac{\partial \mu(c)}{\partial c} \right)}
+\begin{align*}
+  \frac{\partial}{\partial c} \log(p(y|c)) &= 
+      (y-\mu(c))^T \Sigma_k^{-1} \dmudc \\
+  \frac{\partial^2}{\partial c^2} \log(p(y|c)) &=
+      \dmudc^T \Sigma_k^{-1} \dmudc +  (y-\mu(c))^T \Sigma_k^{-1}
+       \left(\frac{\partial^2 \mu(c)}{\partial c^2} \right).
+\end{align*}
+I will take the first term as an approximation of the Fisher
+Information for the following reasons:
+\begin{enumerate}
+\item If the model fits the data well, the term $(y-\mu(c))$ will be
+  small where the expectation has weight.
+\item Since the code must provide estimates of the components of the
+  first term as part of the optimization procedure, it comes for
+  free.
+\item The number of simulations necessary to estimate
+  $\frac{\partial^2 \mu(c)}{\partial c^2}$ using finite differences is
+  $\frac{n_c(n_c+1)n_y}{2}$.
+\end{enumerate}
+
+
+
+since
 \subsection{A Rate Stick}
 \label{sec:rate-stick}
 
@@ -206,10 +250,27 @@ that the detonation velocity is not reduced by curvature.  The code
 for the faux data uses the average density and sensor positions given
 by Pemberton et al.\cite{Pemberton9501} for their \emph{Shot 1}.
 
-The Rayleigh line gives a relation implied by conservation laws
-between pressure and density (or specific volume) before and after a
-shock.  On page 17 of Fickett and Davis\cite{FickettDavis} Equation
-2.3 expresses the relation as
+\subsubsection{Detonation Velocity}
+\label{sec:det-vel}
+
+The only characteristic that this ideal rate stick measures is the
+detonation velocity.  Code in \emph{stick.py} derives that velocity
+following Section 2A (entitled \emph{The Simplest Theory)}) of
+\emph{Detonation Theory and Experiment} by Fickett and
+Davis\cite{FickettDavis}.  At the Chapman Jouguet (CJ) state, the
+following three curves are tangent in the $p,v$ plane:
+\begin{itemize}
+\item The Rayleigh line which gives a relation implied by conservation
+  laws between pressure and density (or specific volume) before and
+  after a shock.
+\item The Hugoniot curve, which I will not use.
+\item An isentrope.  Generally one must use the Hugoniot to determine
+  which isentrope goes through the CJ state, but I will just assume
+  that each isentrope considered goes through the CJ state.
+\end{itemize}
+
+On page 17 of Fickett and Davis, Equation 2.3 expresses the Rayleigh
+line as
 \begin{equation}
   \label{eq:Rayleigh}
   \rho_0^2 V^2 - (p-p_0)/(v_0-v) = 0,
@@ -252,6 +313,9 @@ write \eqref{eq:Fcond} as
 \end{equation}
 The code numerically solves \eqref{eq:FV} to get $V_{\text{CJ}}$ and
 then assigns $v_{\text{CJ}} = v(V_{\text{CJ}})$.
+
+\subsubsection{Simulating the Measured Data}
+\label{sec:stick-sim}
 
 From $V_{\text{CJ}}(\eos)$, the code calculates
 \begin{equation}

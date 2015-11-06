@@ -114,11 +114,11 @@ class Stick:
         return -np.dot(ep, np.dot(Sigma_inv, ep))/2
 
 def data(eos=None):
-    '''Make "experimental" data from stick with eos from eos.Experiment
+    '''Make "experimental" data from stick
     '''
-    from eos import Experiment, Spline_eos
-    if eos == None:
-        eos = Spline_eos(Experiment()) # Use spline for derivative
+    if eos==None:
+        from eos import Experiment
+        eos = Experiment()
     vel_CJ, vol_CJ, p_CJ = eos.CJ(1/pemberton.densities.mean())
     stick = Stick(eos)
     # Make simulated measurements
@@ -143,18 +143,18 @@ def test_compare():
     D, ep, SI = make_stick().compare(t)
     assert SI.shape == (7,7)
     assert close(SI[0,0], 2.04351375e+14)
-    assert close(ep[-1], 2.59083600e-05)
+    assert close(ep[-1], 2.569505832e-05),'ep[-1]={0:.9e}'.format(ep[-1])
     return 0
 def test_log_like():
     t = data()
     stick = make_stick()
     rv = stick.compare(t)
     ll = stick.log_like(*rv)
-    assert close(-ll,195449.557085)
+    assert close(-ll,1.922445608e+05),'-ll={0:.9e}'.format(-ll)
     return 0
 def test_data():
-    ref = np.array([9.43589848e-05, 1.84856173e-04, 2.76810643e-04,
-        3.70878172e-04, 4.58715822e-04, 5.53912743e-04, 6.47069471e-04])
+    ref = np.array([9.43278801e-05, 1.84795237e-04, 2.76719395e-04, 3.70755915e-04,
+   4.58564609e-04, 5.53730150e-04, 6.46856169e-04])
     t = data()
     nt.assert_allclose(t,ref)
     return 0

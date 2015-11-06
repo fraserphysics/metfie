@@ -60,8 +60,7 @@ def main(argv=None):
     import stick
     
     t=np.linspace(0, gun.magic.t_max, gun.magic.n_t_sim)
-    exp = Go(eos=eos.Experiment(),
-             stick_data=stick.data())
+    exp = Go(eos=eos.Experiment())
     nom = Go(eos=eos.Spline_eos(eos.Nominal(), precondition=True))
     for go in (exp, nom):
         go.add(t=t, gun=gun.Gun(go.eos), stick=stick.Stick(go.eos))
@@ -69,10 +68,10 @@ def main(argv=None):
         go.add(t2v=go.gun.fit_t2v())
         go.add(v=go.t2v(t))
         go.add(vt=(go.v, go.t))
+        go.add(stick_data=stick.data(go.eos))
     C=nom.gun.fit_C()
     B,ep = nom.gun.fit_B_ep(exp.vt)
     nom.add(C=C, B=B, ep=ep, BC=np.dot(B,C))
-    nom.add(stick_data=stick.data(nom.eos))
     
     opt_args = (
         nom.eos,

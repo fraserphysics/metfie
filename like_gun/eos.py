@@ -79,7 +79,7 @@ class Nominal(Isentrope):
     def derivative(self, n):
         assert n == 1
         return lambda v: -3*self.C/v**4
-class Experiment:
+class Experiment(Isentrope):
     '''This is the "true" eos used for the experiments.
 
     P(v) =
@@ -104,8 +104,25 @@ class Experiment:
         freq = self.freq
         v_0 = self.v_0
         w = self.w
-        pert = 2*np.sin(freq*(v-v_0))*np.exp(-(v-v_0)**2/(2*w**2))
-        return self.C/v**3 + pert*self.C/(freq*v_0**3)
+        sin = lambda Dv: np.sin(freq*Dv)
+        exp = lambda Dv: np.exp(-Dv**2/(2*w**2))
+        pert = lambda Dv: np.sin(freq*Dv)*np.exp(-Dv**2/(2*w**2))
+        factor = 2*self.C/(freq*v_0**3)
+        f_Dv = lambda Dv : factor * sin(Dv)*exp(Dv)
+        return self.C/v**3 + f_Dv(v-v_0)
+    def derivative(self, n):
+        assert n == 1
+        freq = self.freq
+        v_0 = self.v_0
+        w = self.w
+        sin = lambda Dv: np.sin(freq*Dv)
+        dsin = lambda Dv: freq*np.cos(freq*Dv)
+        exp = lambda Dv: np.exp(-Dv**2/(2*w**2))
+        dexp = lambda Dv: -Dv/w*exp(Dv)
+        pert = lambda Dv: np.sin(freq*Dv)*np.exp(-Dv**2/(2*w**2))
+        factor = 2*self.C/(freq*v_0**3)
+        df = lambda Dv: factor*(dsin(Dv)*exp(Dv) + sin(Dv)*dexp(Dv))            
+        return lambda v:-3*self.C/v**4 + df(v-v_0)
     
 from scipy.interpolate import InterpolatedUnivariateSpline as IU_Spline
 # For scipy.interpolate.InterpolatedUnivariateSpline. See:
@@ -301,6 +318,7 @@ def test_CJ():
     assert close(velocity,                            2.858868318e+05)
     assert close(Spline_eos(Nominal()).CJ(v_0)[0],    2.858856308e+05)
     assert close(Spline_eos(Experiment()).CJ(v_0)[0], 2.744335208e+05)
+    assert close(Experiment().CJ(v_0)[0],             2.745241393e+05)
     return 0
 def test_spline():
     '''For convex combinations of nominal and experimental, ensure that
