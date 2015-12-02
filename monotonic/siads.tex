@@ -17,6 +17,8 @@
 \renewcommand{\th}{^{\text{th}}}
 \newcommand{\field}[1]{\mathbb{#1}}
 \newcommand\REAL{\field{R}}
+\newcommand\G{\field{G}}
+\newcommand\I{{\cal I}}
 
 \title{Uniform Probability for a Continuous Time Monotonic Process }
 
@@ -29,7 +31,8 @@
   monotonic.  In coordinates that make the constraints invariant with
   respect to shifts in time, the measure corresponds to a stationary
   stochastic process.  Roughly, the measure makes all allowed
-  sequences have the same probability with respect to a norm.
+  sequences have the same probability %FixMe: Does this make senses?
+  with respect to a norm.
 \end{abstract}
 
 \section*{To Do:}
@@ -66,7 +69,7 @@
 \label{sec:specific}
 
 I seek a \emph{uniform} distribution on a \emph{restricted} set of
-functions.  Figure~\ref{fig:bounds} illustrate the set which I define
+functions.  Figure~\ref{fig:bounds} illustrates the set which I define
 by the following constraints:
 \begin{subequations}
   \label{eq:f_def}
@@ -87,8 +90,15 @@ by the following constraints:
 
 \begin{figure*}
   \centering
-  \resizebox{0.75\textwidth}{!}{\includegraphics{bounds.pdf}}
-  \caption{Bounds on allowed functions}
+  \resizebox{0.55\textwidth}{!}{\includegraphics{bounds.pdf}}
+  \caption{Bounds on allowed functions.  The upper plot illustrates
+    the bounds given by \eqref{eq:f_def} and the middle plot
+    illustrates the same bounds translated to the constraining
+    equations \eqref{eq:g_def}.  In each the green trace is the upper
+    limit, the blue trace is the lower limit and the red trace is an
+    allowed function.  For $\delta=0.2$, allowed pairs $g(t),
+    g(t+\delta)$ are indicated by the shaded region in the lower
+    plot.}
   \label{fig:bounds}
 \end{figure*}
 If one derives a new function $g$ by shifting $f$ by $t$, ie,
@@ -97,7 +107,15 @@ If one derives a new function $g$ by shifting $f$ by $t$, ie,
   g(t) = f(t) + t,
 \end{equation}
 then the constraints \eqref{eq:f_def} on $f$ imply the following
-constraints on $g$:
+constraints\footnote{These constraints are
+  \emph{invariant} with respect to shifts of the origin of time, ie,
+  given two functions $g:\REAL \mapsto [0,1]$ and $\tilde g:\REAL
+  \mapsto [0,1]$ with
+  \begin{equation*}
+    \tilde g(t) = g(t+\tau)
+  \end{equation*}
+  for a fixed value of $\tau$, $\tilde g$ satisfies the constraints
+  \eqref{eq:g_def} iff $g$ satisfies the constraints.} on $g$:
 \begin{subequations}
   \label{eq:g_def}
   \begin{align}
@@ -108,18 +126,87 @@ constraints on $g$:
   \end{align}
 \end{subequations}
 
-While Eqns.~\eqref{eq:g_def} describe the constraints that pretty
-simply, the goal of this paper is the more difficult task of defining
-a uniform distribution over the set.  I require that the probability
+While Eqns.~\eqref{eq:g_def} describe the constraints pretty simply,
+the goal of this paper is the more interesting task of defining a
+uniform distribution over the set.  I require that the probability
 measure $\measure$ have the following properties:
 \begin{description}
-\item[Stationary:] 
-\item[Consistent:] 
+\item[Stationary:] If two sets of measurable functions $A$ and $B$
+  differ only by a shift in time, ie, there is a fixed shift $\tau$
+  such that $a \in A ~ \iff ~ \exists b \in B$ with $b(t) =
+  a(t+\tau)~\forall t$, then $\mu(A) = \mu(B)$.
+\item[Consistent:] (From
+  https://en.wikipedia.org/wiki/Kolmogorov\_extension\_theorem) Let T
+  denote some interval (thought of as "time"), and let $n \in
+  \mathbb{N}$. For each $k \in \mathbb{N}$ and finite sequence of
+  times $t_{1}, \dots, t_{k} \in T, let \nu_{t_{1} \dots t_{k}}$ be a
+  probability measure on $(\mathbb{R}^{n})^{k}$. Suppose that these
+  measures satisfy two consistency conditions:
+
+  1. for all permutations $\pi$ of $\{ 1, \dots, k \}$ and measurable sets
+  $F_{i} \subseteq \mathbb{R}^{n}$,
+
+  $\nu_{t_{\pi (1)} \dots t_{\pi (k)}} \left( F_{\pi (1)} \times \dots
+    \times F_{ \pi(k)} \right) = \nu_{t_{1} \dots t_{k}} \left( F_{1}
+    \times \dots \times F_{k} \right)$;
+
+  2. for all measurable sets $F_{i} \subseteq \mathbb{R}^{n},m \in
+  \mathbb{N}$
+
+  $\nu_{t_{1} \dots t_{k}} \left( F_{1} \times \dots \times F_{k}
+  \right) = \nu_{t_{1} \dots t_{k} t_{k + 1}, \dots , t_{k+m}} \left(
+    F_{1} \times \dots \times F_{k} \times \mathbb{R}^{n} \times \dots
+    \times \mathbb{R}^{n} \right)$.
 \end{description}
 
+\section{Counting Paths}
+\label{sec:counting}
 
-\section{Continuous $g$:}
-\label{sec:continuous_g}
+Notation:
+\begin{description}
+\item[$G_{i,n}$] The interval $\left[ \frac{i}{n}, \frac{i+1}{n}
+  \right)$.  I will often drop the second subscript and sometimes drop
+  both subscripts.
+\item[$\G_n$] Set of uniform sub-intervals between 0 and 1
+  \begin{equation*}
+    \G_n \equiv \left\{ G_{i,n} : 0 \leq i \leq n-1 \right\}
+  \end{equation*}
+\item[$\tau$] The time between samples.  In \eqref{eq:monotonic_g} I
+  used $\delta$ to denote the time between samples.  I use a different
+  symbol here so that I can consider $\delta$ as a finite time that is
+  subdivided into smaller intervals of length $\tau$
+\item[An allowed sequential pair] The pair $(G_i, G_j)$ is allowed if
+  and only if there is a $g_0\in G_i$ and a $g_1 \in G_j$ such that
+  for $\tau=\delta$ the constraints \eqref{eq:g_def} are satisfied by
+  $g_0=g(t), g_1=g(t+\tau)$.
+\item[$A_{n,\tau}$] The adjacency matrix of allowed pairs
+  \begin{equation*}
+    A_\tau[i,j] =
+    \begin{cases}
+      1 &\text{ if } (G_{i,n}, G_{j,n}) \text{ is an allowed pair}\\
+      0 &\text{ otherwise}
+    \end{cases}
+  \end{equation*}
+\item[$i_0^n$] The sequence of integers $\left( i_0, i_1, \ldots i_n
+  \right)$.
+\item[$\I(i_0^m,n,\tau)$] The function that \emph{indicates} allowed
+  sequences:
+  \begin{equation*}
+    \I(i_0^m,n,\tau) =
+    \begin{cases}
+      1 & \text{if }A_{n,\tau}[i_k,i_{k+1}] = 1,~ \forall k \in [0,m-1]\\
+      0 & \text{otherwise}
+    \end{cases}
+  \end{equation*}
+\item[$N(i,j,m,n,\tau)$] The number of allowed sequences with $m$
+  transitions that start with $i$ and end with $j$:
+  \begin{equation*}
+    N(i,j,m,n,\tau) = \left( A_{n,\tau} \right)^m[i,j].
+  \end{equation*}
+\end{description}
+
+\section{An Integral Operator}
+\label{sec:operator}
 
 I let $\Aop_\tau$ denote the operator for $\tau = \slope \Delta t$
 with continuous $g$.  (Note: $\tau$ is the only parameter in the
