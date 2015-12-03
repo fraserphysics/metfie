@@ -39,6 +39,7 @@
 \label{sec:do}
 
 \begin{itemize}
+\item Figure~\ref{fig:foo}
 \item Understand behavior of eigenvalues and eigenfunctions in
   $\tau \rightarrow 0$ limit.  Include results of numerical
   calculations (with $n_g=3000$) in plots of eigenvalues and
@@ -213,14 +214,18 @@ measure $\measure$ have the following properties:
 \end{description}
 \subsection{Probability}
 \label{sec:probability1}
-
-I hope that the limit in the following definition exists
+I define
 \begin{equation}
+  \label{eq:p0}
   \newcommand\Nin[2]{N\left(#1,#2, n, n, \frac{\delta}{n}\right)}
-  \label{eq:p1}
-  P(G|f,h,\delta) \equiv \lim_{n\rightarrow \infty} \frac{
+  P(G|f,h,\delta,n) = \frac{
     \sum_{j:G\cap G_{j,n} \neq \emptyset} \Nin{i(f)}{j}\Nin{j}{i(h)}}
-  {\sum_j \Nin{i(f)}{j}\Nin{j}{i(h)}}.
+  {\sum_j \Nin{i(f)}{j}\Nin{j}{i(h)}},
+\end{equation}
+and I hope that the following limit exists
+\begin{equation}
+  \label{eq:p1}
+  P(G|f,h,\delta) \equiv \lim_{n\rightarrow \infty} P(G|f,h,\delta,n)
 \end{equation}
 Note that to calculate probability conditioned on only one side rather
 than two, one must use an eigenvector of $A$.
@@ -277,7 +282,20 @@ As with \eqref{eq:p1} I hope that the limit in
   p(g|f,h,\delta) \equiv \lim_{n\rightarrow\infty}
   p_{\frac{\delta}{n}} (g|f,h,n)
 \end{equation}
-exists.
+exists.  Equation~\eqref{eq:p3} (see \eqref{eq:p0}) suggests a
+sequence of numerical approximations of the conditional density
+\begin{equation}
+  \label{eq:p3}
+  p(g|f,h,\delta) \approx \lim_{n \rightarrow \infty} \frac{1}{n}
+  P(i(g)|f,h,\delta, n).
+\end{equation}
+Figure~\ref{fig:foo} illustrates such a sequence.
+\begin{figure}
+  \centering
+    \framebox[0.75\textwidth]{Plots here}
+  \caption{Numerical approximations of the conditional density}
+  \label{fig:foo}
+\end{figure}
 
 \section{Old Eigenfunction Work}
 
