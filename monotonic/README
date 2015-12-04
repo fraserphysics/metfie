@@ -1,0 +1,22 @@
+Files:
+
+first.py      Python3 code for discrete approximation of integral
+              operator for first order Markov process with 1-d states.
+	    
+Makefile      First target is siads.pdf.  Other targets are dependencies
+	    
+mt2.fig       xfig data for 2 state Markov process
+	    
+plot.py       Makes bounds.pdf.  Includes argparse stuff to make other figures
+
+SConstruct    Makes siads.pdf.  Missing rules for most figures
+
+siads.tex     "Uniform Probability for a Continuous Time Monotonic Process"
+
+sym.py        Analytic calculations for distribution of monotonic
+              functions
+
+#---------------
+# Local Variables:
+# mode: text
+# End:

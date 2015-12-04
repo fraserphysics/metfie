@@ -19,9 +19,18 @@ class LO(scipy.sparse.linalg.LinearOperator):
                  ):
         self.dtype = np.dtype(np.float64)
         self.T = T
-        self.g_step = g_step
         self.n_g = int(np.ceil(1.0/g_step))
         self.shape = (self.n_g, self.n_g)
+        self.bins = np.linspace(0,1,self.n_g,endpoint=False)
+        self.g_step = self.bins[1]
+        assert len(self.bins) == self.n_g
+        assert self.bins[0] == 0.0
+        assert self.bins[-1] < 1.0 - self.g_step/2
+    def index(self, x):
+        if type(x) == float:
+            return np.digitize([x], self.bins)[0]
+        else:
+            return np.digitize(x, self.bins)
 
     def matvec(self, v, rv=None):
         '''Calculate rv= A*v and return.  Use array rv if passed, otherwise
@@ -101,6 +110,8 @@ class LO(scipy.sparse.linalg.LinearOperator):
         self.eigenvector = v_old
         return s,v_old
 def _test():
+    '''Takes 13 seconds on watcher'''
+    import matplotlib.pyplot as plt  # must be after mpl.use
     T = 0.251
     g_step = 1.0/1000
     A = LO(T, g_step)
@@ -110,23 +121,83 @@ def _test():
     error = np.abs(vA-A.symmetry(Av)).sum()
     assert error < 1e-10
 
-    import pylab
     e_val = {}
-    for n in (1, 2, 3, 5, 10, 20, 30):
-        for n_g in (100, 1000, 3000, 10000):
+    fig = plt.figure('eigenvectors')
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlabel(r'$g$')
+    ax.set_ylabel(r'eigenvector $v$')
+    for n in (1, 2, 3, 5, 10, 20):
+        T = 1.0/n
+        for n_g in (100, 300, 1000, 3000):
             g_step = 1.0/n_g
-            T = 1.0/n
             A = LO(T, g_step)
-            A.power(op=A.matvec, small=1.0e-8, verbose=True)
+            A.power(op=A.matvec, small=1.0e-8, verbose=False)
             v = A.eigenvector
             x = np.linspace(0,1,A.n_g)
-            pylab.plot(x,v/v[0])
+            ax.plot(x,v/v[0])
             e_val[n] = A.eigenvalue
-        print('\neigenvalue[{0}] = {1}\n'.format(n, e_val[n]))
-    pylab.show()
+        print('eigenvalue[T=1/{0}] = {1}'.format(n, e_val[n]))
+    plt.show()
+    return 0
+def conditional(
+        delta,
+        f,
+        h,
+        n_T,
+        n_g
+        ):
+    '''Calculate estimate of conditional density at t=0 given g(-delta) = f and
+    g(delta) = h
+    '''
+    A = LO(delta/n_T, 1.0/n_g)
+    F = np.zeros(A.n_g)
+    F[A.index(f)] = 1.0
+    H = np.zeros(A.n_g)
+    H[A.index(h)] = 1.0
+    for t in range(n_T):
+        F = A.matvec(F)
+        F /= F.max()
+        H = A.rmatvec(H)
+        H /= H.max()
+    p = F*H
+    p *= A.n_g/p.sum()
+    return p,A,F,H
+    
+    
+def work():
+    import matplotlib.pyplot as plt  # must be after mpl.use
+    fig = plt.figure('conditional density')
+    ax_log = fig.add_subplot(2,1,1)
+    ax = fig.add_subplot(2,1,2)
+    delta = .1
+    f = .95
+    h = .05
+    for n_g in (1000, 5000, 10000, 25000, 50000, 100000):
+        for n_T in (200,):
+            p,A,F,H = conditional(delta, f, h, n_T, n_g)
+            ax_log.semilogy(
+                A.bins, p, label=r'$n_T,n_g={0},{1}$'.format(n_T,n_g))
+            ax.plot(
+                A.bins, p, label=r'$n_T,n_g={0},{1}$'.format(n_T,n_g))
+            # fig_n = plt.figure('n_T={0}, n_g={1}'.format(n_T,n_g))
+            # axn = fig_n.add_subplot(1,1,1)
+            # axn.semilogy(A.bins, F, label=r'$F$')
+            # axn.semilogy(A.bins, H, label=r'$H$')
+            # axn.semilogy(A.bins, H*F, label=r'$FH$')
+            # axn.legend()
+    ax.legend()
+    ax_log.legend()
+    plt.show()
+    return 0
 
 if __name__ == "__main__":
-    _test()
+    import sys
+    rv = 0
+    if len(sys.argv) == 1 or sys.argv[1] == 'test':
+        rv = _test()
+    if sys.argv[1] == 'work':
+        rv = work()
+    sys.exit(rv)
 
 #---------------
 # Local Variables:

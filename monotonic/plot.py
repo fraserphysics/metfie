@@ -55,6 +55,7 @@ def main(argv=None):
 def bounds(plt):
     slope = -.2
     fig = plt.figure('bounds',figsize=(6,12))
+    # Use plt.subplot2grid so bottom plot can be bigger
     ax1 = plt.subplot2grid((4,1),(0,0))
     ax2 = plt.subplot2grid((4,1),(1,0))
     ax3 = plt.subplot2grid((4,1),(2,0),rowspan=2)
