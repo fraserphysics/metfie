@@ -1,0 +1,25 @@
+Script          Imports                 Comments
+	        
+gui_eos.py      from PySide.QtGui
+	        mayavi.mlab
+	        surf
+	        eos
+	        from ui_eos_qt
+                from ui_PVE_control
+
+surf.py         mayavi.mlab
+		traits.api
+		traitsui.api
+		mayavi.core.ui.api
+		eos
+		from PySide.QtGui
+
+eos.py                                  Numerical calculations
+
+ui_eos_qt.py                            pyside-uic makes from eos_qt.ui
+
+ui_PVE_control.py                       pyside-uic makes from PVE_control.ui
+
+eos_qt.ui                               Created by "designer-qt4 eos_qt.ui"
+
+PVE_control.ui                          Created by "designer-qt4 PVE_control.ui"
